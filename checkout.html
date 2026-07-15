@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Checkout at BUMI / BLOOM — secure, simple checkout for your kids' picks.">
+  <meta name="theme-color" content="#FEF0E4">
+  <title>Checkout — BUMI / BLOOM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+
+  <div class="announcement-bar" id="announcement-bar">
+    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="index.html" class="header__logo">BUMI / BLOOM</a>
+      <nav class="header__nav" id="main-nav">
+        <ul class="header__nav-list">
+          <li><a href="products.html?category=new" class="header__nav-link">New In</a></li>
+          <li><a href="products.html?category=girls" class="header__nav-link">Girls</a></li>
+          <li><a href="products.html?category=boys" class="header__nav-link">Boys</a></li>
+          <li><a href="products.html?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="brands.html" class="header__nav-link">Brands</a></li>
+          <li><a href="products.html?category=essentials" class="header__nav-link">Essentials</a></li>
+          <li><a href="products.html?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
+          <li><a href="journal.html" class="header__nav-link">Journal</a></li>
+        </ul>
+      </nav>
+      <div class="header__actions">
+        <button class="header__action-btn" id="search-toggle" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <a href="account.html" class="header__action-btn" aria-label="Account">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+        <a href="wishlist.html" class="header__action-btn" aria-label="Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <span class="header__cart-count" id="wishlist-count">0</span>
+        </a>
+        <a href="cart.html" class="header__action-btn header__cart-btn" id="cart-toggle" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+          <span class="header__cart-count" id="cart-count">0</span>
+        </a>
+        <button class="header__action-btn header__menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav__overlay" id="mobile-nav-overlay"></div>
+    <div class="mobile-nav__drawer">
+      <div class="mobile-nav__header">
+        <span class="header__logo">BUMI / BLOOM</span>
+        <button class="mobile-nav__close" id="mobile-nav-close" aria-label="Close menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <nav class="mobile-nav__links">
+        <a href="products.html?category=new" class="mobile-nav__link">New In</a>
+        <a href="products.html?category=girls" class="mobile-nav__link">Girls</a>
+        <a href="products.html?category=boys" class="mobile-nav__link">Boys</a>
+        <a href="products.html?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="brands.html" class="mobile-nav__link">Brands</a>
+        <a href="products.html?category=essentials" class="mobile-nav__link">Essentials</a>
+        <a href="products.html?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
+        <a href="journal.html" class="mobile-nav__link">Journal</a>
+      </nav>
+      <div class="mobile-nav__footer">
+        <a href="account.html" class="mobile-nav__footer-link">My Account</a>
+        <a href="wishlist.html" class="mobile-nav__footer-link">Wishlist</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal__overlay" id="search-modal-overlay"></div>
+    <div class="search-modal__content">
+      <form class="search-modal__form" id="search-form">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" class="search-modal__input" id="search-input" placeholder="Search for kids' clothing..." aria-label="Search products">
+        <button type="button" class="search-modal__close" id="search-close" aria-label="Close search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <main>
+    <section class="section" style="padding-bottom: 0;">
+      <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="index.html">Home</a>
+          <span class="breadcrumb__separator" aria-hidden="true">›</span>
+          <a href="cart.html">Bag</a>
+          <span class="breadcrumb__separator" aria-hidden="true">›</span>
+          <span class="breadcrumb__current">Checkout</span>
+        </nav>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top: var(--space-6);">
+      <div class="container" id="checkout-view"></div>
+    </section>
+  </main>
+
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo">BUMI / BLOOM</a>
+          <p class="footer__desc">Your trusted destination for thoughtfully curated kids' fashion from Indonesia's most exciting local brands. Playful, comfortable, and made to last.</p>
+          <div class="footer__social">
+            <a href="#" class="footer__social-link" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+            <a href="#" class="footer__social-link" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+            <a href="#" class="footer__social-link" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg></a>
+          </div>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Shop</h4>
+          <ul class="footer__nav-list">
+            <li><a href="products.html?category=new">New In</a></li>
+            <li><a href="products.html?category=girls">Girls</a></li>
+            <li><a href="products.html?category=boys">Boys</a></li>
+            <li><a href="products.html?category=baby">Baby</a></li>
+            <li><a href="products.html?category=sale">Sale</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Help</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Size Guide</a></li>
+            <li><a href="#">Shipping &amp; Returns</a></li>
+            <li><a href="#">FAQs</a></li>
+            <li><a href="#">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">About</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Our Story</a></li>
+            <li><a href="#">Sustainability</a></li>
+            <li><a href="journal.html">Journal</a></li>
+            <li><a href="brands.html">Our Brands</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; 2026 BUMI / BLOOM. All rights reserved.</p>
+        <div class="footer__bottom-links">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const view = document.getElementById('checkout-view');
+    const FREE_SHIP_THRESHOLD = 500000;
+
+    function shippingCost(method, subtotal) {
+      if (method === 'express') return 40000;
+      return subtotal >= FREE_SHIP_THRESHOLD ? 0 : 25000;
+    }
+
+    function render() {
+      const cart = BumiCart.getCart();
+      if (!cart.length) {
+        view.innerHTML = '<div class="cart-empty">' +
+          '<div class="cart-empty__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="80" height="80"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>' +
+          '<h1 class="cart-empty__title">Your bag is empty</h1>' +
+          '<p class="cart-empty__text">Add a few pieces before heading to checkout.</p>' +
+          '<a href="products.html" class="btn btn--primary">Continue Shopping</a></div>';
+        return;
+      }
+      view.innerHTML = layout();
+      wire();
+      updateTotals();
+    }
+
+    function layout() {
+      return '<form id="checkout-form"><div class="checkout-layout"><div>' +
+        section(1, 'Contact', '<div class="field"><label class="field__label">Email <span class="req">*</span></label><input class="input" type="email" name="email" placeholder="you@email.com" required></div>' +
+          '<div class="field"><label class="field__label">Phone <span class="req">*</span></label><input class="input" type="tel" name="phone" placeholder="+62 ..." required></div>') +
+        section(2, 'Shipping Address',
+          '<div class="form-grid">' +
+            field('First name', 'text', 'firstname', true) +
+            field('Last name', 'text', 'lastname', true) +
+            '<div class="field field--full"><label class="field__label">Address <span class="req">*</span></label><input class="input" type="text" name="address" required></div>' +
+            field('City', 'text', 'city', true) +
+            field('Postal code', 'text', 'postal', true) +
+            '<div class="field field--full"><label class="field__label">Province <span class="req">*</span></label>' +
+              '<select class="select" name="province" required><option value="">Select province</option><option>DKI Jakarta</option><option>Jawa Barat</option><option>Jawa Tengah</option><option>Jawa Timur</option><option>Bali</option><option>Lainnya</option></select></div>' +
+          '</div>') +
+        section(3, 'Shipping Method',
+          '<div class="payment-options">' +
+            '<label class="payment-option is-selected"><input type="radio" name="shipping" value="standard" checked><div><div class="payment-option__label">Standard (3–5 days)</div><div class="payment-option__desc" id="ship-standard-desc">Rp25.000 · free over Rp500.000</div></div></label>' +
+            '<label class="payment-option"><input type="radio" name="shipping" value="express"><div><div class="payment-option__label">Express (1–2 days)</div><div class="payment-option__desc">Rp40.000</div></div></label>' +
+          '</div>') +
+        section(4, 'Payment',
+          '<div class="payment-options">' +
+            payOpt('bank', 'Bank Transfer', 'BCA, Mandiri, BNI, BRI', true) +
+            payOpt('ewallet', 'E-Wallet', 'GoPay, OVO, DANA, ShopeePay', false) +
+            payOpt('cod', 'Cash on Delivery', 'Pay when it arrives', false) +
+          '</div>') +
+      '</div><div>' +
+        '<div class="checkout-summary">' +
+          '<h2 class="checkout-summary__title">Order Summary</h2>' +
+          '<div id="checkout-lines"></div>' +
+          '<div class="cart-summary__row"><span>Subtotal</span><span id="sum-subtotal">—</span></div>' +
+          '<div class="cart-summary__row"><span>Shipping</span><span id="sum-shipping">—</span></div>' +
+          '<div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="sum-total">—</span></div>' +
+          '<button class="btn btn--primary btn--full" type="submit" id="place-order">Place Order</button>' +
+          '<a href="cart.html" class="btn btn--ghost btn--full" style="margin-top:var(--space-2);">Back to Bag</a>' +
+        '</div>' +
+      '</div></div></form>';
+    }
+
+    function section(num, title, body) {
+      return '<div class="checkout-section"><h2 class="checkout-section__title"><span class="checkout-section__num">' + num + '</span>' + title + '</h2>' + body + '</div>';
+    }
+    function field(label, type, name, req) {
+      return '<div class="field"><label class="field__label">' + label + (req ? ' <span class="req">*</span>' : '') + '</label><input class="input" type="' + type + '" name="' + name + '"' + (req ? ' required' : '') + '></div>';
+    }
+    function payOpt(value, label, desc, checked) {
+      return '<label class="payment-option' + (checked ? ' is-selected' : '') + '"><input type="radio" name="payment" value="' + value + '"' + (checked ? ' checked' : '') + '><div><div class="payment-option__label">' + label + '</div><div class="payment-option__desc">' + desc + '</div></div></label>';
+    }
+
+    function wire() {
+      // Highlight selected payment/shipping option
+      view.querySelectorAll('input[name="shipping"], input[name="payment"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const group = input.name;
+          view.querySelectorAll('input[name="' + group + '"]').forEach(r => r.closest('.payment-option').classList.toggle('is-selected', r.checked));
+          updateTotals();
+        });
+      });
+      document.getElementById('checkout-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!e.target.reportValidity()) return;
+        placeOrder();
+      });
+    }
+
+    function updateTotals() {
+      const cart = BumiCart.getCart();
+      const lines = document.getElementById('checkout-lines');
+      lines.innerHTML = cart.map(item =>
+        '<div class="checkout-line"><img src="' + (item.image || '') + '" alt="">' +
+        '<div class="checkout-line__name"><strong>' + item.name + '</strong><small>Qty ' + (item.quantity || 1) + '</small></div>' +
+        '<span>' + BumiCart.formatPrice(item.price * (item.quantity || 1)) + '</span></div>'
+      ).join('');
+
+      const subtotal = BumiCart.getTotal();
+      const method = view.querySelector('input[name="shipping"]:checked').value;
+      const shipping = shippingCost(method, subtotal);
+      const total = subtotal + shipping;
+
+      document.getElementById('sum-subtotal').textContent = BumiCart.formatPrice(subtotal);
+      document.getElementById('sum-shipping').innerHTML = shipping === 0 ? '<span class="cart-summary__row--free">Free</span>' : BumiCart.formatPrice(shipping);
+      document.getElementById('sum-total').textContent = BumiCart.formatPrice(total);
+    }
+
+    function placeOrder() {
+      const num = 'BB-2026-' + String(Math.floor(Math.random() * 9000) + 1000);
+      const total = document.getElementById('sum-total').textContent;
+      BumiCart.clearCart();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      view.innerHTML = '<div class="order-confirmation">' +
+        '<div class="order-confirmation__icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +
+        '<h1 class="order-confirmation__title">Thank you for your order!</h1>' +
+        '<p class="section__subtitle">A confirmation has been sent to your email. We can\'t wait for your little one to wear these!</p>' +
+        '<div class="order-confirmation__number">Order ' + num + '</div>' +
+        '<p style="margin-bottom:var(--space-6);"><strong>Total paid:</strong> ' + total + '</p>' +
+        '<a href="products.html" class="btn btn--primary">Continue Shopping</a>' +
+        '<a href="account.html" class="btn btn--secondary" style="margin-left:var(--space-2);">View Orders</a>' +
+      '</div>';
+    }
+
+    render();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+/* ============================================
+   BUMI & BLOOM — Design Tokens (Crayon Curves)
+   ============================================ */
+
+:root {
+  /* ── Color Primitives ── */
+  --color-cream:        #FEF0E4;
+  --color-cream-light:  #FFF8F0;
+  --color-cream-dark:   #F5E0CC;
+  --color-white:        #FFFFFF;
+  --color-dark:         #2D2D2D;
+  --color-dark-light:   #4A4A4A;
+  --color-dark-muted:   #6B6B6B;
+  --color-gray:         #9E9E9E;
+  --color-gray-light:   #E8E8E8;
+  --color-gray-lighter: #F5F5F5;
+
+  --color-yellow:       #FFD93D;
+  --color-yellow-light: #FFF3C4;
+  --color-yellow-dark:  #E6C235;
+  --color-green:        #6BCB77;
+  --color-green-light:  #D4F5D9;
+  --color-green-dark:   #52A35E;
+  --color-purple:       #9B59B6;
+  --color-purple-light: #EAD6F5;
+  --color-purple-dark:  #7D3F99;
+  --color-orange:       #FF8C42;
+  --color-orange-light: #FFE0C2;
+  --color-orange-dark:  #E07530;
+  --color-coral:        #FF6B6B;
+  --color-coral-light:  #FFD4D4;
+  --color-coral-dark:   #E05555;
+  --color-blue:         #4FC3F7;
+  --color-blue-light:   #D0EFFC;
+  --color-blue-dark:    #2EA8DB;
+  --color-pink:         #FFB5C2;
+  --color-pink-light:   #FFE0E6;
+  --color-pink-dark:    #E89BA8;
+
+  /* ── Semantic Aliases ── */
+  --bg-primary:         var(--color-cream);
+  --bg-secondary:       var(--color-cream-light);
+  --bg-surface:         var(--color-white);
+  --bg-dark:            var(--color-dark);
+
+  --text-primary:       var(--color-dark);
+  --text-secondary:     var(--color-dark-light);
+  --text-muted:         var(--color-dark-muted);
+  --text-on-dark:       var(--color-cream);
+  --text-on-accent:     var(--color-white);
+
+  --accent-primary:     var(--color-coral);
+  --accent-secondary:   var(--color-yellow);
+  --accent-tertiary:    var(--color-green);
+
+  --border-color:       var(--color-gray-light);
+  --border-color-dark:  var(--color-dark);
+
+  /* ── Typography ── */
+  --font-heading:  'Outfit', sans-serif;
+  --font-body:     'Nunito', sans-serif;
+  --font-accent:   'Caveat', cursive;
+
+  --fw-regular:    400;
+  --fw-medium:     500;
+  --fw-semibold:   600;
+  --fw-bold:       700;
+  --fw-extrabold:  800;
+
+  /* Fluid Type Scale */
+  --text-xs:    clamp(0.7rem, 0.65rem + 0.25vw, 0.75rem);
+  --text-sm:    clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem);
+  --text-base:  clamp(0.9rem, 0.85rem + 0.3vw, 1rem);
+  --text-md:    clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --text-lg:    clamp(1.1rem, 1rem + 0.5vw, 1.25rem);
+  --text-xl:    clamp(1.2rem, 1rem + 0.8vw, 1.5rem);
+  --text-2xl:   clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  --text-3xl:   clamp(1.8rem, 1.4rem + 1.8vw, 2.5rem);
+  --text-4xl:   clamp(2.2rem, 1.6rem + 2.5vw, 3.5rem);
+  --text-5xl:   clamp(2.8rem, 2rem + 3.5vw, 5rem);
+
+  --lh-tight:   1.15;
+  --lh-snug:    1.3;
+  --lh-normal:  1.6;
+  --lh-relaxed: 1.8;
+
+  --ls-tight:   -0.02em;
+  --ls-normal:  0;
+  --ls-wide:    0.04em;
+  --ls-wider:   0.08em;
+  --ls-widest:  0.12em;
+
+  /* ── Spacing Scale ── */
+  --space-1:    0.25rem;   /* 4px */
+  --space-2:    0.5rem;    /* 8px */
+  --space-3:    0.75rem;   /* 12px */
+  --space-4:    1rem;      /* 16px */
+  --space-5:    1.25rem;   /* 20px */
+  --space-6:    1.5rem;    /* 24px */
+  --space-7:    1.75rem;   /* 28px */
+  --space-8:    2rem;      /* 32px */
+  --space-9:    2.25rem;   /* 36px */
+  --space-10:   2.5rem;    /* 40px */
+  --space-11:   2.75rem;   /* 44px */
+  --space-12:   3rem;      /* 48px */
+  --space-14:   3.5rem;    /* 56px */
+  --space-16:   4rem;      /* 64px */
+  --space-18:   4.5rem;    /* 72px */
+  --space-20:   5rem;      /* 80px */
+  --space-24:   6rem;      /* 96px */
+
+  --section-gap: clamp(3rem, 2rem + 5vw, 6rem);
+
+  /* ── Border Radius ── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   32px;
+  --radius-2xl:  40px;
+  --radius-full: 50%;
+  --radius-pill: 999px;
+
+  /* ── Shadows ── */
+  --shadow-xs:      0 1px 2px rgba(45, 45, 45, 0.05);
+  --shadow-sm:      0 2px 8px rgba(45, 45, 45, 0.06);
+  --shadow-md:      0 4px 16px rgba(45, 45, 45, 0.08);
+  --shadow-lg:      0 8px 32px rgba(45, 45, 45, 0.10);
+  --shadow-xl:      0 16px 48px rgba(45, 45, 45, 0.12);
+
+  --shadow-yellow:  0 8px 32px rgba(255, 217, 61, 0.25);
+  --shadow-green:   0 8px 32px rgba(107, 203, 119, 0.25);
+  --shadow-coral:   0 8px 32px rgba(255, 107, 107, 0.25);
+  --shadow-purple:  0 8px 32px rgba(155, 89, 182, 0.25);
+  --shadow-orange:  0 8px 32px rgba(255, 140, 66, 0.25);
+  --shadow-blue:    0 8px 32px rgba(79, 195, 247, 0.25);
+  --shadow-pink:    0 8px 32px rgba(255, 181, 194, 0.25);
+
+  --shadow-hover:   0 12px 36px rgba(45, 45, 45, 0.14);
+
+  /* ── Transitions ── */
+  --ease-smooth:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce:    cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-spring:    cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  --duration-fast:    150ms;
+  --duration-normal:  250ms;
+  --duration-slow:    400ms;
+  --duration-slower:  600ms;
+
+  --transition-fast:    all var(--duration-fast) var(--ease-smooth);
+  --transition-normal:  all var(--duration-normal) var(--ease-smooth);
+  --transition-slow:    all var(--duration-slow) var(--ease-smooth);
+  --transition-bounce:  all var(--duration-normal) var(--ease-bounce);
+
+  /* ── Z-Index Scale ── */
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-fixed:     300;
+  --z-overlay:   400;
+  --z-modal:     500;
+  --z-popover:   600;
+  --z-tooltip:   700;
+  --z-toast:     800;
+
+  /* ── Container Sizes ── */
+  --container-sm:    640px;
+  --container-md:    768px;
+  --container-lg:    1024px;
+  --container-xl:    1280px;
+  --container-2xl:   1440px;
+  --container-padding: clamp(1rem, 0.5rem + 2vw, 2.5rem);
+}

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Shopping Bag — BUMI / BLOOM. Review your curated kids' picks before checkout.">
+  <meta name="theme-color" content="#FEF0E4">
+  <title>Shopping Bag — BUMI / BLOOM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+
+  <div class="announcement-bar" id="announcement-bar">
+    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="index.html" class="header__logo">BUMI / BLOOM</a>
+      <nav class="header__nav" id="main-nav">
+        <ul class="header__nav-list">
+          <li><a href="products.html?category=new" class="header__nav-link">New In</a></li>
+          <li><a href="products.html?category=girls" class="header__nav-link">Girls</a></li>
+          <li><a href="products.html?category=boys" class="header__nav-link">Boys</a></li>
+          <li><a href="products.html?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="brands.html" class="header__nav-link">Brands</a></li>
+          <li><a href="products.html?category=essentials" class="header__nav-link">Essentials</a></li>
+          <li><a href="products.html?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
+          <li><a href="journal.html" class="header__nav-link">Journal</a></li>
+        </ul>
+      </nav>
+      <div class="header__actions">
+        <button class="header__action-btn" id="search-toggle" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <a href="account.html" class="header__action-btn" aria-label="Account">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </a>
+        <a href="wishlist.html" class="header__action-btn" aria-label="Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <span class="header__cart-count" id="wishlist-count">0</span>
+        </a>
+        <a href="cart.html" class="header__action-btn header__cart-btn" id="cart-toggle" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+          <span class="header__cart-count" id="cart-count">0</span>
+        </a>
+        <button class="header__action-btn header__menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav__overlay" id="mobile-nav-overlay"></div>
+    <div class="mobile-nav__drawer">
+      <div class="mobile-nav__header">
+        <span class="header__logo">BUMI / BLOOM</span>
+        <button class="mobile-nav__close" id="mobile-nav-close" aria-label="Close menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <nav class="mobile-nav__links">
+        <a href="products.html?category=new" class="mobile-nav__link">New In</a>
+        <a href="products.html?category=girls" class="mobile-nav__link">Girls</a>
+        <a href="products.html?category=boys" class="mobile-nav__link">Boys</a>
+        <a href="products.html?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="brands.html" class="mobile-nav__link">Brands</a>
+        <a href="products.html?category=essentials" class="mobile-nav__link">Essentials</a>
+        <a href="products.html?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
+        <a href="journal.html" class="mobile-nav__link">Journal</a>
+      </nav>
+      <div class="mobile-nav__footer">
+        <a href="account.html" class="mobile-nav__footer-link">My Account</a>
+        <a href="wishlist.html" class="mobile-nav__footer-link">Wishlist</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal__overlay" id="search-modal-overlay"></div>
+    <div class="search-modal__content">
+      <form class="search-modal__form" id="search-form">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" class="search-modal__input" id="search-input" placeholder="Search for kids' clothing..." aria-label="Search products">
+        <button type="button" class="search-modal__close" id="search-close" aria-label="Close search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <main>
+    <section class="section" style="padding-bottom: 0;">
+      <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="index.html">Home</a>
+          <span class="breadcrumb__separator" aria-hidden="true">›</span>
+          <span class="breadcrumb__current">Shopping Bag</span>
+        </nav>
+      </div>
+    </section>
+
+    <section class="section" id="cart-section" style="padding-top: var(--space-6);">
+      <div class="container">
+        <div class="section__header" style="text-align:left;margin-bottom:var(--space-8);">
+          <h1 class="section__title">Shopping <span class="script-accent">Bag</span></h1>
+        </div>
+
+        <div id="cart-items-container">
+          <div id="cart-filled">
+            <div class="cart-layout">
+              <div class="cart-items" role="list" aria-label="Cart items"></div>
+              <aside class="cart-summary" aria-label="Order summary">
+                <h2 class="cart-summary__title">Order Summary</h2>
+                <div class="cart-summary__row"><span>Subtotal</span><span id="cart-subtotal">—</span></div>
+                <div class="cart-summary__row"><span>Shipping</span><span id="cart-shipping">—</span></div>
+                <div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="cart-total">—</span></div>
+                <button class="btn btn--primary btn--full" type="button" id="checkout-btn">Proceed to Checkout</button>
+                <a href="products.html" class="btn btn--ghost btn--full" style="margin-top: var(--space-2);">Continue Shopping</a>
+              </aside>
+            </div>
+          </div>
+
+          <div id="cart-empty" style="display:none;">
+            <div class="cart-empty">
+              <div class="cart-empty__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="80" height="80"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              </div>
+              <h2 class="cart-empty__title">Your bag is still waiting for something good.</h2>
+              <p class="cart-empty__text">Discover playful, comfortable kids' clothing from Indonesian brands.</p>
+              <a href="products.html" class="btn btn--primary">Start Shopping</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="recommendations">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">You Might Also <span class="script-accent">Love</span></h2>
+          <p class="section__subtitle">A few more playful picks to consider.</p>
+        </div>
+        <div class="product-grid" id="recommendations-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo">BUMI / BLOOM</a>
+          <p class="footer__desc">Your trusted destination for thoughtfully curated kids' fashion from Indonesia's most exciting local brands. Playful, comfortable, and made to last.</p>
+          <div class="footer__social">
+            <a href="#" class="footer__social-link" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+            <a href="#" class="footer__social-link" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+            <a href="#" class="footer__social-link" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg></a>
+          </div>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Shop</h4>
+          <ul class="footer__nav-list">
+            <li><a href="products.html?category=new">New In</a></li>
+            <li><a href="products.html?category=girls">Girls</a></li>
+            <li><a href="products.html?category=boys">Boys</a></li>
+            <li><a href="products.html?category=baby">Baby</a></li>
+            <li><a href="products.html?category=sale">Sale</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Help</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Size Guide</a></li>
+            <li><a href="#">Shipping &amp; Returns</a></li>
+            <li><a href="#">FAQs</a></li>
+            <li><a href="#">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">About</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Our Story</a></li>
+            <li><a href="#">Sustainability</a></li>
+            <li><a href="journal.html">Journal</a></li>
+            <li><a href="brands.html">Our Brands</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; 2026 BUMI / BLOOM. All rights reserved.</p>
+        <div class="footer__bottom-links">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const FREE_SHIP = 500000;
+    const cartFilled = document.getElementById('cart-filled');
+    const cartEmpty = document.getElementById('cart-empty');
+    const cartItems = document.querySelector('.cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+
+    function getCart() { return window.BumiCart ? BumiCart.getCart() : []; }
+
+    function renderCart() {
+      const items = getCart();
+      if (!items.length) {
+        cartFilled.style.display = 'none';
+        cartEmpty.style.display = 'block';
+        return;
+      }
+      cartFilled.style.display = 'block';
+      cartEmpty.style.display = 'none';
+
+      cartItems.innerHTML = items.map((item, index) => {
+        const qty = item.quantity || 1;
+        return '<div class="cart-item" role="listitem" data-index="' + index + '" data-price="' + item.price + '">' +
+          '<div class="cart-item__image"><img src="' + (item.image || 'images/categories/dresses.png') + '" alt="' + item.name + '" loading="lazy"></div>' +
+          '<div class="cart-item__details">' +
+            '<p class="cart-item__brand">' + (item.brand || '') + '</p>' +
+            '<p class="cart-item__name">' + item.name + '</p>' +
+            '<p class="cart-item__variant">Size: ' + (item.size || '—') + ' · Colour: ' + (item.color || '—') + '</p>' +
+            '<div class="qty-control">' +
+              '<button class="qty-control__btn qty-minus" aria-label="Decrease quantity" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
+              '<span class="qty-control__value">' + qty + '</span>' +
+              '<button class="qty-control__btn qty-plus" aria-label="Increase quantity" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
+            '</div>' +
+            '<button class="cart-item__remove" type="button">Remove</button>' +
+          '</div>' +
+          '<div class="cart-item__price">' + BumiCart.formatPrice(item.price * qty) + '</div>' +
+        '</div>';
+      }).join('');
+
+      updateTotals();
+    }
+
+    function updateTotals() {
+      const items = getCart();
+      const subtotal = items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
+      const shipping = subtotal >= FREE_SHIP ? 0 : 25000;
+      document.getElementById('cart-subtotal').textContent = BumiCart.formatPrice(subtotal);
+      document.getElementById('cart-shipping').innerHTML = shipping === 0 ? '<span class="cart-summary__row--free">Free</span>' : BumiCart.formatPrice(shipping);
+      document.getElementById('cart-total').textContent = BumiCart.formatPrice(subtotal + shipping);
+    }
+
+    cartItems.addEventListener('click', (e) => {
+      const cartItem = e.target.closest('.cart-item');
+      if (!cartItem) return;
+      const index = parseInt(cartItem.dataset.index, 10);
+      if (e.target.closest('.qty-minus')) {
+        const q = (getCart()[index].quantity || 1) - 1;
+        if (q <= 0) BumiCart.removeItem(index); else BumiCart.updateQuantity(index, q);
+        renderCart();
+      } else if (e.target.closest('.qty-plus')) {
+        const q = Math.min(10, (getCart()[index].quantity || 1) + 1);
+        BumiCart.updateQuantity(index, q);
+        renderCart();
+      } else if (e.target.closest('.cart-item__remove')) {
+        BumiCart.removeItem(index);
+        renderCart();
+      }
+    });
+
+    checkoutBtn.addEventListener('click', () => { window.location.href = 'checkout.html'; });
+
+    window.addEventListener('cart-updated', renderCart);
+    renderCart();
+
+    // Recommendations from the catalog
+    const recGrid = document.getElementById('recommendations-grid');
+    const BG = ['yellow', 'green', 'pink', 'blue'];
+    recGrid.innerHTML = BumiData.getFeatured(4).map((p, i) => {
+      const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
+      const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
+      return '<article class="product-card product-card--bg-' + (BG[i % BG.length]) + '">' +
+        '<div class="product-card__image-wrap"><img src="' + p.image + '" alt="' + p.name + '" class="product-card__image" loading="lazy">' +
+          '<button class="product-card__wishlist' + active + '" data-id="' + p.id + '" aria-label="Save to wishlist" type="button"><svg viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>' +
+        '<div class="product-card__info"><p class="product-card__brand">' + p.brand + '</p>' +
+          '<h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=' + p.id + '">' + p.name + '</a></h3>' +
+          '<p class="product-card__price">' + BumiData.formatPrice(p.price) + '</p></div>' +
+      '</article>';
+    }).join('');
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check js/data.js)",
+      "Bash(node --check js/products.js)",
+      "Bash(node --check js/app.js)",
+      "Bash(node --check js/cart.js)",
+      "Bash(node _smoke.js)"
+    ]
+  }
+}

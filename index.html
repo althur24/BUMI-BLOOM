@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BUMI / BLOOM — Discover thoughtfully curated kids' fashion from Indonesian brands. Playful, comfortable, and made to last clothing for your little ones.">
+  <meta name="theme-color" content="#FEF0E4">
+  <title>BUMI / BLOOM — Dress Your Little Ones in Colorful Confidence!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/pages.css">
+</head>
+<body>
+
+  <!-- Announcement Bar -->
+  <div class="announcement-bar" id="announcement-bar">
+    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="index.html" class="header__logo">BUMI / BLOOM</a>
+
+      <nav class="header__nav" id="main-nav">
+        <ul class="header__nav-list">
+          <li><a href="products.html?category=new" class="header__nav-link">New In</a></li>
+          <li><a href="products.html?category=girls" class="header__nav-link">Girls</a></li>
+          <li><a href="products.html?category=boys" class="header__nav-link">Boys</a></li>
+          <li><a href="products.html?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="products.html?category=brands" class="header__nav-link">Brands</a></li>
+          <li><a href="products.html?category=essentials" class="header__nav-link">Essentials</a></li>
+          <li><a href="products.html?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
+          <li><a href="journal.html" class="header__nav-link">Journal</a></li>
+        </ul>
+      </nav>
+
+      <div class="header__actions">
+        <button class="header__action-btn" id="search-toggle" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <a href="account.html" class="header__action-btn" aria-label="Account">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </a>
+        <a href="wishlist.html" class="header__action-btn" aria-label="Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span class="header__cart-count" id="wishlist-count">0</span>
+        </a>
+        <button class="header__action-btn header__cart-btn" id="cart-toggle" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span class="header__cart-count" id="cart-count">0</span>
+        </button>
+        <button class="header__action-btn header__menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Nav Drawer -->
+  <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav__overlay" id="mobile-nav-overlay"></div>
+    <div class="mobile-nav__drawer">
+      <div class="mobile-nav__header">
+        <span class="header__logo">BUMI / BLOOM</span>
+        <button class="mobile-nav__close" id="mobile-nav-close" aria-label="Close menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <nav class="mobile-nav__links">
+        <a href="products.html?category=new" class="mobile-nav__link">New In</a>
+        <a href="products.html?category=girls" class="mobile-nav__link">Girls</a>
+        <a href="products.html?category=boys" class="mobile-nav__link">Boys</a>
+        <a href="products.html?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="products.html?category=brands" class="mobile-nav__link">Brands</a>
+        <a href="products.html?category=essentials" class="mobile-nav__link">Essentials</a>
+        <a href="products.html?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
+        <a href="journal.html" class="mobile-nav__link">Journal</a>
+      </nav>
+      <div class="mobile-nav__footer">
+        <a href="account.html" class="mobile-nav__footer-link">My Account</a>
+        <a href="wishlist.html" class="mobile-nav__footer-link">Wishlist</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Modal -->
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal__overlay" id="search-modal-overlay"></div>
+    <div class="search-modal__content">
+      <form class="search-modal__form" id="search-form">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" class="search-modal__input" id="search-input" placeholder="Search for kids' clothing..." aria-label="Search products">
+        <button type="button" class="search-modal__close" id="search-close" aria-label="Close search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- Hero Section -->
+    <section class="hero-playful" id="hero">
+      <div class="hero-playful__shapes">
+        <div class="floating-shape floating-shape--yellow"></div>
+        <div class="floating-shape floating-shape--green"></div>
+        <div class="floating-shape floating-shape--purple"></div>
+        <div class="floating-shape floating-shape--blue"></div>
+      </div>
+      <div class="container hero-playful__inner">
+        <div class="hero-playful__content">
+          <p class="hero-playful__badge">🌟 New Season Collection</p>
+          <h1 class="hero-playful__title">
+            Dress <span class="highlight-yellow">Your Little</span>
+            Ones in <span class="script-accent">Colorful</span>
+            <span class="highlight-green">Confidence!</span>
+          </h1>
+          <p class="hero-playful__subtitle">Discover thoughtfully curated kids' fashion from Indonesian brands — playful, comfortable, and made to last.</p>
+          <div class="hero-playful__actions">
+            <a href="products.html?category=kids" class="btn btn--primary btn--lg">Shop Collection</a>
+            <a href="products.html?category=new" class="btn btn--secondary btn--lg">New Arrivals</a>
+          </div>
+          <div class="hero-playful__trust">
+            <div class="trust-avatars">
+              <div class="trust-avatar" style="background: #FFD93D;">👧</div>
+              <div class="trust-avatar" style="background: #6BCB77;">👦</div>
+              <div class="trust-avatar" style="background: #4FC3F7;">👶</div>
+            </div>
+            <div class="trust-text">
+              <strong>952+</strong>
+              <span>Families Prefer Us</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-playful__visual">
+          <div class="hero-playful__image-frame">
+            <img src="images/hero/hero-main.png" alt="Happy child in colorful outfit" loading="eager">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Style Cards Section -->
+    <section class="section style-cards-section" id="style-cards">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Style Your Little Ones with <span class="script-accent">Playful Flair!</span></h2>
+        </div>
+        <div class="style-cards-grid">
+          <div class="style-card style-card--yellow">
+            <div class="style-card__image">
+              <img src="images/categories/dresses.png" alt="Colorful collections" loading="lazy">
+            </div>
+            <div class="style-card__content">
+              <h3 class="style-card__title">Dive deep into our colorful collections!</h3>
+              <a href="products.html" class="btn btn--primary btn--sm">Explore →</a>
+            </div>
+          </div>
+          <div class="style-card style-card--green">
+            <div class="style-card__image">
+              <img src="images/categories/tshirts.png" alt="Latest arrivals" loading="lazy">
+            </div>
+            <div class="style-card__content">
+              <h3 class="style-card__title">Check out our latest arrivals!</h3>
+              <a href="products.html?category=new" class="btn btn--primary btn--sm">Shop New →</a>
+            </div>
+          </div>
+          <div class="style-card style-card--blue">
+            <div class="style-card__image">
+              <img src="images/categories/trousers.png" alt="Perfect fit" loading="lazy">
+            </div>
+            <div class="style-card__content">
+              <h3 class="style-card__title">Find your child's perfect fit!</h3>
+              <a href="#" class="btn btn--primary btn--sm">Size Guide →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Collections Section -->
+    <section class="section collections-section" id="collections">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title"><span class="highlight-purple">Collections</span> that Speak to <span class="script-accent">Every Style</span></h2>
+        </div>
+        <div class="collection-tabs" id="collection-tabs">
+          <button class="collection-tab is-active" data-filter="all">All</button>
+          <button class="collection-tab" data-filter="tshirts">T-Shirts</button>
+          <button class="collection-tab" data-filter="shorts">Shorts</button>
+          <button class="collection-tab" data-filter="dresses">Dresses</button>
+          <button class="collection-tab" data-filter="outerwear">Outerwear</button>
+          <button class="collection-tab" data-filter="accessories">Accessories</button>
+        </div>
+        <div class="collection-grid" id="collection-grid">
+
+          <article class="product-card product-card--bg-yellow" data-category="tshirts">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/tshirts.png" alt="Sunny Day Cotton Tee" class="product-card__image" loading="lazy">
+              <span class="product-card__badge product-card__badge--new">New</span>
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Nara Kids</p>
+              <h3 class="product-card__name">Sunny Day Cotton Tee</h3>
+              <p class="product-card__price">Rp189.000 <span class="product-card__price--original">Rp249.000</span></p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-green" data-category="shorts">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/trousers.png" alt="Explorer Cargo Shorts" class="product-card__image" loading="lazy">
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Kala Kids</p>
+              <h3 class="product-card__name">Explorer Cargo Shorts</h3>
+              <p class="product-card__price">Rp159.000</p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-pink" data-category="dresses">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/dresses.png" alt="Rainbow Twirl Dress" class="product-card__image" loading="lazy">
+              <span class="product-card__badge product-card__badge--bestseller">Bestseller</span>
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Tanah Kids</p>
+              <h3 class="product-card__name">Rainbow Twirl Dress</h3>
+              <p class="product-card__price">Rp289.000 <span class="product-card__price--original">Rp389.000</span></p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-blue" data-category="tshirts">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/shirts.png" alt="Ocean Breeze Polo" class="product-card__image" loading="lazy">
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Sawah Kids</p>
+              <h3 class="product-card__name">Ocean Breeze Polo</h3>
+              <p class="product-card__price">Rp219.000</p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-orange" data-category="outerwear">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/outerwear.png" alt="Adventure Zip Hoodie" class="product-card__image" loading="lazy">
+              <span class="product-card__badge product-card__badge--sale">-25%</span>
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Benang Junior</p>
+              <h3 class="product-card__name">Adventure Zip Hoodie</h3>
+              <p class="product-card__price">Rp299.000 <span class="product-card__price--original">Rp399.000</span></p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-purple" data-category="dresses">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/dresses.png" alt="Garden Party Frock" class="product-card__image" loading="lazy">
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Rumah Junior</p>
+              <h3 class="product-card__name">Garden Party Frock</h3>
+              <p class="product-card__price">Rp349.000</p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-yellow" data-category="accessories">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/accessories.png" alt="Rainbow Beanie Hat" class="product-card__image" loading="lazy">
+              <span class="product-card__badge product-card__badge--new">New</span>
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Kala Kids</p>
+              <h3 class="product-card__name">Rainbow Beanie Hat</h3>
+              <p class="product-card__price">Rp129.000</p>
+            </div>
+          </article>
+
+          <article class="product-card product-card--bg-green" data-category="shorts">
+            <div class="product-card__image-wrap">
+              <img src="images/categories/trousers.png" alt="Playtime Jogger Shorts" class="product-card__image" loading="lazy">
+              <button class="product-card__wishlist" aria-label="Add to wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="product-card__brand">Nara Kids</p>
+              <h3 class="product-card__name">Playtime Jogger Shorts</h3>
+              <p class="product-card__price">Rp179.000 <span class="product-card__price--original">Rp229.000</span></p>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Promo Banner -->
+    <section class="section promo-banner-section" id="promo-banner">
+      <div class="container">
+        <div class="promo-banner">
+          <div class="promo-banner__content">
+            <h2 class="promo-banner__title">Enjoy <span class="highlight-yellow">20% Off</span> Your First Purchase at <span class="script-accent">BUMI / BLOOM!</span></h2>
+            <p class="promo-banner__text">Use code <strong>BLOOM20</strong> at checkout. Valid for all kids' collections!</p>
+            <a href="products.html" class="btn btn--yellow btn--lg">Shop Now</a>
+          </div>
+          <div class="promo-banner__image">
+            <img src="images/editorial/bumi-edit.png" alt="Happy kids in colorful outfits" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="section why-choose-section" id="why-choose">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Why Choose <span class="highlight-green">BUMI / BLOOM</span> for <span class="script-accent">Your Kids?</span></h2>
+        </div>
+        <div class="why-choose-grid">
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon" style="background: #FFF3CD;">🎨</div>
+            <div>
+              <h3 class="why-choose-item__title">Exclusive Styles for Every Child</h3>
+              <p class="why-choose-item__text">Unique designs from local Indonesian brands you won't find elsewhere.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon" style="background: #D4EDDA;">👨‍👩‍👧‍👦</div>
+            <div>
+              <h3 class="why-choose-item__title">Family & Modern Designs</h3>
+              <p class="why-choose-item__text">Thoughtfully crafted pieces that parents love and kids adore.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon" style="background: #E8DAEF;">✨</div>
+            <div>
+              <h3 class="why-choose-item__title">High-Quality Materials & Comfort</h3>
+              <p class="why-choose-item__text">Premium fabrics that are soft, durable, and safe for sensitive skin.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon" style="background: #D6EAF8;">🌿</div>
+            <div>
+              <h3 class="why-choose-item__title">Supporting Local & Sustainable Brands</h3>
+              <p class="why-choose-item__text">Every purchase supports Indonesian artisans and sustainable practices.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section testimonials-section" id="testimonials">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">What <span class="highlight-yellow">Lovely Moms</span> and Dads are <span class="script-accent">Saying!</span></h2>
+        </div>
+        <div class="testimonials-grid">
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"The quality is amazing! My daughter loves her new dress and it's held up beautifully through countless washes. Will definitely order again!"</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: #FFD93D;">S</div>
+              <div>
+                <p class="testimonial-card__name">Sarah Maharani</p>
+                <p class="testimonial-card__role">Mom of 2</p>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"Finally found a brand that makes comfortable AND stylish clothes for kids. The colors are vibrant and the fabrics are so soft. Love it!"</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: #6BCB77;">A</div>
+              <div>
+                <p class="testimonial-card__name">Andi Pratama</p>
+                <p class="testimonial-card__role">Dad of 1</p>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"The customer service is exceptional and shipping was super fast. My son's new wardrobe is complete thanks to BUMI / BLOOM!"</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: #4FC3F7;">R</div>
+              <div>
+                <p class="testimonial-card__name">Rina Sari</p>
+                <p class="testimonial-card__role">Mom of 3</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Banner -->
+    <section class="section cta-banner-section" id="cta-banner">
+      <div class="container">
+        <div class="cta-banner-grid">
+          <div class="cta-banner__left">
+            <h2 class="cta-banner__title">Make Every Day a <span class="script-accent">Fashion Adventure</span> for Your Little Explorers!</h2>
+            <a href="products.html" class="btn btn--primary btn--lg">Start Shopping</a>
+          </div>
+          <div class="cta-banner__right">
+            <p class="cta-banner__label">Special Offer</p>
+            <p class="cta-banner__discount">Get <span>20% off</span></p>
+            <p class="cta-banner__code-label">with code</p>
+            <div class="cta-banner__code">STYLE20</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="section" id="newsletter">
+      <div class="newsletter">
+        <h2 class="newsletter__title">Stay close to what's <span class="script-accent">new & fun!</span></h2>
+        <p class="newsletter__text">New drops, local stories, and playful style — delivered to your inbox.</p>
+        <form class="newsletter__form" id="newsletter-form">
+          <input type="email" class="input" placeholder="Your email address" aria-label="Email address" required>
+          <button type="submit" class="btn btn--primary">Subscribe</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo">BUMI / BLOOM</a>
+          <p class="footer__desc">Your trusted destination for thoughtfully curated kids' fashion from Indonesia's most exciting local brands. Playful, comfortable, and made to last.</p>
+          <div class="footer__social">
+            <a href="#" class="footer__social-link" aria-label="Instagram">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="Facebook">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+              </svg>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="TikTok">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Shop</h4>
+          <ul class="footer__nav-list">
+            <li><a href="products.html?category=new">New In</a></li>
+            <li><a href="products.html?category=girls">Girls</a></li>
+            <li><a href="products.html?category=boys">Boys</a></li>
+            <li><a href="products.html?category=baby">Baby</a></li>
+            <li><a href="products.html?category=sale">Sale</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Help</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Size Guide</a></li>
+            <li><a href="#">Shipping & Returns</a></li>
+            <li><a href="#">FAQs</a></li>
+            <li><a href="#">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">About</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#">Our Story</a></li>
+            <li><a href="#">Sustainability</a></li>
+            <li><a href="journal.html">Journal</a></li>
+            <li><a href="#">Careers</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; 2026 BUMI / BLOOM. All rights reserved.</p>
+        <div class="footer__bottom-links">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/wishlist.js"></script>
+  <script src="js/products.js"></script>
+</body>
+</html>
