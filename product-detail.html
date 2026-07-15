@@ -254,6 +254,7 @@
           '<h1 class="pdp-name">' + product.name + '</h1>' +
           '<p class="pdp-price">' + priceHTML + '</p>' +
           '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
+          '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
           '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
           '<div class="pdp-option"><p class="pdp-option__label">Colour — <span id="selected-colour">' + selectedColor + '</span></p><div class="pdp-color-swatches">' + colorSwatches + '</div></div>' +
@@ -368,7 +369,7 @@
         item('Description', '<p>' + product.description + '</p>', true) +
         item('Material &amp; Care', '<p>' + product.material + '</p>') +
         item('Size Guide', sizeGuideTable(product.sizes)) +
-        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $60. Standard delivery 3–6 business days across Australia. Easy 30-day returns.</p>') +
+        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $60. Standard delivery 3–6 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
       '</div>';
     }
     function item(title, body, open) {

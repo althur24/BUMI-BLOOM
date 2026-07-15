@@ -64,6 +64,7 @@ function productCardHTML(product, index) {
         <h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=${product.id}">${product.name}</a></h3>
         ${ratingHTML}
         <p class="product-card__price">${priceHTML}</p>
+        ${product.fibre ? `<span class="product-card__material">${product.fibre}</span>` : ''}
         ${swatches ? `<div class="product-card__swatches">${swatches}</div>` : ''}
         <button class="btn btn--primary btn--sm product-card__add" data-id="${product.id}" type="button">Add to Bag</button>
       </div>

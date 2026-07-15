@@ -8,9 +8,11 @@
    indonesia_kidswear_top_sellers_revised_2026-07-15.xlsx
    (3 real Indonesian kidswear brands, 15 top-selling
    products). Prices are AUD (whole dollars, GST-
-   inclusive), set by tier. Imagery uses existing
-   category placeholders until authorized brand photos
-   arrive.
+   inclusive), set by tier. `fibre` is a short honest
+   material label (shown on cards); `material` is the
+   full care-line. All pieces are designed & made in
+   Indonesia. Imagery uses existing category
+   placeholders until authorized brand photos arrive.
    ============================================ */
 
 const BumiData = {
@@ -28,151 +30,152 @@ const BumiData = {
      audience: girls | boys | baby | unisex   (drives Girls / Boys / Baby nav)
      category: tshirts | shorts | dresses | outerwear | accessories | baby
      price/compareAt: AUD whole dollars, GST-inclusive.
+     fibre: short honest material label (card pill). material: full care line.
   */
   PRODUCTS: [
     {
       id: 'elliot-pant', name: 'Elliot Pant', brand: 'Bohopanna',
-      audience: 'unisex', category: 'shorts', price: 15,
+      audience: 'unisex', category: 'shorts', price: 15, fibre: 'Cotton twill',
       colors: [{ name: 'Khaki', hex: '#B9A88A' }, { name: 'Black', hex: '#333333' }, { name: 'Stone', hex: '#C9BBA7' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/trousers.png',
       gallery: ['images/categories/trousers.png', 'images/categories/kids.png'],
       badge: 'bestseller', isNew: false, isBestseller: true, rating: 4.9, reviews: 312, addedAt: 15,
       description: 'Bohopanna’s most-loved everyday pant — an easy pull-on shape with a comfy elastic waist, built for playground days.',
-      material: 'Soft everyday fabric. Machine wash cold.'
+      material: '100% cotton twill. Machine wash cold.'
     },
     {
       id: 'basic-tee-girl', name: 'Basic Tee Girl', brand: 'Bohopanna',
-      audience: 'girls', category: 'tshirts', price: 9, compareAt: 12,
+      audience: 'girls', category: 'tshirts', price: 9, compareAt: 12, fibre: 'Cotton jersey',
       colors: [{ name: 'Sunny Peach', hex: '#F9B8AF' }, { name: 'Sky Blue', hex: '#96ADD6' }, { name: 'White', hex: '#FFFFFF' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/tshirts.png',
       gallery: ['images/categories/tshirts.png', 'images/categories/shirts.png'],
       badge: 'new', isNew: true, isBestseller: false, rating: 4.9, reviews: 208, addedAt: 14,
       description: 'A soft, tag-free cotton tee in cheerful colours — the everyday top she’ll reach for all week.',
-      material: 'Soft everyday fabric. Machine wash cold.'
+      material: '100% cotton jersey. Machine wash cold.'
     },
     {
       id: 'pannadaily-set-girl', name: 'Pannadaily Set Kids Girl Print', brand: 'Bohopanna',
-      audience: 'girls', category: 'dresses', price: 12,
+      audience: 'girls', category: 'dresses', price: 12, fibre: 'Cotton',
       colors: [{ name: 'Print', hex: '#F9B8AF' }, { name: 'Pink', hex: '#F2D7D3' }],
       sizes: ['2T', '3T', '4T', '5'], image: 'images/categories/dresses.png',
       gallery: ['images/categories/dresses.png', 'images/categories/kids.png'],
       badge: null, isNew: false, isBestseller: false, rating: 4.9, reviews: 156, addedAt: 13,
       description: 'A breezy two-piece set in a playful print — ready in one grab for school mornings and weekend trips.',
-      material: 'Soft everyday fabric. Machine wash cold.'
+      material: '100% cotton. Machine wash cold.'
     },
     {
       id: 'pannadaily-playsuit', name: 'Pannadaily Playsuit Girl Print', brand: 'Bohopanna',
-      audience: 'baby', category: 'baby', price: 12,
+      audience: 'baby', category: 'baby', price: 12, fibre: 'Cotton',
       colors: [{ name: 'Print', hex: '#F2D7D3' }, { name: 'Cream', hex: '#F7F3EE' }],
       sizes: ['6-12M', '12-18M', '18-24M'], image: 'images/categories/baby.png',
       gallery: ['images/categories/baby.png', 'images/categories/kids.png'],
       badge: null, isNew: false, isBestseller: false, rating: 4.9, reviews: 98, addedAt: 12,
       description: 'A snuggly printed playsuit with snap closures for easy changes. Comfy enough to crawl, cute enough for photos.',
-      material: 'Soft everyday fabric. Machine wash cold.'
+      material: '100% cotton. Machine wash cold.'
     },
     {
       id: 'barrel-jeans', name: 'Barrel Jeans', brand: 'Bohopanna',
-      audience: 'unisex', category: 'shorts', price: 29, compareAt: 39,
+      audience: 'unisex', category: 'shorts', price: 29, compareAt: 39, fibre: 'Cotton denim',
       colors: [{ name: 'Denim', hex: '#6E8AC0' }, { name: 'Indigo', hex: '#00408C' }],
       sizes: ['2T', '3T', '4T', '5', '6', '7'], image: 'images/categories/trousers.png',
       gallery: ['images/categories/trousers.png', 'images/categories/kids.png'],
       badge: 'sale', isNew: false, isBestseller: false, rating: 4.9, reviews: 142, addedAt: 11,
       description: 'On-trend barrel-leg jeans in soft denim with a touch of stretch — tough enough for adventures, easy to move in.',
-      material: 'Soft everyday fabric. Machine wash cold.'
+      material: 'Cotton denim with elastane. Machine wash cold.'
     },
     {
       id: 'horse-linen-sashiko-shirt', name: 'HORSE Linen Sashiko Shirt', brand: 'Sabine & Heem',
-      audience: 'boys', category: 'tshirts', price: 39,
+      audience: 'boys', category: 'tshirts', price: 39, fibre: 'Linen',
       colors: [{ name: 'Natural', hex: '#EADFD3' }, { name: 'Black', hex: '#333333' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/shirts.png',
       gallery: ['images/categories/shirts.png', 'images/categories/tshirts.png'],
       badge: 'bestseller', isNew: false, isBestseller: true, rating: 5.0, reviews: 187, addedAt: 10,
       description: 'A breathable linen shirt with hand-finished sashiko stitching — slow-made polish for special everyday days.',
-      material: 'Linen. Machine wash cold.'
+      material: '100% linen. Machine wash cold.'
     },
     {
       id: 'howdy-embroidery-tee', name: 'HOWDY Embroidery Tee', brand: 'Sabine & Heem',
-      audience: 'boys', category: 'tshirts', price: 39,
+      audience: 'boys', category: 'tshirts', price: 39, fibre: 'Cotton',
       colors: [{ name: 'Cream', hex: '#F7F3EE' }, { name: 'Blue', hex: '#96ADD6' }],
       sizes: ['2T', '3T', '4T', '5'], image: 'images/categories/tshirts.png',
       gallery: ['images/categories/tshirts.png', 'images/categories/shirts.png'],
       badge: null, isNew: false, isBestseller: false, rating: 4.9, reviews: 76, addedAt: 9,
       description: 'A soft cotton tee with cheerful HOWDY embroidery. Laid-back, durable and made to last.',
-      material: 'Cotton. Machine wash cold.'
+      material: '100% cotton. Machine wash cold.'
     },
     {
       id: 'wonder-linen-shirt-black', name: 'WONDER Embroidery Linen Shirt — Black', brand: 'Sabine & Heem',
-      audience: 'boys', category: 'tshirts', price: 39,
+      audience: 'boys', category: 'tshirts', price: 39, fibre: 'Linen',
       colors: [{ name: 'Black', hex: '#333333' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/shirts.png',
       gallery: ['images/categories/shirts.png', 'images/categories/tshirts.png'],
       badge: null, isNew: false, isBestseller: false, rating: 5.0, reviews: 64, addedAt: 8,
       description: 'A classic linen shirt in black with embroidered detail — cool, crisp and endlessly versatile.',
-      material: 'Linen. Machine wash cold.'
+      material: '100% linen. Machine wash cold.'
     },
     {
       id: 'na-willa-knitted-vest', name: 'NA WILLA Cotton Knitted Collar Vest — Polkadot', brand: 'Sabine & Heem',
-      audience: 'girls', category: 'outerwear', price: 49,
+      audience: 'girls', category: 'outerwear', price: 49, fibre: 'Cotton knit',
       colors: [{ name: 'Polkadot', hex: '#F2D7D3' }, { name: 'Cream', hex: '#F7F3EE' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/outerwear.png',
       gallery: ['images/categories/outerwear.png', 'images/categories/kids.png'],
       badge: null, isNew: false, isBestseller: false, rating: 5.0, reviews: 41, addedAt: 7,
       description: 'A cotton knitted collar vest in a sweet polkadot knit — a layered finishing piece with handmade charm.',
-      material: 'Cotton knit. Machine wash cold.'
+      material: '100% cotton knit. Machine wash cold.'
     },
     {
       id: 'wonder-linen-shirt-white', name: 'WONDER Embroidery Linen Shirt — Broken White', brand: 'Sabine & Heem',
-      audience: 'boys', category: 'tshirts', price: 39,
+      audience: 'boys', category: 'tshirts', price: 39, fibre: 'Linen',
       colors: [{ name: 'Broken White', hex: '#F2EEE9' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/shirts.png',
       gallery: ['images/categories/shirts.png', 'images/categories/tshirts.png'],
       badge: null, isNew: false, isBestseller: false, rating: 5.0, reviews: 58, addedAt: 6,
       description: 'The WONDER linen shirt in broken white — warm, neutral and easy to pair with anything.',
-      material: 'Linen. Machine wash cold.'
+      material: '100% linen. Machine wash cold.'
     },
     {
       id: 'piccolo-jacket', name: 'Piccolo Jacket', brand: 'Anakmu',
-      audience: 'unisex', category: 'outerwear', price: 35, compareAt: 45,
+      audience: 'unisex', category: 'outerwear', price: 35, compareAt: 45, fibre: 'Polyester',
       colors: [{ name: 'Navy', hex: '#00408C' }, { name: 'Slate', hex: '#8A8A8A' }, { name: 'Cream', hex: '#F2EEE9' }],
       sizes: ['2T', '3T', '4T', '5', '6', '7', '8'], image: 'images/categories/outerwear.png',
       gallery: ['images/categories/outerwear.png', 'images/categories/kids.png'],
       badge: 'bestseller', isNew: false, isBestseller: true, rating: 4.9, reviews: 421, addedAt: 5,
       description: 'A lightweight premium-polyester windbreaker that shrugs off wind and light rain. Packs small for day trips.',
-      material: 'Premium polyester windbreaker. Machine wash cold.'
+      material: 'Premium polyester shell. Machine wash cold.'
     },
     {
       id: 'torena-sweater', name: 'Torena Sweater — Plain Basic', brand: 'Anakmu',
-      audience: 'unisex', category: 'outerwear', price: 29,
+      audience: 'unisex', category: 'outerwear', price: 29, fibre: 'Cotton fleece',
       colors: [{ name: 'Grey', hex: '#8A8A8A' }, { name: 'Cream', hex: '#F2EEE9' }, { name: 'Navy', hex: '#00408C' }],
       sizes: ['2T', '3T', '4T', '5', '6', '7', '8'], image: 'images/categories/outerwear.png',
       gallery: ['images/categories/outerwear.png', 'images/categories/kids.png'],
       badge: 'bestseller', isNew: false, isBestseller: true, rating: 4.9, reviews: 388, addedAt: 4,
       description: 'A super-soft premium fleece sweater in a plain, go-with-everything colour — cosy layering, made to last.',
-      material: 'Premium cotton fleece. Machine wash cold.'
+      material: '100% cotton fleece. Machine wash cold.'
     },
     {
       id: 'gufi-rib-sweater', name: 'Gufi Rib Sweater — Plain Basic', brand: 'Anakmu',
-      audience: 'unisex', category: 'outerwear', price: 29,
+      audience: 'unisex', category: 'outerwear', price: 29, fibre: 'Cotton knit',
       colors: [{ name: 'Grey', hex: '#8A8A8A' }, { name: 'Peach', hex: '#F9B8AF' }],
       sizes: ['2T', '3T', '4T', '5'], image: 'images/categories/outerwear.png',
       gallery: ['images/categories/outerwear.png', 'images/categories/kids.png'],
       badge: null, isNew: false, isBestseller: false, rating: 4.9, reviews: 134, addedAt: 3,
       description: 'A fine cotton-knit sweater with a subtle rib texture — lightweight warmth for in-between weather.',
-      material: 'Premium cotton knit. Machine wash cold.'
+      material: '100% cotton knit. Machine wash cold.'
     },
     {
       id: 'organic-pocket-tee', name: 'Organic Pocket T-Shirt — Basic', brand: 'Anakmu',
-      audience: 'unisex', category: 'tshirts', price: 12,
+      audience: 'unisex', category: 'tshirts', price: 12, fibre: 'Organic cotton',
       colors: [{ name: 'White', hex: '#FFFFFF' }, { name: 'Navy', hex: '#00408C' }],
       sizes: ['2T', '3T', '4T', '5', '6', '7'], image: 'images/categories/tshirts.png',
       gallery: ['images/categories/tshirts.png', 'images/categories/shirts.png'],
       badge: 'new', isNew: true, isBestseller: false, rating: 4.9, reviews: 263, addedAt: 2,
-      description: 'An organic cotton tee with a handy chest pocket — the blank-basic top that goes with everything.',
-      material: 'Organic cotton. Machine wash cold.'
+      description: 'A GOTS-organic cotton tee with a handy chest pocket — the blank-basic top that goes with everything.',
+      material: 'GOTS-organic cotton. Machine wash cold.'
     },
     {
       id: 'brisa-cargo-pants', name: 'Brisa Cargo Pants', brand: 'Anakmu',
-      audience: 'unisex', category: 'shorts', price: 25,
+      audience: 'unisex', category: 'shorts', price: 25, fibre: 'Cotton blend',
       colors: [{ name: 'Khaki', hex: '#B9A88A' }, { name: 'Black', hex: '#333333' }],
       sizes: ['2T', '3T', '4T', '5', '6'], image: 'images/categories/trousers.png',
       gallery: ['images/categories/trousers.png', 'images/categories/kids.png'],
