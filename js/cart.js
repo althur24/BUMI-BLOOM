@@ -1,9 +1,21 @@
 /* ============================================
-   BUMI / BLOOM — Cart Management
+   BUMI / BLOOM — Cart Management (AU / AUD)
+   - localStorage persistence
+   - AU shipping + working promo (WELCOME10)
+   - fires add_to_cart analytics
    ============================================ */
 
 const BumiCart = {
   STORAGE_KEY: 'bb-cart',
+  PROMO_KEY: 'bb-promo',
+
+  /* AU shipping (AUD). freeThreshold applies to the (pre-discount) subtotal. */
+  SHIPPING: { flat: 9.95, express: 14.95, freeThreshold: 60 },
+
+  /* Working promo codes. Add more here. */
+  PROMOS: {
+    WELCOME10: { rate: 0.10, label: 'Welcome — 10% off' }
+  },
 
   getCart() {
     try {
@@ -38,6 +50,14 @@ const BumiCart = {
 
     this.saveCart(cart);
     this.showNotification(product.name);
+
+    if (window.BumiTrack) {
+      BumiTrack.event('add_to_cart', {
+        currency: 'AUD',
+        value: product.price,
+        items: [{ id: product.id, name: product.name, price: product.price, quantity: 1 }]
+      });
+    }
     return cart;
   },
 
@@ -73,8 +93,50 @@ const BumiCart = {
     return cart.reduce((count, item) => count + (item.quantity || 1), 0);
   },
 
+  /* AU shipping cost for a given method + subtotal. */
+  shippingCost(method, subtotal) {
+    if (method === 'express') return this.SHIPPING.express;
+    return subtotal >= this.SHIPPING.freeThreshold ? 0 : this.SHIPPING.flat;
+  },
+
+  /* ── Promo codes ── */
+  applyPromo(code) {
+    const key = String(code || '').trim().toUpperCase();
+    const promo = this.PROMOS[key];
+    if (!promo) {
+      this.clearPromo();
+      return { valid: false };
+    }
+    const stored = { code: key, ...promo };
+    localStorage.setItem(this.PROMO_KEY, JSON.stringify(stored));
+    window.dispatchEvent(new CustomEvent('promo-updated'));
+    return { valid: true, ...stored };
+  },
+
+  getPromo() {
+    try {
+      const p = JSON.parse(localStorage.getItem(this.PROMO_KEY) || 'null');
+      return (p && this.PROMOS[p.code]) ? p : null;
+    } catch {
+      return null;
+    }
+  },
+
+  clearPromo() {
+    localStorage.removeItem(this.PROMO_KEY);
+    window.dispatchEvent(new CustomEvent('promo-updated'));
+  },
+
+  getDiscount(subtotal) {
+    const p = this.getPromo();
+    return p ? subtotal * p.rate : 0;
+  },
+
   formatPrice(amount) {
-    return 'Rp' + amount.toLocaleString('id-ID');
+    const n = Number(amount);
+    return '$' + (Number.isInteger(n)
+      ? n.toLocaleString('en-AU')
+      : n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   },
 
   showNotification(productName) {

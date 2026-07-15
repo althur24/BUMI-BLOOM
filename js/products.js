@@ -46,6 +46,10 @@ function productCardHTML(product, index) {
     `<span class="product-card__swatch" style="background:${c.hex};" title="${c.name}"></span>`
   ).join('');
 
+  const ratingHTML = product.rating
+    ? `<span class="product-card__rating" aria-label="Rated ${product.rating} out of 5">★ ${Number(product.rating).toFixed(1)}${product.reviews ? ` <span class="product-card__rating-count">(${product.reviews})</span>` : ''}</span>`
+    : '';
+
   return `
     <article class="product-card product-card--bg-${bg}" data-id="${product.id}" data-category="${product.category}">
       <div class="product-card__image-wrap">
@@ -58,8 +62,10 @@ function productCardHTML(product, index) {
       <div class="product-card__info">
         <p class="product-card__brand">${product.brand}</p>
         <h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=${product.id}">${product.name}</a></h3>
+        ${ratingHTML}
         <p class="product-card__price">${priceHTML}</p>
         ${swatches ? `<div class="product-card__swatches">${swatches}</div>` : ''}
+        <button class="btn btn--primary btn--sm product-card__add" data-id="${product.id}" type="button">Add to Bag</button>
       </div>
     </article>
   `;
@@ -77,17 +83,22 @@ function emptyHTML(message) {
 
 function initHomeCollection() {
   const grid = document.getElementById('collection-grid');
-  grid.innerHTML = BumiData.getFeatured(8).map((p, i) => productCardHTML(p, i)).join('');
+  const featured = BumiData.getFeatured(8);
+  grid.innerHTML = featured.map((p, i) => productCardHTML(p, i)).join('');
+  if (window.BumiTrack) {
+    BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',
+      items: featured.map(p => ({ id: p.id, name: p.name, price: p.price })) });
+  }
 }
 
 /* ---------- PLP ---------- */
 
 const PAGE_SIZE = 9;
 const PRICE_BANDS = {
-  under150: { min: 0, max: 150000 },
-  '150-250': { min: 150000, max: 250000 },
-  '250-350': { min: 250000, max: 350000 },
-  above350: { min: 350000, max: Infinity }
+  under15: { min: 0, max: 15 },
+  '15-30': { min: 15, max: 30 },
+  '30-45': { min: 30, max: 45 },
+  above45: { min: 45, max: Infinity }
 };
 
 function initPLP() {
@@ -264,4 +275,10 @@ function initPLP() {
   }
 
   render();
+
+  // Analytics: initial list view
+  if (window.BumiTrack) {
+    const items = getFiltered().slice(0, state.visible).map(p => ({ id: p.id, name: p.name, price: p.price }));
+    BumiTrack.event('view_item_list', { item_list_name: state.category || 'all', items });
+  }
 }

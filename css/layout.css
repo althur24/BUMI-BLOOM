@@ -402,7 +402,7 @@
   grid-template-columns: 1.5fr repeat(3, 1fr);
   gap: var(--space-10);
   padding-bottom: var(--section-gap);
-  border-bottom: 1px solid rgba(254, 240, 228, 0.15);
+  border-bottom: 1px solid rgba(242, 238, 233, 0.15);
 }
 
 .footer__desc {
@@ -454,7 +454,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(254, 240, 228, 0.2);
+  border: 2px solid rgba(242, 238, 233, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Shop kids' clothing at BUMI / BLOOM — playful, comfortable, made-to-last pieces from Indonesian brands. Dresses, tees, shorts, outerwear and more.">
-  <meta name="theme-color" content="#FEF0E4">
+  <meta name="theme-color" content="#F2EEE9">
   <title>Kids' Collection — BUMI / BLOOM</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
@@ -13,12 +13,13 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/analytics.js"></script>
 </head>
 <body>
 
   <!-- Announcement Bar -->
   <div class="announcement-bar" id="announcement-bar">
-    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products.html?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -167,42 +168,43 @@
                 <button class="pdp-size plp-size-btn" type="button" data-size="5">5</button>
                 <button class="pdp-size plp-size-btn" type="button" data-size="6">6</button>
                 <button class="pdp-size plp-size-btn" type="button" data-size="7">7</button>
+                <button class="pdp-size plp-size-btn" type="button" data-size="8">8</button>
+                <button class="pdp-size plp-size-btn" type="button" data-size="6-12M">6-12M</button>
+                <button class="pdp-size plp-size-btn" type="button" data-size="12-18M">12-18M</button>
+                <button class="pdp-size plp-size-btn" type="button" data-size="18-24M">18-24M</button>
               </div>
             </div>
 
             <div class="plp-sidebar__section">
               <h3 class="plp-sidebar__title">Colour</h3>
               <div class="plp-sidebar__swatches">
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#FFD93D" data-hex="#FFD93D" title="Yellow" aria-label="Yellow" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#6BCB77" data-hex="#6BCB77" title="Green" aria-label="Green" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#FF6B6B" data-hex="#FF6B6B" title="Coral" aria-label="Coral" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#4FC3F7" data-hex="#4FC3F7" title="Blue" aria-label="Blue" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#9B59B6" data-hex="#9B59B6" title="Purple" aria-label="Purple" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#FFB5C2" data-hex="#FFB5C2" title="Pink" aria-label="Pink" type="button"></button>
                 <button class="pdp-color-swatch plp-color-swatch" style="background:#FFFFFF;border-color:#ddd" data-hex="#FFFFFF" title="White" aria-label="White" type="button"></button>
-                <button class="pdp-color-swatch plp-color-swatch" style="background:#FFF8F0;border-color:#ddd" data-hex="#FFF8F0" title="Cream" aria-label="Cream" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#F2EEE9;border-color:#ddd" data-hex="#F2EEE9" title="Broken White" aria-label="Broken White" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#F9B8AF" data-hex="#F9B8AF" title="Peach" aria-label="Peach" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#F2D7D3" data-hex="#F2D7D3" title="Pink" aria-label="Pink" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#96ADD6" data-hex="#96ADD6" title="Blue" aria-label="Blue" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#00408C" data-hex="#00408C" title="Navy" aria-label="Navy" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#8A8A8A" data-hex="#8A8A8A" title="Grey" aria-label="Grey" type="button"></button>
+                <button class="pdp-color-swatch plp-color-swatch" style="background:#B9A88A" data-hex="#B9A88A" title="Khaki" aria-label="Khaki" type="button"></button>
               </div>
             </div>
 
             <div class="plp-sidebar__section">
               <h3 class="plp-sidebar__title">Price</h3>
               <div class="plp-sidebar__options">
-                <label><input type="checkbox" name="price" value="under150"> Under Rp150.000</label>
-                <label><input type="checkbox" name="price" value="150-250"> Rp150.000 – Rp250.000</label>
-                <label><input type="checkbox" name="price" value="250-350"> Rp250.000 – Rp350.000</label>
-                <label><input type="checkbox" name="price" value="above350"> Above Rp350.000</label>
+                <label><input type="checkbox" name="price" value="under15"> Under $15</label>
+                <label><input type="checkbox" name="price" value="15-30"> $15 – $30</label>
+                <label><input type="checkbox" name="price" value="30-45"> $30 – $45</label>
+                <label><input type="checkbox" name="price" value="above45"> Above $45</label>
               </div>
             </div>
 
             <div class="plp-sidebar__section" style="border-bottom:none;">
               <h3 class="plp-sidebar__title">Brand</h3>
               <div class="plp-sidebar__options">
-                <label><input type="checkbox" name="brand" value="Nara Kids"> Nara Kids</label>
-                <label><input type="checkbox" name="brand" value="Kala Kids"> Kala Kids</label>
-                <label><input type="checkbox" name="brand" value="Tanah Kids"> Tanah Kids</label>
-                <label><input type="checkbox" name="brand" value="Sawah Kids"> Sawah Kids</label>
-                <label><input type="checkbox" name="brand" value="Benang Junior"> Benang Junior</label>
-                <label><input type="checkbox" name="brand" value="Rumah Junior"> Rumah Junior</label>
+                <label><input type="checkbox" name="brand" value="Bohopanna"> Bohopanna</label>
+                <label><input type="checkbox" name="brand" value="Sabine & Heem"> Sabine &amp; Heem</label>
+                <label><input type="checkbox" name="brand" value="Anakmu"> Anakmu</label>
               </div>
             </div>
           </aside>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Checkout at BUMI / BLOOM — secure, simple checkout for your kids' picks.">
-  <meta name="theme-color" content="#FEF0E4">
+  <meta name="theme-color" content="#F2EEE9">
   <title>Checkout — BUMI / BLOOM</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
@@ -13,11 +13,12 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/analytics.js"></script>
 </head>
 <body>
 
   <div class="announcement-bar" id="announcement-bar">
-    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products.html?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -176,11 +177,9 @@
   (function () {
     'use strict';
     const view = document.getElementById('checkout-view');
-    const FREE_SHIP_THRESHOLD = 500000;
-
+    // Shipping & promo handled by BumiCart (AU rates / WELCOME10)
     function shippingCost(method, subtotal) {
-      if (method === 'express') return 40000;
-      return subtotal >= FREE_SHIP_THRESHOLD ? 0 : 25000;
+      return BumiCart.shippingCost(method, subtotal);
     }
 
     function render() {
@@ -196,42 +195,49 @@
       view.innerHTML = layout();
       wire();
       updateTotals();
+      if (window.BumiTrack) {
+        BumiTrack.event('begin_checkout', { currency: 'AUD', value: BumiCart.getTotal(),
+          items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity || 1 })) });
+      }
     }
 
     function layout() {
       return '<form id="checkout-form"><div class="checkout-layout"><div>' +
         section(1, 'Contact', '<div class="field"><label class="field__label">Email <span class="req">*</span></label><input class="input" type="email" name="email" placeholder="you@email.com" required></div>' +
-          '<div class="field"><label class="field__label">Phone <span class="req">*</span></label><input class="input" type="tel" name="phone" placeholder="+62 ..." required></div>') +
+          '<div class="field"><label class="field__label">Phone <span class="req">*</span></label><input class="input" type="tel" name="phone" placeholder="+61 4xx xxx xxx" required></div>') +
         section(2, 'Shipping Address',
           '<div class="form-grid">' +
             field('First name', 'text', 'firstname', true) +
             field('Last name', 'text', 'lastname', true) +
             '<div class="field field--full"><label class="field__label">Address <span class="req">*</span></label><input class="input" type="text" name="address" required></div>' +
-            field('City', 'text', 'city', true) +
-            field('Postal code', 'text', 'postal', true) +
-            '<div class="field field--full"><label class="field__label">Province <span class="req">*</span></label>' +
-              '<select class="select" name="province" required><option value="">Select province</option><option>DKI Jakarta</option><option>Jawa Barat</option><option>Jawa Tengah</option><option>Jawa Timur</option><option>Bali</option><option>Lainnya</option></select></div>' +
+            field('Suburb', 'text', 'city', true) +
+            field('Postcode', 'text', 'postal', true) +
+            '<div class="field field--full"><label class="field__label">State <span class="req">*</span></label>' +
+              '<select class="select" name="state" required><option value="">Select state</option><option>NSW</option><option>VIC</option><option>QLD</option><option>WA</option><option>SA</option><option>TAS</option><option>ACT</option><option>NT</option></select></div>' +
           '</div>') +
         section(3, 'Shipping Method',
           '<div class="payment-options">' +
-            '<label class="payment-option is-selected"><input type="radio" name="shipping" value="standard" checked><div><div class="payment-option__label">Standard (3–5 days)</div><div class="payment-option__desc" id="ship-standard-desc">Rp25.000 · free over Rp500.000</div></div></label>' +
-            '<label class="payment-option"><input type="radio" name="shipping" value="express"><div><div class="payment-option__label">Express (1–2 days)</div><div class="payment-option__desc">Rp40.000</div></div></label>' +
+            '<label class="payment-option is-selected"><input type="radio" name="shipping" value="standard" checked><div><div class="payment-option__label">Standard (3–6 business days)</div><div class="payment-option__desc" id="ship-standard-desc">$9.95 · free over $60</div></div></label>' +
+            '<label class="payment-option"><input type="radio" name="shipping" value="express"><div><div class="payment-option__label">Express (1–3 business days)</div><div class="payment-option__desc">$14.95</div></div></label>' +
           '</div>') +
         section(4, 'Payment',
           '<div class="payment-options">' +
-            payOpt('bank', 'Bank Transfer', 'BCA, Mandiri, BNI, BRI', true) +
-            payOpt('ewallet', 'E-Wallet', 'GoPay, OVO, DANA, ShopeePay', false) +
-            payOpt('cod', 'Cash on Delivery', 'Pay when it arrives', false) +
+            payOpt('card', 'Credit / Debit Card', 'Visa, Mastercard, American Express', true) +
+            payOpt('afterpay', 'Afterpay', '4 interest-free payments', false) +
+            payOpt('paypal', 'PayPal', 'Pay with your PayPal balance', false) +
           '</div>') +
       '</div><div>' +
         '<div class="checkout-summary">' +
           '<h2 class="checkout-summary__title">Order Summary</h2>' +
           '<div id="checkout-lines"></div>' +
           '<div class="cart-summary__row"><span>Subtotal</span><span id="sum-subtotal">—</span></div>' +
+          '<div class="cart-summary__row" id="sum-discount-row" style="display:none;"><span id="sum-discount-label">Discount</span><span id="sum-discount">—</span></div>' +
           '<div class="cart-summary__row"><span>Shipping</span><span id="sum-shipping">—</span></div>' +
           '<div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="sum-total">—</span></div>' +
+          '<p style="font-size:var(--text-xs);opacity:0.6;text-align:right;margin:var(--space-1) 0 0;">Prices include GST.</p>' +
           '<button class="btn btn--primary btn--full" type="submit" id="place-order">Place Order</button>' +
           '<a href="cart.html" class="btn btn--ghost btn--full" style="margin-top:var(--space-2);">Back to Bag</a>' +
+          '<div class="pay-strip" style="margin-top:var(--space-4);"><span class="pay-chip">Afterpay</span><span class="pay-chip">Visa</span><span class="pay-chip">Mastercard</span><span class="pay-chip">PayPal</span></div>' +
         '</div>' +
       '</div></div></form>';
     }
@@ -274,17 +280,34 @@
       const subtotal = BumiCart.getTotal();
       const method = view.querySelector('input[name="shipping"]:checked').value;
       const shipping = shippingCost(method, subtotal);
-      const total = subtotal + shipping;
+      const discount = BumiCart.getDiscount(subtotal);
+      const total = subtotal - discount + shipping;
 
       document.getElementById('sum-subtotal').textContent = BumiCart.formatPrice(subtotal);
+
+      const dRow = document.getElementById('sum-discount-row');
+      const promo = BumiCart.getPromo();
+      if (promo && discount > 0) {
+        dRow.style.display = '';
+        document.getElementById('sum-discount-label').textContent = 'Discount (' + promo.code + ')';
+        document.getElementById('sum-discount').textContent = '–' + BumiCart.formatPrice(discount);
+      } else {
+        dRow.style.display = 'none';
+      }
+
       document.getElementById('sum-shipping').innerHTML = shipping === 0 ? '<span class="cart-summary__row--free">Free</span>' : BumiCart.formatPrice(shipping);
       document.getElementById('sum-total').textContent = BumiCart.formatPrice(total);
     }
 
     function placeOrder() {
       const num = 'BB-2026-' + String(Math.floor(Math.random() * 9000) + 1000);
+      const st = BumiCart.getTotal();
+      const value = st - BumiCart.getDiscount(st) + shippingCost('standard', st);
+      const items = BumiCart.getCart().map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity || 1 }));
       const total = document.getElementById('sum-total').textContent;
+      if (window.BumiTrack) BumiTrack.event('purchase', { currency: 'AUD', value: value, transaction_id: num, items: items });
       BumiCart.clearCart();
+      BumiCart.clearPromo();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       view.innerHTML = '<div class="order-confirmation">' +
         '<div class="order-confirmation__icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +

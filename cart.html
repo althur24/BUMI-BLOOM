@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Shopping Bag — BUMI / BLOOM. Review your curated kids' picks before checkout.">
-  <meta name="theme-color" content="#FEF0E4">
+  <meta name="theme-color" content="#F2EEE9">
   <title>Shopping Bag — BUMI / BLOOM</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
@@ -13,11 +13,12 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/analytics.js"></script>
 </head>
 <body>
 
   <div class="announcement-bar" id="announcement-bar">
-    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products.html?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -122,11 +123,21 @@
               <div class="cart-items" role="list" aria-label="Cart items"></div>
               <aside class="cart-summary" aria-label="Order summary">
                 <h2 class="cart-summary__title">Order Summary</h2>
+                <div class="promo-field">
+                  <input class="input" id="promo-input" type="text" placeholder="Discount code (try WELCOME10)" aria-label="Discount code">
+                  <button class="btn btn--secondary btn--sm" id="promo-apply" type="button">Apply</button>
+                </div>
+                <p class="promo-field__msg" id="promo-msg" style="display:none;"></p>
                 <div class="cart-summary__row"><span>Subtotal</span><span id="cart-subtotal">—</span></div>
+                <div class="cart-summary__row" id="cart-discount-row" style="display:none;"><span id="cart-discount-label">Discount</span><span id="cart-discount">—</span></div>
                 <div class="cart-summary__row"><span>Shipping</span><span id="cart-shipping">—</span></div>
                 <div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="cart-total">—</span></div>
+                <p style="font-size:var(--text-xs);opacity:0.6;text-align:right;margin:var(--space-1) 0 0;">Prices include GST.</p>
                 <button class="btn btn--primary btn--full" type="button" id="checkout-btn">Proceed to Checkout</button>
                 <a href="products.html" class="btn btn--ghost btn--full" style="margin-top: var(--space-2);">Continue Shopping</a>
+                <div class="pay-strip" style="margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--border-color);">
+                  <span class="pay-chip">Afterpay</span><span class="pay-chip">Visa</span><span class="pay-chip">Mastercard</span><span class="pay-chip">PayPal</span>
+                </div>
               </aside>
             </div>
           </div>
@@ -214,7 +225,7 @@
   <script>
   (function () {
     'use strict';
-    const FREE_SHIP = 500000;
+    // Shipping & promo handled by BumiCart (AU rates / WELCOME10)
     const cartFilled = document.getElementById('cart-filled');
     const cartEmpty = document.getElementById('cart-empty');
     const cartItems = document.querySelector('.cart-items');
@@ -257,10 +268,24 @@
     function updateTotals() {
       const items = getCart();
       const subtotal = items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
-      const shipping = subtotal >= FREE_SHIP ? 0 : 25000;
+      const discount = BumiCart.getDiscount(subtotal);
+      const shipping = BumiCart.shippingCost('standard', subtotal);
+      const total = subtotal - discount + shipping;
+
       document.getElementById('cart-subtotal').textContent = BumiCart.formatPrice(subtotal);
+
+      const dRow = document.getElementById('cart-discount-row');
+      const promo = BumiCart.getPromo();
+      if (promo && discount > 0) {
+        dRow.style.display = '';
+        document.getElementById('cart-discount-label').textContent = 'Discount (' + promo.code + ')';
+        document.getElementById('cart-discount').textContent = '–' + BumiCart.formatPrice(discount);
+      } else {
+        dRow.style.display = 'none';
+      }
+
       document.getElementById('cart-shipping').innerHTML = shipping === 0 ? '<span class="cart-summary__row--free">Free</span>' : BumiCart.formatPrice(shipping);
-      document.getElementById('cart-total').textContent = BumiCart.formatPrice(subtotal + shipping);
+      document.getElementById('cart-total').textContent = BumiCart.formatPrice(total);
     }
 
     cartItems.addEventListener('click', (e) => {
@@ -283,7 +308,40 @@
 
     checkoutBtn.addEventListener('click', () => { window.location.href = 'checkout.html'; });
 
+    // Promo code
+    const promoInput = document.getElementById('promo-input');
+    const promoApply = document.getElementById('promo-apply');
+    const promoMsg = document.getElementById('promo-msg');
+    function syncPromoMsg() {
+      if (!promoMsg) return;
+      const p = BumiCart.getPromo();
+      if (p) {
+        promoMsg.style.display = 'block';
+        promoMsg.className = 'promo-field__msg promo-field__msg--ok';
+        promoMsg.textContent = p.label + ' applied';
+        if (promoInput) promoInput.value = p.code;
+      } else {
+        promoMsg.style.display = 'none';
+      }
+    }
+    if (promoApply) promoApply.addEventListener('click', () => {
+      const res = BumiCart.applyPromo(promoInput ? promoInput.value : '');
+      if (promoMsg) {
+        promoMsg.style.display = 'block';
+        if (res.valid) {
+          promoMsg.className = 'promo-field__msg promo-field__msg--ok';
+          promoMsg.textContent = res.label + ' applied';
+        } else {
+          promoMsg.className = 'promo-field__msg promo-field__msg--err';
+          promoMsg.textContent = 'That code isn’t valid — try WELCOME10.';
+        }
+      }
+      renderCart();
+    });
+
     window.addEventListener('cart-updated', renderCart);
+    window.addEventListener('promo-updated', () => { renderCart(); syncPromoMsg(); });
+    syncPromoMsg();
     renderCart();
 
     // Recommendations from the catalog

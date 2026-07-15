@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Your account at BUMI / BLOOM — orders, addresses and settings.">
-  <meta name="theme-color" content="#FEF0E4">
+  <meta name="theme-color" content="#F2EEE9">
   <title>My Account — BUMI / BLOOM</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
@@ -13,11 +13,12 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/analytics.js"></script>
 </head>
 <body>
 
   <div class="announcement-bar" id="announcement-bar">
-    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products.html?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -272,8 +273,8 @@
 
     function ordersPanel() {
       const orders = [
-        { id: 'BB-2026-0148', date: 'July 10, 2026', status: 'Delivered', total: 478000 },
-        { id: 'BB-2026-0131', date: 'June 28, 2026', status: 'In Transit', total: 309000 }
+        { id: 'BB-2026-0148', date: '10 July 2026', status: 'Delivered', total: 78 },
+        { id: 'BB-2026-0131', date: '28 June 2026', status: 'In Transit', total: 64 }
       ];
       return '<h2 class="account-panel__title">Order History</h2>' +
         orders.map(o =>
@@ -284,7 +285,7 @@
 
     function addressesPanel() {
       return '<h2 class="account-panel__title">Saved Addresses</h2>' +
-        '<div class="order-card"><strong>Home</strong><p style="margin-top:var(--space-2);">Jl. Melati No. 12<br>Kebayoran Baru, Jakarta Selatan<br>Jakarta 12120, Indonesia</p><p style="margin-top:var(--space-2);font-size:var(--text-sm);opacity:0.7;">+62 812 3456 7890</p></div>' +
+        '<div class="order-card"><strong>Home</strong><p style="margin-top:var(--space-2);">12 Watt Street<br>Newtown, NSW 2042<br>Australia</p><p style="margin-top:var(--space-2);font-size:var(--text-sm);opacity:0.7;">+61 412 345 678</p></div>' +
         '<button class="btn btn--secondary btn--sm" type="button" style="margin-top:var(--space-3);">+ Add New Address</button>';
     }
 

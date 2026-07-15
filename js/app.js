@@ -197,17 +197,18 @@
       const submitBtn = newsletterForm.querySelector('button[type="submit"]');
 
       if (emailInput && emailInput.value.trim()) {
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Subscribed! 🎉';
+        // Lead magnet: reveal the working welcome code
+        const code = 'WELCOME10';
+        submitBtn.textContent = 'Your code: ' + code + ' ✓';
         submitBtn.disabled = true;
         emailInput.disabled = true;
         emailInput.value = '';
-
-        setTimeout(() => {
-          submitBtn.textContent = originalText;
-          submitBtn.disabled = false;
-          emailInput.disabled = false;
-        }, 3000);
+        const hint = newsletterForm.querySelector('.newsletter__code-hint');
+        if (hint) {
+          hint.textContent = 'Use ' + code + ' at checkout for 10% off your first order.';
+          hint.style.display = 'block';
+        }
+        if (window.BumiTrack) BumiTrack.event('generate_lead', { currency: 'AUD', value: 0 });
       }
     });
   }
@@ -244,6 +245,23 @@
       btn.classList.toggle('is-active');
       syncWishlistButton(btn);
     }
+  });
+
+  // ─── Quick add-to-bag from product cards (delegated) ─────────────────
+  document.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('.product-card__add');
+    if (!addBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = addBtn.dataset.id;
+    const p = window.BumiData && BumiData.getProduct(id);
+    if (!p || !window.BumiCart) return;
+    BumiCart.addItem({
+      id: p.id, name: p.name, brand: p.brand, price: p.price,
+      size: (p.sizes && p.sizes[0]) || 'One Size',
+      color: (p.colors && p.colors[0] && p.colors[0].name) || '—',
+      image: p.image
+    });
   });
 
   // Keep every card heart in sync when the wishlist changes elsewhere

@@ -164,7 +164,7 @@ input:focus,
 textarea:focus {
   border-color: var(--color-coral);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+  box-shadow: 0 0 0 3px rgba(232, 82, 52, 0.20);
 }
 
 input::placeholder,

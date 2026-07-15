@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Shop kids' clothing at BUMI / BLOOM — playful, comfortable, made-to-last pieces from Indonesian brands.">
-  <meta name="theme-color" content="#FEF0E4">
+  <meta name="theme-color" content="#F2EEE9">
   <title>Product — BUMI / BLOOM</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
@@ -13,12 +13,13 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/analytics.js"></script>
 </head>
 <body>
 
   <!-- Announcement Bar -->
   <div class="announcement-bar" id="announcement-bar">
-    <span>🎉 Free shipping across Indonesia for orders above Rp500.000 ✦ <a href="#">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products.html?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -210,6 +211,11 @@
     document.title = product.name + ' — BUMI / BLOOM';
     breadcrumbCurrent.textContent = product.name;
 
+    if (window.BumiTrack) {
+      BumiTrack.event('view_item', { currency: 'AUD', value: product.price,
+        items: [{ id: product.id, name: product.name, price: product.price }] });
+    }
+
     const gallery = (product.gallery && product.gallery.length) ? product.gallery : [product.image];
     let selectedColor = (product.colors[0] && product.colors[0].name) || '—';
     let selectedSize = product.sizes[0] || 'One Size';
@@ -221,7 +227,7 @@
     const badges = { new: 'New', bestseller: 'Bestseller' };
     const badgeHTML = product.badge && badges[product.badge]
       ? '<span class="badge badge--' + (product.badge === 'new' ? 'green' : 'yellow') + '" style="margin-bottom:var(--space-4);display:inline-block;">' + badges[product.badge] + '</span>'
-      : '<span class="badge badge--soft" style="margin-bottom:var(--space-4);display:inline-block;">Made in Indonesia</span>';
+      : '<span class="badge badge--soft" style="margin-bottom:var(--space-4);display:inline-block;">Designed in Indonesia</span>';
 
     const colorSwatches = product.colors.map((c, i) =>
       '<button class="pdp-color-swatch' + (i === 0 ? ' is-active' : '') + '" style="background:' + c.hex + '" data-color="' + c.name + '" title="' + c.name + '" aria-label="' + c.name + '" type="button"></button>'
@@ -247,6 +253,7 @@
           '<p class="pdp-brand">' + product.brand + '</p>' +
           '<h1 class="pdp-name">' + product.name + '</h1>' +
           '<p class="pdp-price">' + priceHTML + '</p>' +
+          '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
           '<div>' + badgeHTML + '</div>' +
           '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
           '<div class="pdp-option"><p class="pdp-option__label">Colour — <span id="selected-colour">' + selectedColor + '</span></p><div class="pdp-color-swatches">' + colorSwatches + '</div></div>' +
@@ -361,7 +368,7 @@
         item('Description', '<p>' + product.description + '</p>', true) +
         item('Material &amp; Care', '<p>' + product.material + '</p>') +
         item('Size Guide', sizeGuideTable(product.sizes)) +
-        item('Shipping &amp; Returns', '<p>Free shipping across Indonesia for orders above Rp500.000. Standard delivery 3–5 business days. Free returns within 14 days.</p>') +
+        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $60. Standard delivery 3–6 business days across Australia. Easy 30-day returns.</p>') +
       '</div>';
     }
     function item(title, body, open) {
@@ -370,7 +377,7 @@
         '<div class="accordion__content">' + body + '</div></div>';
     }
     function sizeGuideTable(sizes) {
-      const ageMap = { '2T': '2–3 yrs / 92cm', '3T': '3–4 yrs / 98cm', '4T': '4–5 yrs / 104cm', '5': '5–6 yrs / 110cm', '6': '6–7 yrs / 116cm', '7': '7–8 yrs / 122cm' };
+      const ageMap = { '2T': '2–3 yrs / 92cm', '3T': '3–4 yrs / 98cm', '4T': '4–5 yrs / 104cm', '5': '5–6 yrs / 110cm', '6': '6–7 yrs / 116cm', '7': '7–8 yrs / 122cm', '8': '8–9 yrs / 128cm' };
       const babyMap = { '0-3M': '0–3 months', '3-6M': '3–6 months', '6-12M': '6–12 months', '12-18M': '12–18 months', '18-24M': '18–24 months', 'One Size': 'One Size' };
       const rows = sizes.map(s => {
         const guide = ageMap[s] || babyMap[s] || '—';
