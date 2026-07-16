@@ -389,7 +389,7 @@
 /* ---- Footer ---- */
 .footer {
   background: var(--color-dark);
-  color: var(--color-cream);
+  color: var(--color-white);
   padding-top: var(--section-gap);
   padding-bottom: var(--space-8);
   border-top-left-radius: 40px;
@@ -411,6 +411,7 @@
   line-height: var(--lh-relaxed);
   margin-top: var(--space-4);
   max-width: 30ch;
+  color: inherit;
 }
 
 .footer__nav-title {
@@ -418,7 +419,7 @@
   font-size: var(--text-md);
   font-weight: var(--fw-bold);
   margin-bottom: var(--space-6);
-  color: var(--color-yellow);
+  color: var(--color-white);
 }
 
 .footer__nav-list {
@@ -431,7 +432,7 @@
 }
 
 .footer__nav-list a {
-  color: var(--color-cream);
+  color: var(--color-white);
   font-size: var(--text-sm);
   opacity: 0.8;
   transition: opacity var(--duration-fast) var(--ease-smooth), color var(--duration-fast) var(--ease-smooth);
@@ -458,7 +459,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-cream);
+  color: var(--color-white);
   transition: all var(--duration-fast) var(--ease-smooth);
 }
 
@@ -491,7 +492,7 @@
 }
 
 .footer__bottom-links a {
-  color: var(--color-cream);
+  color: var(--color-white);
   text-decoration: none;
 }
 
@@ -503,7 +504,7 @@
   font-family: var(--font-heading);
   font-size: var(--text-2xl);
   font-weight: var(--fw-bold);
-  color: var(--color-cream);
+  color: var(--color-white);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -521,7 +522,7 @@
 }
 
 .footer__logo:hover {
-  color: var(--color-cream);
+  color: var(--color-white);
 }
 
 /* ---- Horizontal Scroll Row ---- */
