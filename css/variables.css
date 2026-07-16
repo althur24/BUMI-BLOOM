@@ -33,6 +33,11 @@
   --color-red:          #E85234;
   --color-red-light:    #FBE0D8;
   --color-red-dark:     #C53D24;
+  /* Deepened brand red for the cursive .script-accent. The brighter
+     --color-red/--color-coral (#E85234) fell to ~2.7:1 on the pink
+     newsletter box and ~3.2:1 on cream — below readable. This passes
+     WCAG AA (>=4.5:1) on cream, white and pink. */
+  --color-script-accent:#A8331E;
 
   /* Legacy aliases — repointed onto the brand palette so existing
      class names (e.g. product-card--bg-yellow, highlight-green)

@@ -84,7 +84,7 @@
 .script-accent {
   font-family: var(--font-accent);
   font-size: 1.2em;
-  color: var(--color-coral);
+  color: var(--color-script-accent);
   display: inline-block;
   transform: rotate(-2deg);
 }
