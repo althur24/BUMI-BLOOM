@@ -1,0 +1,267 @@
+// Bumi & Bloom — catalog/CMS schema (Phase 1: Admin)
+// Money is integer cents (*AudCents). Variant is keyed by (product, color, size),
+// matching the storefront cart's identity (id + size + color). Prices are AUD, GST-inclusive.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Supabase POOLER (runtime)
+  directUrl = env("DIRECT_URL")   // Supabase DIRECT (migrations)
+}
+
+enum Audience {
+  GIRLS
+  BOYS
+  BABY
+  UNISEX
+}
+
+enum ProductType {
+  TSHIRTS
+  SHORTS
+  DRESSES
+  OUTERWEAR
+  ACCESSORIES
+  BABY
+}
+
+enum Badge {
+  NEW
+  BESTSELLER
+  SALE
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MARKETPLACE_ADMIN
+  CONTENT_EDITOR
+  SUPPORT
+}
+
+enum PromoType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum MediaType {
+  IMAGE
+  LOGO
+  BANNER
+  EDITORIAL
+}
+
+model Brand {
+  id          String        @id @default(cuid())
+  slug        String        @unique // "bohopanna"
+  name        String
+  city        String?
+  country     String?       @default("Indonesia")
+  audience    Audience?
+  website     String?
+  instagram   String?
+  tiktok      String?
+  shortDesc   String?       @db.VarChar(280) // data.js desc (card)
+  description String?
+  logoAssetId String?
+  logoAsset   MediaAsset?   @relation("BrandLogo", fields: [logoAssetId], references: [id])
+  isFeatured  Boolean       @default(false)
+  sortOrder   Int           @default(0)
+  status      PublishStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  products    Product[]
+
+  @@index([status])
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  slug         String        @unique // "girls", "new", "tshirts"
+  name         String
+  parentId     String?
+  parent       Category?     @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryTree")
+  description  String?
+  imageAssetId String?
+  imageAsset   MediaAsset?   @relation(fields: [imageAssetId], references: [id])
+  menuVisible  Boolean       @default(true)
+  homeVisible  Boolean       @default(false)
+  sortOrder    Int           @default(0)
+  status       PublishStatus @default(PUBLISHED)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  products     Product[]
+
+  @@index([parentId])
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  slug              String        @unique // data.js id, e.g. "elliot-pant"
+  name              String
+  brandId           String
+  brand             Brand         @relation(fields: [brandId], references: [id])
+  audience          Audience
+  category          ProductType // enum for fast filtering (frontend parity)
+  categories        Category[]   // M:N nav/landing pages (CMS tree)
+  fibre             String? // data.js fibre (card pill)
+  material          String? // data.js material (care line)
+  description       String?
+  priceAudCents     Int // GST-inclusive
+  compareAtAudCents Int? // crossed-out RRP
+  costAudCents      Int? // optional landed cost (later)
+  currency          String        @default("AUD")
+  badge             Badge?
+  isNew             Boolean       @default(false)
+  isBestseller      Boolean       @default(false)
+  rating            Float? // migrated display value; Reviews deferred
+  reviewsCount      Int           @default(0)
+  addedAtRank       Int? // data.js addedAt (1..15) — ordering aid
+  status            PublishStatus @default(PUBLISHED)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
+  variants          ProductVariant[]
+  colors            ProductColor[]
+  images            ProductImage[]
+  collections       Collection[]
+
+  @@index([brandId])
+  @@index([audience])
+  @@index([category])
+  @@index([status])
+}
+
+model ProductColor {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String // "Khaki"
+  hex       String  @db.Char(7) // "#B9A88A"
+  sortOrder Int     @default(0)
+  variants  ProductVariant[]
+
+  @@unique([productId, name])
+  @@index([productId])
+}
+
+model ProductVariant {
+  id    String @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorId   String?
+  color     ProductColor? @relation(fields: [colorId], references: [id])
+  size      String // "2T", "6-12M"
+  sku       String? @unique // `${slug}-${colorSlug}-${size}`
+  barcode   String?
+  stock       Int @default(0) // NEW vs data.js (which had none)
+  lowStockThreshold Int @default(5)
+  priceOverrideAudCents Int? // null => use Product.priceAudCents
+  weightGrams Int?
+
+  @@unique([productId, colorId, size])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     MediaAsset @relation(fields: [assetId], references: [id])
+  altText   String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  @@index([productId])
+}
+
+model MediaAsset {
+  id             String     @id @default(cuid())
+  bucket         String     @default("products") // "products" | "brands" | "editorial"
+  storagePath    String // key in bucket
+  publicUrl      String // Supabase Storage URL
+  fileName       String
+  mimeType       String
+  width          Int?
+  height         Int?
+  sizeBytes      Int?
+  type           MediaType @default(IMAGE)
+  altText        String?
+  tags           String[]
+  productImages  ProductImage[]
+  brandLogos     Brand[] @relation("BrandLogo")
+  categoryImages Category[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([bucket, storagePath])
+  @@index([bucket])
+}
+
+model Collection {
+  id           String        @id @default(cuid())
+  slug         String        @unique // "new", "sale", "bestsellers", "essentials"
+  name         String
+  kind         String? // "landing" | "mood" | "bumi-edit"
+  description  String?
+  imageAssetId String?
+  products     Product[]
+  status       PublishStatus @default(PUBLISHED)
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Promotion {
+  id        String    @id @default(cuid())
+  code      String    @unique // "WELCOME10"
+  label     String
+  type      PromoType @default(PERCENTAGE)
+  value     Float // 0.10 (rate) or cents (fixed)
+  currency  String    @default("AUD")
+  startsAt  DateTime?
+  endsAt    DateTime?
+  usageLimit Int?
+  usedCount Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String // bcrypt
+  role         AdminRole @default(MARKETPLACE_ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?
+  actorEmail String?
+  action     String // "product.create", "brand.delete"
+  entity     String?
+  entityId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

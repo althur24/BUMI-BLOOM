@@ -8,8 +8,10 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   if (!window.BumiData) return;
-  if (document.getElementById('product-grid')) initPLP();
-  if (document.getElementById('collection-grid')) initHomeCollection();
+  BumiData.ready().then(() => {
+    if (document.getElementById('product-grid')) initPLP();
+    if (document.getElementById('collection-grid')) initHomeCollection();
+  });
 });
 
 /* ---------- Shared rendering ---------- */
@@ -171,6 +173,12 @@ function initPLP() {
   }
 
   function render() {
+    if (BumiData.loadError) {
+      if (countEl) countEl.textContent = '';
+      grid.innerHTML = emptyHTML("We couldn't load our products just now — please check your connection and try again shortly.");
+      if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+      return;
+    }
     const list = getFiltered();
     if (countEl) countEl.textContent = `${list.length} product${list.length === 1 ? '' : 's'}`;
 

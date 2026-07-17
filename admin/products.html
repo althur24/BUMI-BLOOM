@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - Bumi & Bloom Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/admin.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/admin-auth.js"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Sidebar (injected by admin-app.js) -->
+  <aside class="admin-sidebar" id="admin-sidebar" data-admin-shell></aside>
+
+  <!-- Main Content -->
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1 class="admin-page-title">Products</h1>
+      <button class="btn-admin btn-admin--primary" id="btn-add-product">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Product
+      </button>
+    </header>
+
+    <div class="admin-content">
+      <div class="admin-table-container">
+        <div class="admin-table-toolbar">
+          <input type="text" id="search-products" class="admin-input" placeholder="Search products..." style="max-width: 300px;">
+          <select id="filter-brand" class="admin-select" style="max-width: 200px;">
+            <option value="">All Brands</option>
+            <!-- Populated by JS -->
+          </select>
+          <select id="filter-status" class="admin-select" style="max-width: 150px;">
+            <option value="">All Statuses</option>
+            <option value="PUBLISHED">Published</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </div>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th width="60">Image</th>
+              <th>Name</th>
+              <th>Brand</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="products-table-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted);">Loading products...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Product Modal -->
+  <div class="admin-modal-overlay" id="product-modal">
+    <div class="admin-modal" style="max-width: 800px;">
+      <div class="admin-modal-header">
+        <h2 class="admin-page-title" id="product-modal-title">Add Product</h2>
+        <button class="btn-admin btn-admin--outline" data-close-modal style="padding: var(--space-2); border: none;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <form id="product-form">
+          <input type="hidden" id="product-id">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+            <div class="admin-form-group">
+              <label class="admin-label">Name *</label>
+              <input type="text" id="product-name" class="admin-input" required>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Slug</label>
+              <input type="text" id="product-slug" class="admin-input" placeholder="Auto-generated if empty">
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Brand *</label>
+              <select id="product-brand" class="admin-select" required></select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Category *</label>
+              <select id="product-category" class="admin-select" required>
+                <!-- Populated by JS from ProductType enum -->
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Audience *</label>
+              <select id="product-audience" class="admin-select" required>
+                <option value="UNISEX">Unisex</option>
+                <option value="GIRLS">Girls</option>
+                <option value="BOYS">Boys</option>
+                <option value="BABY">Baby</option>
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Status</label>
+              <select id="product-status" class="admin-select">
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Price (AUD $) *</label>
+              <input type="number" id="product-price" class="admin-input" step="0.01" min="0" required>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Compare At Price (Optional)</label>
+              <input type="number" id="product-compare-at" class="admin-input" step="0.01" min="0">
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Badge</label>
+              <select id="product-badge" class="admin-select">
+                <option value="">None</option>
+                <option value="NEW">New</option>
+                <option value="BESTSELLER">Bestseller</option>
+                <option value="SALE">Sale</option>
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Image URL *</label>
+              <input type="text" id="product-image" class="admin-input" required placeholder="e.g. images/categories/tshirts.png">
+              <small style="color: var(--text-muted);">Path to image in the frontend images/ folder</small>
+            </div>
+
+          </div>
+
+          <!-- Colors (visual: name + real swatch color) -->
+          <div class="admin-form-group">
+            <label class="admin-label">Colors</label>
+            <div id="product-colors-list" style="display: flex; flex-direction: column; gap: var(--space-2);"></div>
+            <button type="button" class="btn-admin btn-admin--outline" id="btn-add-color" style="margin-top: var(--space-2);">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Color
+            </button>
+            <small style="color: var(--text-muted);">Pick the real color — customers see it as a swatch on the product page.</small>
+          </div>
+
+          <!-- Sizes (add/remove rows) -->
+          <div class="admin-form-group">
+            <label class="admin-label">Sizes</label>
+            <div id="product-sizes-list" style="display: flex; flex-direction: column; gap: var(--space-2);"></div>
+            <button type="button" class="btn-admin btn-admin--outline" id="btn-add-size" style="margin-top: var(--space-2);">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Size
+            </button>
+            <small style="color: var(--text-muted);">e.g. 2T, 3T, 4T or S, M, L. Stock defaults to 50 per size.</small>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Short Material (Fibre) *</label>
+            <input type="text" id="product-fibre" class="admin-input" required placeholder="e.g. 100% Cotton">
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Full Material & Care</label>
+            <textarea id="product-material" class="admin-textarea" rows="2"></textarea>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Description</label>
+            <textarea id="product-description" class="admin-textarea" rows="4"></textarea>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="admin-modal-footer" style="justify-content: space-between;">
+        <button class="btn-admin btn-admin--danger" id="btn-delete-product" style="display: none;">Delete</button>
+        <div style="display: flex; gap: var(--space-3);">
+          <button class="btn-admin btn-admin--outline" data-close-modal>Cancel</button>
+          <button class="btn-admin btn-admin--primary" id="btn-save-product" form="product-form">Save Product</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/admin-app.js"></script>
+  <script src="../js/admin-products.js"></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Users - Bumi & Bloom Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/admin-auth.js"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Sidebar (injected by admin-app.js) -->
+  <aside class="admin-sidebar" id="admin-sidebar" data-admin-shell></aside>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1 class="admin-page-title">Admin Users</h1>
+    </header>
+
+    <div class="admin-content">
+      <div class="admin-card" style="margin-bottom: var(--space-6);">
+        <strong>Note:</strong> New admin logins are provisioned through Supabase Auth (email + password). Once an admin has an auth account, use this page to set their role and active status. Deactivating a user revokes their admin access immediately.
+      </div>
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Active</th>
+              <th>Last Login</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <tr><td colspan="5" style="text-align: center;">Loading admin users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="admin-modal-overlay" id="user-modal">
+    <div class="admin-modal">
+      <div class="admin-modal-header">
+        <h2 class="admin-page-title" id="user-modal-title">Edit Admin User</h2>
+        <button class="btn-admin btn-admin--outline" data-close-modal style="padding: var(--space-2); border: none;" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <form id="user-form">
+          <input type="hidden" id="user-id">
+
+          <div class="admin-form-group">
+            <label class="admin-label">Email (linked to Supabase Auth)</label>
+            <input type="email" id="user-email" class="admin-input" readonly style="background-color: var(--bg-secondary); color: var(--text-muted);">
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Name</label>
+            <input type="text" id="user-name" class="admin-input">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+            <div class="admin-form-group">
+              <label class="admin-label">Role</label>
+              <select id="user-role" class="admin-select">
+                <option value="MARKETPLACE_ADMIN">Marketplace Admin</option>
+                <option value="CONTENT_EDITOR">Content Editor</option>
+                <option value="SUPPORT">Support</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Active</label>
+              <label class="admin-label" style="font-weight: var(--fw-regular); display: flex; align-items: center; gap: var(--space-2);">
+                <input type="checkbox" id="user-is-active" checked>
+                Can sign in to admin
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="admin-modal-footer" style="justify-content: space-between;">
+        <button class="btn-admin btn-admin--danger" id="btn-deactivate-user">Deactivate</button>
+        <div style="display: flex; gap: var(--space-3);">
+          <button class="btn-admin btn-admin--outline" data-close-modal>Cancel</button>
+          <button class="btn-admin btn-admin--primary" id="btn-save-user" form="user-form">Save User</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/admin-app.js"></script>
+  <script src="../js/admin-users.js"></script>
+</body>
+</html>

@@ -220,6 +220,8 @@
 
   <script src="js/app.js"></script>
   <script src="js/cart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script>
@@ -344,20 +346,22 @@
     syncPromoMsg();
     renderCart();
 
-    // Recommendations from the catalog
-    const recGrid = document.getElementById('recommendations-grid');
-    const BG = ['yellow', 'green', 'pink', 'blue'];
-    recGrid.innerHTML = BumiData.getFeatured(4).map((p, i) => {
-      const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
-      const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
-      return '<article class="product-card product-card--bg-' + (BG[i % BG.length]) + '">' +
-        '<div class="product-card__image-wrap"><img src="' + p.image + '" alt="' + p.name + '" class="product-card__image" loading="lazy">' +
-          '<button class="product-card__wishlist' + active + '" data-id="' + p.id + '" aria-label="Save to wishlist" type="button"><svg viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>' +
-        '<div class="product-card__info"><p class="product-card__brand">' + p.brand + '</p>' +
-          '<h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=' + p.id + '">' + p.name + '</a></h3>' +
-          '<p class="product-card__price">' + BumiData.formatPrice(p.price) + '</p></div>' +
-      '</article>';
-    }).join('');
+    // Recommendations from the catalog (needs the async-loaded catalog)
+    BumiData.ready().then(() => {
+      const recGrid = document.getElementById('recommendations-grid');
+      const BG = ['yellow', 'green', 'pink', 'blue'];
+      recGrid.innerHTML = BumiData.getFeatured(4).map((p, i) => {
+        const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
+        const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
+        return '<article class="product-card product-card--bg-' + (BG[i % BG.length]) + '">' +
+          '<div class="product-card__image-wrap"><img src="' + p.image + '" alt="' + p.name + '" class="product-card__image" loading="lazy">' +
+            '<button class="product-card__wishlist' + active + '" data-id="' + p.id + '" aria-label="Save to wishlist" type="button"><svg viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>' +
+          '<div class="product-card__info"><p class="product-card__brand">' + p.brand + '</p>' +
+            '<h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=' + p.id + '">' + p.name + '</a></h3>' +
+            '<p class="product-card__price">' + BumiData.formatPrice(p.price) + '</p></div>' +
+        '</article>';
+      }).join('');
+    });
   })();
   </script>
 </body>

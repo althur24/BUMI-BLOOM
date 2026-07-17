@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collections - Bumi & Bloom Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/admin-auth.js"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Sidebar (injected by admin-app.js) -->
+  <aside class="admin-sidebar" id="admin-sidebar" data-admin-shell></aside>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1 class="admin-page-title">Collections</h1>
+      <button class="btn-admin btn-admin--primary" id="btn-add-collection">Add Collection</button>
+    </header>
+
+    <div class="admin-content">
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Kind</th>
+              <th>Status</th>
+              <th>Sort</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="collections-table-body">
+            <tr><td colspan="5" style="text-align: center;">Loading collections...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="admin-modal-overlay" id="collection-modal">
+    <div class="admin-modal">
+      <div class="admin-modal-header">
+        <h2 class="admin-page-title" id="collection-modal-title">Add Collection</h2>
+        <button class="btn-admin btn-admin--outline" data-close-modal style="padding: var(--space-2); border: none;" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <form id="collection-form">
+          <input type="hidden" id="collection-id">
+
+          <div class="admin-form-group">
+            <label class="admin-label">Name *</label>
+            <input type="text" id="collection-name" class="admin-input" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Slug</label>
+            <input type="text" id="collection-slug" class="admin-input" placeholder="Auto-generated if empty (e.g. new, sale, essentials)">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+            <div class="admin-form-group">
+              <label class="admin-label">Kind</label>
+              <select id="collection-kind" class="admin-select">
+                <option value="">— None —</option>
+                <option value="landing">Landing</option>
+                <option value="mood">Mood</option>
+                <option value="bumi-edit">Bumi Edit</option>
+              </select>
+            </div>
+
+            <div class="admin-form-group">
+              <label class="admin-label">Sort Order</label>
+              <input type="number" id="collection-sort-order" class="admin-input" value="0" min="0">
+            </div>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Status</label>
+            <select id="collection-status" class="admin-select">
+              <option value="PUBLISHED">Published</option>
+              <option value="DRAFT">Draft</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-label">Description</label>
+            <textarea id="collection-description" class="admin-textarea" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="admin-modal-footer" style="justify-content: space-between;">
+        <button class="btn-admin btn-admin--danger" id="btn-delete-collection" style="display: none;">Delete</button>
+        <div style="display: flex; gap: var(--space-3);">
+          <button class="btn-admin btn-admin--outline" data-close-modal>Cancel</button>
+          <button class="btn-admin btn-admin--primary" id="btn-save-collection" form="collection-form">Save Collection</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/admin-app.js"></script>
+  <script src="../js/admin-collections.js"></script>
+</body>
+</html>

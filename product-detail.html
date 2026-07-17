@@ -186,16 +186,27 @@
 
   <script src="js/app.js"></script>
   <script src="js/cart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script>
-  (function () {
+  (async function () {
     'use strict';
+    await BumiData.ready();
     const BG = ['yellow', 'green', 'pink', 'blue', 'orange', 'purple'];
     const root = document.getElementById('pdp-root');
     const relatedSection = document.getElementById('pdp-related');
     const relatedGrid = document.getElementById('related-grid');
     const breadcrumbCurrent = document.getElementById('breadcrumb-current');
+
+    if (BumiData.loadError) {
+      root.innerHTML = '<div class="container cart-empty">' +
+        '<h1 class="cart-empty__title">We can\'t load our shop right now</h1>' +
+        '<p class="cart-empty__text">Something went wrong fetching our products. Please check your connection and try again shortly.</p>' +
+        '<a href="products.html" class="btn btn--primary">Back to Shop</a></div>';
+      return;
+    }
 
     const params = new URLSearchParams(location.search);
     const product = BumiData.getProduct(params.get('id'));

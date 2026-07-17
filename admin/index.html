@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Bumi & Bloom Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/admin.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/admin-auth.js"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Sidebar (injected by admin-app.js) -->
+  <aside class="admin-sidebar" id="admin-sidebar" data-admin-shell></aside>
+
+  <!-- Main Content -->
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1 class="admin-page-title">Dashboard</h1>
+      <div class="admin-header-actions">
+        <a href="../index.html" target="_blank" class="btn-admin btn-admin--outline">View Storefront</a>
+      </div>
+    </header>
+
+    <div class="admin-content">
+      <!-- Stats Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
+
+        <div class="admin-card" style="margin-bottom: 0;">
+          <div style="color: var(--text-muted); font-weight: var(--fw-semibold); margin-bottom: var(--space-2);">Total Products</div>
+          <div style="font-size: var(--text-3xl); font-weight: var(--fw-bold);" id="stat-products">-</div>
+        </div>
+
+        <div class="admin-card" style="margin-bottom: 0;">
+          <div style="color: var(--text-muted); font-weight: var(--fw-semibold); margin-bottom: var(--space-2);">Total Brands</div>
+          <div style="font-size: var(--text-3xl); font-weight: var(--fw-bold);" id="stat-brands">-</div>
+        </div>
+
+        <div class="admin-card" style="margin-bottom: 0;">
+          <div style="color: var(--text-muted); font-weight: var(--fw-semibold); margin-bottom: var(--space-2);">Active Collections</div>
+          <div style="font-size: var(--text-3xl); font-weight: var(--fw-bold);" id="stat-collections">-</div>
+        </div>
+
+        <div class="admin-card" style="margin-bottom: 0;">
+          <div style="color: var(--text-muted); font-weight: var(--fw-semibold); margin-bottom: var(--space-2);">Total Orders</div>
+          <div style="font-size: var(--text-3xl); font-weight: var(--fw-bold); color: var(--text-muted);">Coming Soon</div>
+        </div>
+
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="admin-card">
+        <h2 style="margin-top: 0; margin-bottom: var(--space-4);">Recent Activity</h2>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>Resource ID</th>
+                <th>User</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="activity-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted);">Loading activity...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/admin-app.js"></script>
+  <script src="../js/admin-dashboard.js"></script>
+</body>
+</html>
