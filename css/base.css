@@ -22,6 +22,11 @@ html {
   font-size: 100%;
   line-height: var(--lh-normal);
   -webkit-font-smoothing: antialiased;
+  /* iOS Safari pans the page sideways if anything (e.g. fixed off-canvas
+     drawers) sticks out past the viewport — clip it at the root too,
+     body-only overflow-x is not enough there. */
+  overflow-x: hidden;
+  overflow-x: clip;
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -34,6 +39,7 @@ body {
   background-color: var(--bg-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ── Selection ── */

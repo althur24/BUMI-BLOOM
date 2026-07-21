@@ -198,13 +198,19 @@ textarea.input {
     border-radius: 0;
     border: none;
     transform: translateX(100%);
-    transition: transform var(--duration-normal) var(--ease-smooth);
+    /* Closed state must leave the pan area entirely (iOS Safari lets fixed
+       off-canvas elements widen it even with overflow-x clipped). */
+    visibility: hidden;
+    transition: transform var(--duration-normal) var(--ease-smooth),
+      visibility 0s var(--duration-normal);
     overflow-y: auto;
     box-shadow: var(--shadow-xl);
     padding-top: 0;
   }
   .plp-sidebar.is-open {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform var(--duration-normal) var(--ease-smooth);
   }
   .plp-sidebar__header {
     display: flex;
