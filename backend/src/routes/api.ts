@@ -15,18 +15,27 @@ apiRouter.get("/", (_req, res) => {
 });
 
 // Published products with brand + primary image, AUD cents.
-apiRouter.get("/products", async (_req, res, next) => {
+// Paginated: ?page=1&pageSize=24 (pageSize capped at 100).
+apiRouter.get("/products", async (req, res, next) => {
   try {
-    const products = await prisma.product.findMany({
-      where: { status: "PUBLISHED", deletedAt: null },
-      orderBy: { addedAtRank: "desc" },
-      include: {
-        brand: { select: { id: true, name: true, slug: true } },
-        colors: { orderBy: { sortOrder: "asc" } },
-        images: { where: { isPrimary: true }, take: 1, include: { asset: true } },
-      },
-    });
-    res.json({ products });
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 24));
+    const where = { status: "PUBLISHED" as const, deletedAt: null };
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy: { addedAtRank: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          brand: { select: { id: true, name: true, slug: true } },
+          colors: { orderBy: { sortOrder: "asc" } },
+          images: { where: { isPrimary: true }, take: 1, include: { asset: true } },
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+    res.json({ products, page, pageSize, total });
   } catch (err) {
     next(err);
   }

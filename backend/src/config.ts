@@ -8,7 +8,6 @@ const schema = z.object({
   DIRECT_URL: z.string().min(1),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  ADMIN_SESSION_SECRET: z.string().min(16),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(4000),

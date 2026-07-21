@@ -154,36 +154,50 @@ async function seedProducts(brandIdByName: Map<string, string>): Promise<Map<str
     });
     productIdBySlug.set(p.id, product.id);
 
-    // Colors (replace to keep order/edits in sync)
-    await prisma.productColor.deleteMany({ where: { productId: product.id } });
+    // Colors: upsert by (productId, name) and prune stale ones, so color ids
+    // stay stable across re-seeds (variants reference them).
+    const seedColorNames = p.colors.map((c) => c.name);
     for (let i = 0; i < p.colors.length; i++) {
       const c = p.colors[i];
-      await prisma.productColor.create({
-        data: { productId: product.id, name: c.name, hex: c.hex, sortOrder: i },
+      await prisma.productColor.upsert({
+        where: { productId_name: { productId: product.id, name: c.name } },
+        create: { productId: product.id, name: c.name, hex: c.hex, sortOrder: i },
+        update: { hex: c.hex, sortOrder: i },
       });
     }
 
     // Variants: one per (color × size). SKU = slug-color-size. Default stock 50.
-    await prisma.productVariant.deleteMany({ where: { productId: product.id } });
+    // Upsert by SKU and prune stale ones, so variant ids stay stable.
     const colors = await prisma.productColor.findMany({
-      where: { productId: product.id },
+      where: { productId: product.id, name: { in: seedColorNames } },
       orderBy: { sortOrder: "asc" },
+    });
+    const seedSkus: string[] = [];
+    for (const color of colors) {
+      for (const size of p.sizes) {
+        seedSkus.push(`${p.id}-${slugify(color.name)}-${size}`.toUpperCase());
+      }
+    }
+    await prisma.productVariant.deleteMany({
+      where: { productId: product.id, sku: { notIn: seedSkus } },
     });
     for (const color of colors) {
       for (const size of p.sizes) {
-        await prisma.productVariant.create({
-          data: {
-            productId: product.id,
-            colorId: color.id,
-            size,
-            sku: `${p.id}-${slugify(color.name)}-${size}`.toUpperCase(),
-            stock: 50,
-          },
+        const sku = `${p.id}-${slugify(color.name)}-${size}`.toUpperCase();
+        await prisma.productVariant.upsert({
+          where: { sku },
+          create: { productId: product.id, colorId: color.id, size, sku, stock: 50 },
+          update: { productId: product.id, colorId: color.id, size },
         });
       }
     }
+    // Prune colors removed from the seed (after their variants are gone).
+    await prisma.productColor.deleteMany({
+      where: { productId: product.id, name: { notIn: seedColorNames } },
+    });
 
-    // Images (dedupe within product; first is primary)
+    // Images (dedupe within product; first is primary). Image rows are
+    // recreated, but their MediaAssets are stable (upserted by bucket+path).
     await prisma.productImage.deleteMany({ where: { productId: product.id } });
     const orderedPaths = Array.from(new Set([p.image, ...p.gallery]));
     for (let i = 0; i < orderedPaths.length; i++) {

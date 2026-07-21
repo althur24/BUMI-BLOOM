@@ -3,19 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="BUMI / BLOOM — colourful, comfy kidswear from Indonesian designers, delivered Australia-wide. Free AU shipping over $60, 30-day returns, Afterpay.">
+  <meta name="description" content="BUMI / BLOOM — colourful, comfy kidswear and women's casual from Indonesian designers, delivered Australia-wide. Free AU shipping over $60, 30-day returns, Afterpay.">
   <meta name="theme-color" content="#F2EEE9">
-  <title>BUMI / BLOOM — Colourful, comfy kidswear, delivered Australia-wide</title>
+  <title>BUMI / BLOOM — Colourful, comfy kidswear & women's casual, delivered Australia-wide</title>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/paper.css">
   <!-- Analytics: GA4 + Meta Pixel. Replace placeholder IDs in js/analytics.js to go live. -->
   <script src="js/analytics.js"></script>
 </head>
 <body>
+
+  <!-- Crayon path down the page edge (wide screens) -->
+  <div class="paper-path" aria-hidden="true"></div>
 
   <!-- Announcement Bar -->
   <div class="announcement-bar" id="announcement-bar">
@@ -39,6 +43,7 @@
           <li><a href="products.html?category=girls" class="header__nav-link">Girls</a></li>
           <li><a href="products.html?category=boys" class="header__nav-link">Boys</a></li>
           <li><a href="products.html?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="products.html?category=women" class="header__nav-link">Women</a></li>
           <li><a href="brands.html" class="header__nav-link">Brands</a></li>
           <li><a href="products.html?category=essentials" class="header__nav-link">Essentials</a></li>
           <li><a href="products.html?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
@@ -102,6 +107,7 @@
         <a href="products.html?category=girls" class="mobile-nav__link">Girls</a>
         <a href="products.html?category=boys" class="mobile-nav__link">Boys</a>
         <a href="products.html?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="products.html?category=women" class="mobile-nav__link">Women</a>
         <a href="brands.html" class="mobile-nav__link">Brands</a>
         <a href="products.html?category=essentials" class="mobile-nav__link">Essentials</a>
         <a href="products.html?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
@@ -139,6 +145,11 @@
 
     <!-- Hero -->
     <section class="hero-playful" id="hero">
+      <div class="hero-characters" aria-hidden="true">
+        <img src="images/characters/bunny.webp" alt="" class="hero-character hero-character--bunny" loading="lazy">
+        <svg class="hero-doodle hero-doodle--star1" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 L24 15 L36 16 L27 24 L30 36 L20 29 L10 36 L13 24 L4 16 L16 15 Z"/></svg>
+        <svg class="hero-doodle hero-doodle--star2" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 L24 15 L36 16 L27 24 L30 36 L20 29 L10 36 L13 24 L4 16 L16 15 Z"/></svg>
+      </div>
       <div class="container hero-playful__inner">
         <div class="hero-playful__content">
           <p class="hero-playful__badge">★★★★★ Loved by 2,000+ Aussie families</p>
@@ -146,10 +157,11 @@
             Colourful, comfy kidswear —
             <span class="script-accent">delivered Australia-wide.</span>
           </h1>
-          <p class="hero-playful__subtitle">Thoughtfully curated pieces from Indonesian designers, in soft premium fabrics that are made to last and made to play in.</p>
+          <p class="hero-playful__subtitle">Thoughtfully curated kids' pieces and women's casual from Indonesian designers, in soft premium fabrics that are made to last and made to play in.</p>
           <div class="hero-playful__actions">
             <a href="products.html?category=kids" class="btn btn--primary btn--lg">Shop the Collection</a>
             <a href="products.html?category=bestsellers" class="btn btn--secondary btn--lg">Shop Bestsellers</a>
+            <svg class="doodle-arrow" viewBox="0 0 100 60" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M92 8 C 62 12, 36 26, 16 46 M 32 40 L 14 48 L 24 30"/></svg>
           </div>
           <ul class="hero-chips">
             <li>🧵 Designed &amp; made in Indonesia</li>
@@ -166,8 +178,14 @@
       </div>
     </section>
 
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
     <!-- Trust Bar -->
     <section class="trust-bar">
+      <img src="images/characters/penguin.webp" alt="" class="margin-friend friend--penguin" loading="lazy" aria-hidden="true">
       <div class="container trust-bar__inner">
         <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg><span>Designed &amp; made in Indonesia</span></div>
         <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg><span>Honest materials</span></div>
@@ -181,28 +199,41 @@
     <section class="section" id="shop-by-age">
       <div class="container">
         <div class="section__header">
-          <h2 class="section__title">Shop by <span class="script-accent">Age</span></h2>
-          <p class="section__subtitle">From first onesies to playground-ready favourites.</p>
+          <h2 class="section__title">Shop the <span class="script-accent">Family</span></h2>
+          <p class="section__subtitle">From first onesies to playground-ready favourites — and easy pieces for you.</p>
         </div>
         <div class="age-tiles">
           <a class="age-tile" href="products.html?category=girls">
-            <div class="age-tile__image"><img src="images/categories/dresses.png" alt="Girls' clothing" loading="lazy"></div>
+            <div class="age-tile__character"><img src="images/characters/bunny.webp" alt="Bunny character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="images/categories/kids.png" alt="Girl jumping in a comfy BUMI / BLOOM outfit" loading="lazy"></div>
             <div class="age-tile__label"><h3>Girls</h3><p>Twirl-ready dresses &amp; soft tops</p></div>
           </a>
           <a class="age-tile" href="products.html?category=boys">
-            <div class="age-tile__image"><img src="images/categories/kids.png" alt="Boys' clothing" loading="lazy"></div>
+            <div class="age-tile__image age-tile__image--doodle"><img src="images/characters/dino.webp" alt="Hand-drawn dino doodle" loading="lazy"></div>
             <div class="age-tile__label"><h3>Boys</h3><p>Tough-comfy basics for adventurers</p></div>
           </a>
           <a class="age-tile" href="products.html?category=baby">
-            <div class="age-tile__image"><img src="images/categories/baby.png" alt="Baby clothing" loading="lazy"></div>
+            <div class="age-tile__character"><img src="images/characters/whale.webp" alt="Whale character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="images/categories/baby.png" alt="Baby in a soft striped BUMI / BLOOM onesie" loading="lazy"></div>
             <div class="age-tile__label"><h3>Baby</h3><p>Gentle, soft pieces for little ones</p></div>
+          </a>
+          <a class="age-tile" href="products.html?category=women">
+            <div class="age-tile__character"><img src="images/characters/cat.webp" alt="Cat character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="images/categories/dresses.png" alt="Woman in a relaxed casual dress" loading="lazy"></div>
+            <div class="age-tile__label"><h3>Women</h3><p>Easy, everyday casual pieces</p></div>
           </a>
         </div>
       </div>
     </section>
 
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
     <!-- Bestsellers / Collections -->
     <section class="section collections-section" id="collections">
+      <img src="images/characters/dino.webp" alt="" class="margin-friend friend--dino" loading="lazy" aria-hidden="true">
       <div class="container">
         <div class="section__header">
           <h2 class="section__title">Loved by <span class="script-accent">Aussie families</span></h2>
@@ -223,14 +254,20 @@
       </div>
     </section>
 
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
     <!-- Offer Band -->
     <section class="section" id="offer-band">
       <div class="container">
         <div class="offer-band">
+          <img src="images/characters/octopus.webp" alt="" class="margin-friend friend--octopus" loading="lazy" aria-hidden="true">
           <div class="offer-band__content">
             <p class="offer-band__eyebrow">Welcome offer</p>
             <h2 class="offer-band__title">10% off your first order</h2>
-            <p class="offer-band__text">Join the family — use code <strong>WELCOME10</strong> at checkout. Stacks with free AU shipping over $60.</p>
+            <p class="offer-band__text">Join the family — use code <span class="crayon-code">WELCOME10</span> at checkout. Stacks with free AU shipping over $60.</p>
             <a href="products.html?category=kids" class="btn btn--primary btn--lg">Start Shopping</a>
           </div>
           <div class="offer-band__image">
@@ -240,33 +277,10 @@
       </div>
     </section>
 
-    <!-- Shop by Mood -->
-    <section class="section" id="shop-by-mood">
-      <div class="container">
-        <div class="section__header">
-          <h2 class="section__title">Shop the <span class="script-accent">Mood</span></h2>
-          <p class="section__subtitle">Outfits for every kind of day.</p>
-        </div>
-        <div class="mood-grid">
-          <a class="mood-card" href="products.html?category=kids">
-            <img src="images/moods/weekend.png" alt="Weekend light — sunny-day outfits" loading="lazy">
-            <div class="mood-card__label"><h3>Weekend</h3><span>Easy, sunny-day looks</span></div>
-          </a>
-          <a class="mood-card" href="products.html?category=essentials">
-            <img src="images/moods/workday.png" alt="Workday ease — everyday basics" loading="lazy">
-            <div class="mood-card__label"><h3>Workday</h3><span>Everyday basics</span></div>
-          </a>
-          <a class="mood-card" href="products.html?category=outerwear">
-            <img src="images/moods/layers.png" alt="Everyday layers — cool-weather outfits" loading="lazy">
-            <div class="mood-card__label"><h3>Layers</h3><span>Cool-weather layers</span></div>
-          </a>
-          <a class="mood-card" href="products.html?category=new">
-            <img src="images/moods/afterhours.png" alt="After-hours — cosy evening pieces" loading="lazy">
-            <div class="mood-card__label"><h3>After-Hours</h3><span>Cosy evening pieces</span></div>
-          </a>
-        </div>
-      </div>
-    </section>
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
 
     <!-- Why Choose Us -->
     <section class="section why-choose-section" id="why-choose">
@@ -308,8 +322,15 @@
       </div>
     </section>
 
+    <!-- Crayon divider (whale spout) -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <img src="images/characters/whale.webp" alt="" class="divider-friend" loading="lazy">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
     <!-- Testimonials -->
     <section class="section testimonials-section" id="testimonials">
+      <img src="images/characters/cat.webp" alt="" class="margin-friend friend--cat" loading="lazy" aria-hidden="true">
       <div class="container">
         <div class="section__header">
           <h2 class="section__title">Loved by <span class="script-accent">parents</span></h2>
@@ -353,10 +374,16 @@
       </div>
     </section>
 
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
     <!-- Newsletter + Payment trust -->
     <section class="section" id="newsletter">
       <div class="container">
         <div class="newsletter">
+          <img src="images/characters/turtle.webp" alt="" class="margin-friend friend--turtle" loading="lazy" aria-hidden="true">
           <h2 class="newsletter__title">Get <span class="script-accent">10% off</span> your first order</h2>
           <p class="newsletter__text">Join our list for new drops, local stories and playful style — and we'll send your welcome code.</p>
           <form class="newsletter__form" id="newsletter-form">
@@ -385,7 +412,7 @@
       <div class="footer__grid">
         <div class="footer__brand">
           <a href="index.html" class="footer__logo">BUMI / BLOOM</a>
-          <p class="footer__desc">Colourful, comfy kidswear, designed &amp; made in Indonesia and delivered Australia-wide. Made to last, made to play in.</p>
+          <p class="footer__desc">Colourful, comfy kidswear and women's casual, designed &amp; made in Indonesia and delivered Australia-wide. Made to last, made to play in.</p>
           <div class="footer__social">
             <a href="#" class="footer__social-link" aria-label="Instagram">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -413,6 +440,7 @@
             <li><a href="products.html?category=girls">Girls</a></li>
             <li><a href="products.html?category=boys">Boys</a></li>
             <li><a href="products.html?category=baby">Baby</a></li>
+            <li><a href="products.html?category=women">Women</a></li>
             <li><a href="products.html?category=sale">Sale</a></li>
           </ul>
         </div>
@@ -439,6 +467,7 @@
         <div class="footer__bottom-links">
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>
+          <a href="admin.html">Admin</a>
         </div>
       </div>
     </div>
@@ -451,5 +480,6 @@
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script src="js/products.js"></script>
+  <script src="js/paper.js"></script>
 </body>
 </html>

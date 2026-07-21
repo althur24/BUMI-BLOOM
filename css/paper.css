@@ -1,0 +1,416 @@
+/* ============================================
+   BUMI / BLOOM — "Endless Paper" homepage theme
+   Loaded LAST on index.html only. Turns the
+   homepage into one continuous sheet of paper:
+   crayon dividers, taped polaroids, margin doodles.
+   Tilts use the standalone `rotate` property so the
+   fadeInUp scroll animations (transform) don't
+   clobber them.
+   ============================================ */
+
+/* ---- Paper canvas ---- */
+body {
+  background-color: var(--color-cream);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23p)' opacity='0.06'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.016' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='700' height='700' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* Characters sit directly ON the paper — no white boxes.
+   A soft drop-shadow follows the drawing's shape for a little lift. */
+.hero-character {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+  filter: drop-shadow(0 4px 8px rgba(0, 64, 140, 0.14));
+}
+
+.age-tile__character {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  filter: drop-shadow(0 3px 6px rgba(0, 64, 140, 0.16));
+}
+
+/* Faint crayon path down the left edge (wide screens only) */
+.paper-path { display: none; }
+@media (min-width: 1500px) {
+  .paper-path {
+    display: block;
+    position: fixed;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 3px dashed rgba(232, 82, 52, 0.28);
+    z-index: 1;
+    pointer-events: none;
+  }
+}
+
+/* ---- Announcement bar: coupon strip ---- */
+.announcement-bar {
+  border-bottom: 2px dashed rgba(232, 82, 52, 0.45);
+}
+
+/* ---- Crayon underline on script accents ---- */
+.script-accent {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='14' viewBox='0 0 120 14' preserveAspectRatio='none'%3E%3Cpath d='M3 10 Q 32 3 60 8 T 117 7' fill='none' stroke='%23E85234' stroke-width='5' stroke-linecap='round' stroke-opacity='.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0 94%;
+  background-size: 100% 0.32em;
+  padding-bottom: 0.1em;
+}
+
+/* ---- Squiggle dividers ---- */
+.squiggle-divider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-2) 0;
+  position: relative;
+}
+.squiggle-divider svg {
+  width: min(720px, 78vw);
+  height: 24px;
+  overflow: visible;
+  display: block;
+}
+.squiggle-divider path {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.squiggle-divider--red path { stroke: var(--color-red); opacity: 0.5; }
+.squiggle-divider--blue path { stroke: var(--color-dark); opacity: 0.3; }
+
+/* Whale riding a divider, spouting the line */
+.divider-friend {
+  position: absolute;
+  width: 84px;
+  left: 16%;
+  bottom: 4px;
+  transform: rotate(-4deg);
+  filter: drop-shadow(0 4px 8px rgba(0, 64, 140, 0.12));
+}
+
+/* ---- Hero: blend into the paper ---- */
+.hero-playful {
+  background: transparent;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: 0;
+  overflow: visible;
+}
+
+.hero-doodle {
+  position: absolute;
+  color: var(--color-red);
+  opacity: 0.65;
+  pointer-events: none;
+  z-index: 2;
+  animation: starPulse 3.2s ease-in-out infinite;
+}
+.hero-doodle--star1 { width: 36px; top: 16%; left: 45%; }
+.hero-doodle--star2 { width: 22px; top: 34%; left: 49%; animation-delay: 1.2s; }
+
+@keyframes starPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.18) rotate(10deg); opacity: 0.85; }
+}
+
+/* Washi tape on the hero photo blob */
+.hero-playful__visual::before {
+  content: '';
+  position: absolute;
+  width: 110px;
+  height: 30px;
+  background: rgba(249, 184, 175, 0.55);
+  top: 4%;
+  left: 10%;
+  transform: rotate(-9deg);
+  z-index: 3;
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.1);
+}
+
+/* Hand-drawn arrow pointing at the primary CTA */
+.hero-playful__actions { position: relative; }
+.doodle-arrow {
+  position: absolute;
+  width: 92px;
+  left: calc(100% + 14px);
+  top: -34px;
+  color: var(--color-red);
+  opacity: 0.8;
+  transform: rotate(6deg);
+  pointer-events: none;
+}
+@media (max-width: 1024px) {
+  .doodle-arrow { display: none; }
+  .hero-doodle--star1 { left: auto; right: 12%; }
+  .hero-doodle--star2 { left: auto; right: 20%; }
+}
+
+/* ---- Trust bar: taped paper strip + penguin ---- */
+.trust-bar {
+  position: relative;
+  background: rgba(255, 255, 255, 0.6);
+  border-block: none;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Flatten boxed sections into the paper ---- */
+.collections-section,
+.testimonials-section {
+  background: transparent;
+  border-radius: 0;
+  margin: 0;
+  padding: var(--section-gap) 0;
+}
+.why-choose-section {
+  background: transparent;
+}
+
+/* Sections that carry margin doodles */
+.collections-section,
+.testimonials-section,
+.trust-bar,
+#shop-by-age {
+  position: relative;
+}
+
+/* ---- Margin friends (desktop only) ---- */
+.margin-friend {
+  position: absolute;
+  width: clamp(72px, 7.5vw, 108px);
+  z-index: 2;
+  filter: drop-shadow(0 4px 8px rgba(0, 64, 140, 0.12));
+  display: none;
+}
+@media (min-width: 1024px) {
+  .margin-friend { display: block; }
+}
+.margin-friend:hover { animation: friendWiggle 0.5s var(--ease-smooth); }
+
+@keyframes friendWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-7deg); }
+  75% { transform: rotate(6deg); }
+}
+
+.friend--penguin { left: 1%; top: -30px; width: 76px; }
+.friend--dino { left: 1.5%; top: 30px; }
+.friend--cat { right: 2.5%; top: 24px; }
+
+/* Make room for the penguin at the left of the trust strip */
+@media (min-width: 1024px) {
+  .trust-bar__inner { padding-left: clamp(96px, 8vw, 120px); }
+}
+
+/* ---- Washi tape (shared) ---- */
+.tape-strip {
+  content: '';
+  position: absolute;
+  width: 88px;
+  height: 26px;
+  background: rgba(150, 173, 214, 0.4);
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.08);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ---- Shop by Age: 4 tiles (Girls, Boys, Baby, Women) ---- */
+.age-tiles { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1024px) {
+  .age-tiles { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .age-tiles { grid-template-columns: 1fr; }
+}
+
+.age-tile {
+  rotate: 0deg;
+  background: var(--color-white);
+  padding: var(--space-3) var(--space-3) 0;
+}
+.age-tile:nth-child(1) { rotate: -1.2deg; }
+.age-tile:nth-child(2) { rotate: 0.9deg; }
+.age-tile:nth-child(3) { rotate: -0.7deg; }
+.age-tile:nth-child(4) { rotate: 1.1deg; }
+.age-tile:hover { rotate: 0deg; }
+.age-tile::before {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 24px;
+  background: rgba(249, 184, 175, 0.5);
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.08);
+  z-index: 3;
+  pointer-events: none;
+}
+.age-tile:nth-child(even)::before {
+  background: rgba(150, 173, 214, 0.45);
+  transform: translateX(-50%) rotate(3deg);
+}
+.age-tile__image { border-radius: var(--radius-md); }
+
+/* Boys tile: hand-drawn doodle tile (no boys photo in library yet) */
+.age-tile__image--doodle {
+  background: var(--color-blue-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.age-tile__image--doodle img {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+}
+
+/* ---- Product cards: taped polaroids (homepage grid) ---- */
+.collection-grid .product-card {
+  rotate: 0deg;
+  padding: var(--space-3) var(--space-3) 0;
+  background: var(--color-white);
+  box-shadow: var(--shadow-md);
+}
+.collection-grid .product-card:nth-child(3n+1) { rotate: -1.3deg; }
+.collection-grid .product-card:nth-child(3n+2) { rotate: 0.8deg; }
+.collection-grid .product-card:nth-child(3n)   { rotate: -0.6deg; }
+.collection-grid .product-card:hover {
+  rotate: 0deg;
+  transform: translateY(-6px);
+}
+.collection-grid .product-card::before {
+  content: '';
+  position: absolute;
+  width: 84px;
+  height: 24px;
+  background: rgba(242, 215, 211, 0.65);
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.08);
+  z-index: 3;
+  pointer-events: none;
+}
+.collection-grid .product-card:nth-child(even)::before {
+  background: rgba(150, 173, 214, 0.4);
+  transform: translateX(-50%) rotate(2.5deg);
+}
+.collection-grid .product-card .product-card__image-wrap {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* ---- Offer band: octopus + crayon promo code ---- */
+.offer-band {
+  position: relative;
+  overflow: visible;
+}
+.friend--octopus {
+  right: 4%;
+  top: -34px;
+  width: clamp(80px, 8vw, 116px);
+  z-index: 3;
+}
+.crayon-code {
+  display: inline-block;
+  background: var(--color-cream);
+  color: var(--color-script-accent);
+  font-family: var(--font-accent);
+  font-size: 1.35em;
+  font-weight: 600;
+  line-height: 1.1;
+  padding: 2px 14px 4px;
+  border-radius: var(--radius-sm);
+  transform: rotate(-2deg);
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+/* ---- Why Choose: loose paper scraps ---- */
+.why-choose-item {
+  background: var(--color-white);
+  box-shadow: var(--shadow-sm);
+  rotate: 0deg;
+}
+.why-choose-item:nth-child(odd)  { rotate: -0.8deg; }
+.why-choose-item:nth-child(even) { rotate: 0.8deg; }
+.why-choose-item:hover {
+  rotate: 0deg;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---- Testimonials: sticky notes ---- */
+.testimonial-card {
+  border-left: none;
+  rotate: 0deg;
+  box-shadow: var(--shadow-md);
+}
+.testimonial-card:nth-child(1) { background: var(--color-peach-light); rotate: -1.1deg; }
+.testimonial-card:nth-child(2) { background: var(--color-blue-light);  rotate: 0.8deg; }
+.testimonial-card:nth-child(3) { background: var(--color-pink-light);  rotate: -0.6deg; }
+.testimonial-card::before {
+  content: '';
+  position: absolute;
+  width: 90px;
+  height: 26px;
+  background: rgba(242, 238, 233, 0.65);
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.1);
+  z-index: 2;
+  pointer-events: none;
+}
+.testimonial-card:hover {
+  rotate: 0deg;
+  transform: translateY(-4px);
+}
+.testimonial-card__stars { letter-spacing: 3px; }
+
+/* ---- Newsletter: big taped note + turtle ---- */
+.newsletter {
+  position: relative;
+  border: 3px dashed rgba(168, 51, 30, 0.35);
+  overflow: visible;
+}
+.newsletter::before,
+.newsletter::after {
+  content: '';
+  position: absolute;
+  width: 104px;
+  height: 28px;
+  background: rgba(242, 238, 233, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.1);
+  z-index: 2;
+  pointer-events: none;
+}
+.newsletter::before { top: -14px; left: 7%;  transform: rotate(-6deg); }
+.newsletter::after  { top: -14px; right: 7%; transform: rotate(5deg); }
+
+.friend--turtle {
+  left: 3%;
+  bottom: -26px;
+  width: clamp(76px, 7.5vw, 104px);
+  z-index: 3;
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-doodle,
+  .hero-character {
+    animation: none;
+  }
+  .margin-friend:hover {
+    animation: none;
+  }
+}

@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Bumi & Bloom admin/CMS backend — Supabase + Prisma + Express + AdminJS",
+  "description": "Bumi & Bloom backend — Supabase + Prisma + Express read API",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "_comment": "Scripts invoke node directly (not the .bin shims) because the repo path contains '&' which breaks Windows .CMD shims.",
     "dev": "node node_modules/tsx/dist/cli.mjs watch src/index.ts",
-    "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "db:generate": "node node_modules/prisma/build/index.js generate",
@@ -24,15 +24,11 @@
     "seed": "node node_modules/tsx/dist/cli.mjs prisma/seed.ts"
   },
   "dependencies": {
-    "@adminjs/express": "^6.1.1",
-    "@adminjs/prisma": "^5.0.4",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.45.4",
-    "adminjs": "^7.8.17",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "express-session": "^1.18.1",
     "pg": "^8.22.0",
     "tslib": "^2.7.0",
     "zod": "^3.23.8"
@@ -40,7 +36,6 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
-    "@types/express-session": "^1.18.0",
     "@types/node": "^20.16.0",
     "prisma": "^5.22.0",
     "tsx": "^4.19.1",

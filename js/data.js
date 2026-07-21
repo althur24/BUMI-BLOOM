@@ -16,12 +16,23 @@
 
 const PLACEHOLDER_IMG = 'images/placeholder.png';
 
+// Placeholder photography showing adult men is out of scope (kids + women's
+// casual only). Remap those assets to in-scope kidswear photography until
+// proper product photos are uploaded.
+const IMAGE_REMAP = {
+  'images/categories/tshirts.png': 'images/categories/kids.png',
+  'images/categories/shirts.png': 'images/categories/kids.png',
+};
+function remapImage(url) {
+  return IMAGE_REMAP[url] || url;
+}
+
 // Supabase Product (+relations) → data.js product shape.
 function mapProduct(p) {
   const rawImgs = (p.ProductImage || []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  const gallery = rawImgs.map((i) => i.MediaAsset && i.MediaAsset.publicUrl).filter(Boolean);
+  const gallery = [...new Set(rawImgs.map((i) => remapImage(i.MediaAsset && i.MediaAsset.publicUrl)).filter(Boolean))];
   const primary = rawImgs.find((i) => i.isPrimary) || rawImgs[0];
-  const image = (primary && primary.MediaAsset && primary.MediaAsset.publicUrl) || gallery[0] || PLACEHOLDER_IMG;
+  const image = remapImage((primary && primary.MediaAsset && primary.MediaAsset.publicUrl)) || gallery[0] || PLACEHOLDER_IMG;
 
   const colors = (p.ProductColor || [])
     .slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -155,6 +166,7 @@ const BumiData = {
       girls:      { title: "Girls' Collection",  subtitle: 'Twirl-ready dresses, soft tees and playful layers for every adventure.' },
       boys:       { title: "Boys' Collection",   subtitle: 'Tough-but-comfy basics built for climbing, running and exploring.' },
       baby:       { title: 'Baby Collection',    subtitle: 'Gentle, soft pieces for the littlest members of the family.' },
+      women:      { title: "Women's Casual",     subtitle: 'Easy, everyday pieces — soft, breathable and made to move.' },
       new:        { title: 'New This Week',      subtitle: 'Fresh drops from our favourite Indonesian kids brands.' },
       sale:       { title: 'On Sale',            subtitle: 'Loved pieces at joyful prices — grab them before they grow out!' },
       essentials: { title: 'Everyday Essentials',subtitle: 'The trusty basics you will reach for again and again.' },

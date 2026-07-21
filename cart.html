@@ -213,6 +213,7 @@
         <div class="footer__bottom-links">
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Service</a>
+          <a href="admin.html">Admin</a>
         </div>
       </div>
     </div>
@@ -326,8 +327,8 @@
         promoMsg.style.display = 'none';
       }
     }
-    if (promoApply) promoApply.addEventListener('click', () => {
-      const res = BumiCart.applyPromo(promoInput ? promoInput.value : '');
+    if (promoApply) promoApply.addEventListener('click', async () => {
+      const res = await BumiCart.applyPromo(promoInput ? promoInput.value : '');
       if (promoMsg) {
         promoMsg.style.display = 'block';
         if (res.valid) {
@@ -335,7 +336,7 @@
           promoMsg.textContent = res.label + ' applied';
         } else {
           promoMsg.className = 'promo-field__msg promo-field__msg--err';
-          promoMsg.textContent = 'That code isn’t valid — try WELCOME10.';
+          promoMsg.textContent = 'That code isn’t valid — check it and try again.';
         }
       }
       renderCart();

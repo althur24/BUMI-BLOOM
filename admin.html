@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BUMI / BLOOM admin — manage products, stock, brands and promotions.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F2EEE9">
+  <title>Admin — BUMI / BLOOM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <header class="admin-topbar">
+    <a href="index.html" class="admin-topbar__logo">BUMI / BLOOM</a>
+    <span class="admin-topbar__tag">Admin</span>
+  </header>
+
+  <!-- Login view -->
+  <main id="admin-login" class="admin-login">
+    <div class="auth-card">
+      <h1 class="auth-card__title">Admin Sign In</h1>
+      <p class="auth-card__subtitle">Restricted to BUMI / BLOOM staff accounts.</p>
+      <form id="login-form">
+        <div class="field">
+          <label class="field__label" for="login-email">Email <span class="req">*</span></label>
+          <input class="input" id="login-email" name="email" type="email" placeholder="you@bumiandbloom.com" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label class="field__label" for="login-password">Password <span class="req">*</span></label>
+          <input class="input" id="login-password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn--primary btn--full" type="submit" id="login-submit">Sign In</button>
+      </form>
+      <p class="auth-card__toggle"><a href="index.html">← Back to the shop</a></p>
+    </div>
+  </main>
+
+  <!-- Admin shell -->
+  <div id="admin-shell" class="admin-shell">
+    <aside class="admin-shell__sidebar">
+      <nav class="admin-nav" aria-label="Admin sections">
+        <button type="button" class="admin-nav__item is-active" data-tab="dashboard">Dashboard</button>
+        <button type="button" class="admin-nav__item" data-tab="products">Products</button>
+        <button type="button" class="admin-nav__item" data-tab="brands">Brands</button>
+        <button type="button" class="admin-nav__item" data-tab="categories">Categories</button>
+        <button type="button" class="admin-nav__item" data-tab="collections">Collections</button>
+        <button type="button" class="admin-nav__item" data-tab="promotions">Promotions</button>
+      </nav>
+      <div class="admin-shell__user">
+        <div class="admin-shell__user-info">
+          <strong id="admin-user-name">—</strong>
+          <small id="admin-user-role">—</small>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" id="sign-out-btn">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="admin-shell__content">
+      <section id="tab-dashboard" class="admin-tab is-active" data-tab-panel="dashboard"></section>
+      <section id="tab-products" class="admin-tab" data-tab-panel="products"></section>
+      <section id="tab-brands" class="admin-tab" data-tab-panel="brands"></section>
+      <section id="tab-categories" class="admin-tab" data-tab-panel="categories"></section>
+      <section id="tab-collections" class="admin-tab" data-tab-panel="collections"></section>
+      <section id="tab-promotions" class="admin-tab" data-tab-panel="promotions"></section>
+    </main>
+  </div>
+
+  <!-- Reusable modal + toast (driven by js/admin.js) -->
+  <div class="modal-overlay" id="modal-overlay"></div>
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

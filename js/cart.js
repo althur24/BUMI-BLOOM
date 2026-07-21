@@ -12,9 +12,53 @@ const BumiCart = {
   /* AU shipping (AUD). freeThreshold applies to the (pre-discount) subtotal. */
   SHIPPING: { flat: 9.95, express: 14.95, freeThreshold: 60 },
 
-  /* Working promo codes. Add more here. */
-  PROMOS: {
-    WELCOME10: { rate: 0.10, label: 'Welcome — 10% off' }
+  /* Promo codes — single source of truth is the Promotion table (managed in
+     the admin). Loaded once per page load; applyPromo awaits the fetch. */
+  PROMOS: {},
+  _promosPromise: null,
+
+  promosReady() {
+    if (!this._promosPromise) this._promosPromise = this._loadPromos();
+    return this._promosPromise;
+  },
+
+  async _loadPromos() {
+    // js/supabase.js may load after this script — wait briefly for it.
+    for (let i = 0; i < 50 && !window.bbSupabase; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (!window.bbSupabase) return;
+    try {
+      const supabase = window.bbSupabase.getClient();
+      const { data, error } = await supabase
+        .from('Promotion')
+        .select('code,label,type,value,startsAt,endsAt,usageLimit,usedCount')
+        .eq('isActive', true);
+      if (error) throw error;
+
+      const now = Date.now();
+      const map = {};
+      (data || []).forEach((p) => {
+        const starts = p.startsAt ? Date.parse(p.startsAt) : null;
+        const ends = p.endsAt ? Date.parse(p.endsAt) : null;
+        if ((starts && now < starts) || (ends && now > ends)) return;
+        if (p.usageLimit != null && (p.usedCount || 0) >= p.usageLimit) return;
+        map[String(p.code).toUpperCase()] = p.type === 'FIXED_AMOUNT'
+          ? { fixed: (p.value || 0) / 100, label: p.label }   // value is AUD cents
+          : { rate: p.value || 0, label: p.label };           // value is a rate (0.10)
+      });
+      this.PROMOS = map;
+      // Drop any stored promo that no longer exists, then refresh the UI.
+      try {
+        const stored = JSON.parse(localStorage.getItem(this.PROMO_KEY) || 'null');
+        if (stored && !this.PROMOS[stored.code]) localStorage.removeItem(this.PROMO_KEY);
+      } catch {
+        localStorage.removeItem(this.PROMO_KEY);
+      }
+      window.dispatchEvent(new CustomEvent('promo-updated'));
+    } catch (err) {
+      console.error('BumiCart: failed to load promotions', err);
+    }
   },
 
   getCart() {
@@ -100,7 +144,8 @@ const BumiCart = {
   },
 
   /* ── Promo codes ── */
-  applyPromo(code) {
+  async applyPromo(code) {
+    await this.promosReady();
     const key = String(code || '').trim().toUpperCase();
     const promo = this.PROMOS[key];
     if (!promo) {
@@ -129,7 +174,9 @@ const BumiCart = {
 
   getDiscount(subtotal) {
     const p = this.getPromo();
-    return p ? subtotal * p.rate : 0;
+    if (!p) return 0;
+    if (p.fixed != null) return Math.min(p.fixed, subtotal);
+    return subtotal * (p.rate || 0);
   },
 
   formatPrice(amount) {
@@ -213,3 +260,6 @@ document.head.appendChild(notifStyle);
 
 // Make BumiCart globally available
 window.BumiCart = BumiCart;
+
+// Eagerly fetch active promotions (parallel with page parsing).
+BumiCart.promosReady();
