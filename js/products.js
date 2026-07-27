@@ -63,7 +63,7 @@ function productCardHTML(product, index) {
       </div>
       <div class="product-card__info">
         <p class="product-card__brand">${product.brand}</p>
-        <h3 class="product-card__name"><a class="product-card__link" href="product-detail.html?id=${product.id}">${product.name}</a></h3>
+        <h3 class="product-card__name"><a class="product-card__link" href="product-detail?id=${product.id}">${product.name}</a></h3>
         ${ratingHTML}
         <p class="product-card__price">${priceHTML}</p>
         ${product.fibre ? `<span class="product-card__material">${product.fibre}</span>` : ''}
@@ -78,7 +78,7 @@ function emptyHTML(message) {
   return `<div style="grid-column:1/-1;text-align:center;padding:var(--space-16) var(--space-4);">
     <p style="font-family:var(--font-accent);font-size:var(--text-3xl);color:var(--color-coral);margin-bottom:var(--space-2);">Oops!</p>
     <p style="opacity:0.7;">${message}</p>
-    <a href="products.html" class="btn btn--primary" style="margin-top:var(--space-6);">View All Products</a>
+    <a href="products" class="btn btn--primary" style="margin-top:var(--space-6);">View All Products</a>
   </div>`;
 }
 

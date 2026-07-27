@@ -139,7 +139,7 @@
       e.preventDefault();
       const query = searchInput ? searchInput.value.trim() : '';
       if (query) {
-        window.location.href = `products.html?search=${encodeURIComponent(query)}`;
+        window.location.href = `products?search=${encodeURIComponent(query)}`;
       }
     });
   }
