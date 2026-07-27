@@ -5,81 +5,25 @@
 /* ---- Hero Section (.hero-playful) ---- */
 .hero-playful {
   position: relative;
-  min-height: 80vh;
   background: var(--bg-primary);
-  display: flex;
-  align-items: center;
   overflow: hidden;
-  padding: var(--space-12) 0;
+  text-align: center;
+  /* Slide the hero up behind the transparent header so it reads as an overlay.
+     Extra top padding keeps the hero content clear of the header. */
+  margin-top: calc(-1 * var(--header-height));
+  padding: calc(var(--space-12) + var(--header-height)) 0 0;
   border-bottom-left-radius: 40px;
   border-bottom-right-radius: 40px;
   margin-bottom: var(--space-12);
 }
 
 .hero-playful__inner {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-12);
+  display: flex;
+  flex-direction: column;
   align-items: center;
   position: relative;
   z-index: 2;
-}
-
-.hero-playful__shapes {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.hero-playful__shapes .floating-shape {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(40px);
-  opacity: 0.4;
-  animation: float 8s ease-in-out infinite;
-}
-
-.floating-shape--yellow {
-  background: var(--color-yellow);
-  width: 300px;
-  height: 300px;
-  top: -50px;
-  left: -50px;
-  animation-delay: 0s;
-}
-
-.floating-shape--green {
-  background: var(--color-green);
-  width: 250px;
-  height: 250px;
-  bottom: -50px;
-  right: 10%;
-  animation-delay: 2s;
-}
-
-.floating-shape--purple {
-  background: var(--color-purple);
-  width: 200px;
-  height: 200px;
-  top: 20%;
-  right: -50px;
-  animation-delay: 4s;
-}
-
-.floating-shape--blue {
-  background: var(--color-blue);
-  width: 150px;
-  height: 150px;
-  bottom: 20%;
-  left: 20%;
-  animation-delay: 6s;
-}
-
-.hero-playful__content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  max-width: 880px;
 }
 
 .hero-playful__badge {
@@ -103,6 +47,44 @@
   margin-bottom: var(--space-6);
   position: relative;
   z-index: 2;
+  max-width: 18ch;
+}
+
+/* Reference-style word play: one red word, one script word on a peach
+   swash, and a hand-drawn squiggle under the final word. */
+.hero-title__word--accent {
+  color: var(--color-red);
+}
+
+.hero-title__script {
+  position: relative;
+  z-index: 0;
+  padding: 0 0.08em;
+}
+.hero-title__script::before {
+  content: '';
+  position: absolute;
+  inset: 6% -6% 2% -6%;
+  background: var(--color-peach);
+  opacity: 0.75;
+  border-radius: 48% 52% 55% 45% / 62% 55% 45% 38%;
+  transform: rotate(-2deg);
+  z-index: -1;
+}
+
+.hero-title__underlined {
+  position: relative;
+  display: inline-block;
+}
+.hero-title__squiggle {
+  position: absolute;
+  left: 0;
+  bottom: -0.22em;
+  width: 100%;
+  height: 0.26em;
+  color: var(--color-red);
+  opacity: 0.55;
+  overflow: visible;
 }
 
 .hero-playful__subtitle {
@@ -111,64 +93,114 @@
   color: var(--color-dark);
   opacity: 0.8;
   margin-bottom: var(--space-8);
-  max-width: 45ch;
+  max-width: 52ch;
 }
 
 .hero-playful__actions {
   display: flex;
+  justify-content: center;
   gap: var(--space-4);
   margin-bottom: var(--space-8);
   flex-wrap: wrap;
 }
 
-.hero-playful__trust {
+.hero-playful .hero-chips {
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .hero-playful__title {
+    font-size: var(--text-4xl);
+  }
+}
+
+/* ---- Hero arch card fan ---- */
+.hero-arch-row {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  background: rgba(255, 255, 255, 0.5);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-pill);
-  backdrop-filter: blur(10px);
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(10px, 1.6vw, 22px);
+  margin-top: var(--space-12);
+  padding: 0 var(--container-padding) var(--space-8);
 }
 
-.hero-playful__visual {
-  position: relative;
-}
-
-.hero-playful__image-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4/5;
-  border-radius: 40% 60% 55% 45% / 55% 45% 60% 40%;
+.hero-arch-card {
+  --card-w: clamp(150px, 17vw, 230px);
+  flex: 0 0 var(--card-w);
+  width: var(--card-w);
+  aspect-ratio: 3 / 4;
+  padding: 8px;
+  border-radius: calc(var(--card-w) / 2) calc(var(--card-w) / 2) var(--radius-lg) var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-yellow);
-  animation: float 6s ease-in-out infinite alternate;
+  box-shadow: var(--shadow-lg);
+  /* Standalone rotate/translate properties (same pattern as paper.css)
+     so the rise-in animation and hover lift don't clobber the arc. */
+  rotate: 0deg;
+  translate: 0 0;
+  transition: rotate var(--duration-normal) var(--ease-smooth),
+              translate var(--duration-normal) var(--ease-smooth);
+  animation: archRise 700ms var(--ease-smooth) backwards;
 }
 
-.hero-playful__image-frame img {
+.hero-arch-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: calc(var(--card-w) / 2 - 6px) calc(var(--card-w) / 2 - 6px) calc(var(--radius-lg) - 6px) calc(var(--radius-lg) - 6px);
 }
 
-@media (max-width: 1024px) {
-  .hero-playful__inner {
-    grid-template-columns: 1fr;
-    text-align: center;
+/* Character cards: crayon friends sit ON the colour, not behind a photo */
+.hero-arch-card--character img {
+  object-fit: contain;
+  padding: 12%;
+}
+
+.hero-arch-card--peach { background: var(--color-peach); }
+.hero-arch-card--pink  { background: var(--color-pink); }
+.hero-arch-card--blue  { background: var(--color-blue); }
+
+/* Gentle arc: edges tilted & lower, center card tallest */
+.hero-arch-card:nth-child(1) { rotate: -5deg;   translate: 0 18px; animation-delay: 0.05s; }
+.hero-arch-card:nth-child(2) { rotate: -2.5deg; translate: 0 6px;  animation-delay: 0.15s; }
+.hero-arch-card:nth-child(3) { --card-w: clamp(170px, 19vw, 260px); animation-delay: 0.25s; }
+.hero-arch-card:nth-child(4) { rotate: 2.5deg;  translate: 0 6px;  animation-delay: 0.35s; }
+.hero-arch-card:nth-child(5) { rotate: 5deg;    translate: 0 18px; animation-delay: 0.45s; }
+
+.hero-arch-card:hover {
+  rotate: 0deg;
+  translate: 0 -6px;
+}
+
+@keyframes archRise {
+  from { opacity: 0; translate: 0 60px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-arch-card { animation: none; transition: none; }
+}
+
+/* Mobile: the fan becomes a swipeable strip */
+@media (max-width: 768px) {
+  .hero-arch-row {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-4);
+    scrollbar-width: none;
   }
-  .hero-playful__content {
-    align-items: center;
+  .hero-arch-row::-webkit-scrollbar { display: none; }
+  .hero-arch-card,
+  .hero-arch-card:nth-child(3) {
+    --card-w: 150px;
+    scroll-snap-align: center;
   }
-  .hero-playful__title {
-    font-size: var(--text-4xl);
-  }
-  .hero-playful__actions {
-    justify-content: center;
-  }
-  .hero-playful__image-frame {
-    max-width: 500px;
-    margin: 0 auto;
+  .hero-arch-card:nth-child(n) {
+    rotate: 0deg;
+    translate: 0 0;
   }
 }
 

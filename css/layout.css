@@ -101,14 +101,18 @@
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: var(--color-cream);
-  transition: transform var(--duration-normal) var(--ease-smooth),
-              box-shadow var(--duration-normal) var(--ease-smooth);
-  border-bottom: 2px solid rgba(45, 45, 45, 0.05);
+  background: transparent;            /* transparent overlay over the hero at rest */
+  transition: background-color var(--duration-normal) var(--ease-smooth),
+              border-color var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth),
+              transform var(--duration-normal) var(--ease-smooth);
+  border-bottom: 2px solid transparent;
 }
 
 .header.is-scrolled {
+  background: var(--color-cream);     /* solid cream bar once scrolled */
   box-shadow: var(--shadow-md);
+  border-bottom-color: rgba(45, 45, 45, 0.05);
 }
 
 .header.is-hidden {

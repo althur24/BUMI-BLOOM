@@ -34,10 +34,22 @@
     });
   }
 
-  // ─── Sticky Header (hide on scroll down, show on scroll up) ──────────
+  // ─── Sticky Header (transparent over hero → solid on scroll) ─────────
   const header = document.getElementById('header');
-  let lastScrollY = window.scrollY;
   let ticking = false;
+
+  // Keep the --header-height token in sync with the real header height so the
+  // hero overlap stays accurate across breakpoints. CSS provides a 76px fallback.
+  function syncHeaderHeight() {
+    if (header) {
+      document.documentElement.style.setProperty(
+        '--header-height',
+        header.offsetHeight + 'px'
+      );
+    }
+  }
+  window.addEventListener('load', syncHeaderHeight);
+  window.addEventListener('resize', syncHeaderHeight);
 
   function updateHeader() {
     const currentScrollY = window.scrollY;
@@ -48,15 +60,8 @@
       } else {
         header.classList.remove('is-scrolled');
       }
-
-      if (currentScrollY > lastScrollY && currentScrollY > 200) {
-        header.classList.add('is-hidden');
-      } else {
-        header.classList.remove('is-hidden');
-      }
     }
 
-    lastScrollY = currentScrollY;
     ticking = false;
   }
 
@@ -143,7 +148,7 @@
   const animatedElements = document.querySelectorAll(
     '.section__header, .product-card, .style-card, .why-choose-item, ' +
     '.testimonial-card, .promo-banner, .cta-banner-grid, .newsletter, ' +
-    '.hero-playful__content, .hero-playful__visual'
+    '.hero-playful__inner'
   );
 
   if ('IntersectionObserver' in window && animatedElements.length > 0) {

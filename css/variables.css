@@ -187,6 +187,9 @@
   --z-tooltip:   700;
   --z-toast:     800;
 
+  /* ── Header ── */
+  --header-height: 76px;
+
   /* ── Container Sizes ── */
   --container-sm:    640px;
   --container-md:    768px;
