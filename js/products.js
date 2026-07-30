@@ -10,7 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!window.BumiData) return;
   BumiData.ready().then(() => {
     if (document.getElementById('product-grid')) initPLP();
-    if (document.getElementById('collection-grid')) initHomeCollection();
+    if (document.getElementById('collection-grid')) {
+      initHomeCollection();
+      window.addEventListener('currency-updated', initHomeCollection);
+    }
   });
 });
 
@@ -283,7 +286,23 @@ function initPLP() {
     });
   }
 
+  // Price-band labels follow the active currency (the bands themselves
+  // are AUD values, so filtering logic is unaffected)
+  function renderPriceLabels() {
+    const labels = {
+      under15: 'Under ' + BumiData.formatPrice(15),
+      '15-30': BumiData.formatPrice(15) + ' – ' + BumiData.formatPrice(30),
+      '30-45': BumiData.formatPrice(30) + ' – ' + BumiData.formatPrice(45),
+      above45: 'Above ' + BumiData.formatPrice(45)
+    };
+    document.querySelectorAll('[data-price-label]').forEach(el => {
+      el.textContent = labels[el.dataset.priceLabel] || el.textContent;
+    });
+  }
+
   render();
+  renderPriceLabels();
+  window.addEventListener('currency-updated', () => { render(); renderPriceLabels(); });
 
   // Analytics: initial list view
   if (window.BumiTrack) {

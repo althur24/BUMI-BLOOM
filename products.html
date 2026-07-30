@@ -42,6 +42,10 @@
         </ul>
       </nav>
       <div class="header__actions">
+        <div class="currency-switch" role="group" aria-label="Currency">
+          <button class="currency-switch__btn" data-currency="AUD" type="button">AUD</button>
+          <button class="currency-switch__btn" data-currency="IDR" type="button">IDR</button>
+        </div>
         <button class="header__action-btn" id="search-toggle" aria-label="Search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </button>
@@ -192,10 +196,10 @@
             <div class="plp-sidebar__section">
               <h3 class="plp-sidebar__title">Price</h3>
               <div class="plp-sidebar__options">
-                <label><input type="checkbox" name="price" value="under15"> Under $15</label>
-                <label><input type="checkbox" name="price" value="15-30"> $15 – $30</label>
-                <label><input type="checkbox" name="price" value="30-45"> $30 – $45</label>
-                <label><input type="checkbox" name="price" value="above45"> Above $45</label>
+                <label><input type="checkbox" name="price" value="under15"> <span data-price-label="under15">Under $15</span></label>
+                <label><input type="checkbox" name="price" value="15-30"> <span data-price-label="15-30">$15 – $30</span></label>
+                <label><input type="checkbox" name="price" value="30-45"> <span data-price-label="30-45">$30 – $45</span></label>
+                <label><input type="checkbox" name="price" value="above45"> <span data-price-label="above45">Above $45</span></label>
               </div>
             </div>
 
@@ -292,6 +296,7 @@
   <script src="js/cart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
+  <script src="js/currency.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script src="js/products.js"></script>

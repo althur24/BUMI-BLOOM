@@ -178,13 +178,10 @@ const BumiData = {
   },
 
   /* ── Formatting ──
-     AUD, whole dollars for products; cents when fractional
-     (shipping / discounts). All prices are GST-inclusive. */
+     Delegates to BumiCurrency (AUD by default, IDR via the header
+     switch). Amounts are always GST-inclusive AUD at source. */
   formatPrice(amount) {
-    const n = Number(amount);
-    return '$' + (Number.isInteger(n)
-      ? n.toLocaleString('en-AU')
-      : n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    return BumiCurrency.format(amount);
   }
 };
 

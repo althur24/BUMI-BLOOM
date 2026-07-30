@@ -244,6 +244,42 @@
   height: 22px;
 }
 
+/* Currency switch (AUD / IDR) */
+.currency-switch {
+  display: flex;
+  align-items: center;
+  margin-right: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.currency-switch__btn {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  transition: background var(--duration-fast) var(--ease-smooth),
+              color var(--duration-fast) var(--ease-smooth);
+}
+
+.currency-switch__btn.is-active {
+  background: var(--color-dark);
+  color: var(--color-cream);
+}
+
+@media (max-width: 480px) {
+  .currency-switch {
+    margin-right: var(--space-1);
+  }
+
+  .currency-switch__btn {
+    padding: 2px var(--space-1);
+  }
+}
+
 .header__cart-count {
   position: absolute;
   top: 4px;

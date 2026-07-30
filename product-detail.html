@@ -42,6 +42,10 @@
         </ul>
       </nav>
       <div class="header__actions">
+        <div class="currency-switch" role="group" aria-label="Currency">
+          <button class="currency-switch__btn" data-currency="AUD" type="button">AUD</button>
+          <button class="currency-switch__btn" data-currency="IDR" type="button">IDR</button>
+        </div>
         <button class="header__action-btn" id="search-toggle" aria-label="Search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </button>
@@ -189,6 +193,7 @@
   <script src="js/cart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
+  <script src="js/currency.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script>
@@ -232,9 +237,11 @@
     let selectedColor = (product.colors[0] && product.colors[0].name) || '—';
     let selectedSize = product.sizes[0] || 'One Size';
 
-    const priceHTML = product.compareAt
-      ? BumiData.formatPrice(product.price) + '<span class="pdp-price__original">' + BumiData.formatPrice(product.compareAt) + '</span>'
-      : BumiData.formatPrice(product.price);
+    function buildPriceHTML() {
+      return product.compareAt
+        ? BumiData.formatPrice(product.price) + '<span class="pdp-price__original">' + BumiData.formatPrice(product.compareAt) + '</span>'
+        : BumiData.formatPrice(product.price);
+    }
 
     const badges = { new: 'New', bestseller: 'Bestseller' };
     const badgeHTML = product.badge && badges[product.badge]
@@ -264,8 +271,8 @@
         '<div class="pdp-info">' +
           '<p class="pdp-brand">' + product.brand + '</p>' +
           '<h1 class="pdp-name">' + product.name + '</h1>' +
-          '<p class="pdp-price">' + priceHTML + '</p>' +
-          '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
+          '<p class="pdp-price" id="pdp-price">' + buildPriceHTML() + '</p>' +
+          '<p id="pdp-afterpay" style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
           '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
           '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
@@ -341,6 +348,17 @@
       relatedGrid.innerHTML = related.map((p, i) => relatedCardHTML(p, i)).join('');
       relatedSection.style.display = '';
     }
+
+    // Re-render prices when the currency switch changes
+    window.addEventListener('currency-updated', () => {
+      const priceEl = document.getElementById('pdp-price');
+      if (priceEl) priceEl.innerHTML = buildPriceHTML();
+      const afterpayEl = document.getElementById('pdp-afterpay');
+      if (afterpayEl) afterpayEl.innerHTML = 'or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong>';
+      const stickyPrice = root.querySelector('.pdp-sticky-bar__price');
+      if (stickyPrice) stickyPrice.textContent = BumiData.formatPrice(product.price);
+      if (related.length) relatedGrid.innerHTML = related.map((p, i) => relatedCardHTML(p, i)).join('');
+    });
 
     function wishlistIcon(active) {
       return wishlistIconSvg(active).outerHTML;

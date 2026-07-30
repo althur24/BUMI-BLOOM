@@ -179,11 +179,10 @@ const BumiCart = {
     return subtotal * (p.rate || 0);
   },
 
+  /* Display formatting — delegates to BumiCurrency (AUD base, IDR
+     display). Amounts themselves always stay AUD. */
   formatPrice(amount) {
-    const n = Number(amount);
-    return '$' + (Number.isInteger(n)
-      ? n.toLocaleString('en-AU')
-      : n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    return BumiCurrency.format(amount);
   },
 
   showNotification(productName) {

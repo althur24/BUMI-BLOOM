@@ -40,6 +40,10 @@
         </ul>
       </nav>
       <div class="header__actions">
+        <div class="currency-switch" role="group" aria-label="Currency">
+          <button class="currency-switch__btn" data-currency="AUD" type="button">AUD</button>
+          <button class="currency-switch__btn" data-currency="IDR" type="button">IDR</button>
+        </div>
         <button class="header__action-btn" id="search-toggle" aria-label="Search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </button>
@@ -223,6 +227,7 @@
   <script src="js/cart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
+  <script src="js/currency.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
   <script>
@@ -344,11 +349,12 @@
 
     window.addEventListener('cart-updated', renderCart);
     window.addEventListener('promo-updated', () => { renderCart(); syncPromoMsg(); });
+    window.addEventListener('currency-updated', () => { renderCart(); renderRecommendations(); });
     syncPromoMsg();
     renderCart();
 
     // Recommendations from the catalog (needs the async-loaded catalog)
-    BumiData.ready().then(() => {
+    function renderRecommendations() {
       const recGrid = document.getElementById('recommendations-grid');
       const BG = ['yellow', 'green', 'pink', 'blue'];
       recGrid.innerHTML = BumiData.getFeatured(4).map((p, i) => {
@@ -362,7 +368,9 @@
             '<p class="product-card__price">' + BumiData.formatPrice(p.price) + '</p></div>' +
         '</article>';
       }).join('');
-    });
+    }
+
+    BumiData.ready().then(renderRecommendations);
   })();
   </script>
 </body>
