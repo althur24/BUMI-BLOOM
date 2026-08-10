@@ -601,6 +601,39 @@
   }
 }
 
+/* Phones: the header action row (logo + currency + 5 icon buttons) is wider
+   than the viewport, and body { overflow-x: hidden } clips the rightmost
+   buttons — making wishlist, cart and the menu unreachable. Compact the row
+   and move currency + account into the mobile drawer instead. */
+@media (max-width: 640px) {
+  .header__inner {
+    gap: var(--space-3);
+  }
+
+  .header__logo {
+    font-size: var(--text-xl);
+  }
+
+  .header__actions {
+    gap: 0;
+  }
+
+  .header__action-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header__actions .currency-switch,
+  .header__action-btn--account {
+    display: none;
+  }
+
+  .mobile-nav__footer .currency-switch {
+    margin-right: 0;
+    align-self: flex-start;
+  }
+}
+
 @media (max-width: 768px) {
   .footer__grid {
     grid-template-columns: 1fr;
