@@ -81,7 +81,22 @@
       }
     });
 
-    checkoutBtn.addEventListener('click', () => { window.location.href = '/checkout'; });
+    checkoutBtn.addEventListener('click', async () => {
+      if (checkoutBtn.disabled) return;
+      checkoutBtn.disabled = true;
+      const original = checkoutBtn.textContent;
+      checkoutBtn.textContent = 'Preparing checkout…';
+      try {
+        await BumiData.ready();
+        const url = await BumiCart.createShopifyCart();
+        window.location.href = url;
+      } catch (err) {
+        console.error('Checkout failed', err);
+        alert('Sorry, checkout could not start: ' + (err.message || err) + '. Please try again.');
+        checkoutBtn.disabled = false;
+        checkoutBtn.textContent = original;
+      }
+    });
 
     // Promo code
     const promoInput = document.getElementById('promo-input');

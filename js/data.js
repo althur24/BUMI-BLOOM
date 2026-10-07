@@ -37,8 +37,10 @@ const PRODUCTS_QUERY = `{
         variants(first: 100) {
           edges {
             node {
+              id
               price { amount currencyCode }
               compareAtPrice { amount }
+              quantityAvailable
               selectedOptions { name value }
             }
           }
@@ -86,6 +88,19 @@ function mapShopifyProduct(node) {
     if (size && size.value && !sizes.includes(size.value)) sizes.push(size.value);
   });
 
+  // Daftar varian lengkap (dipakai cart untuk dapat merchandiseId/GID saat checkout Shopify).
+  const variantList = variants.map((v) => {
+    const color = (v.selectedOptions || []).find((o) => o.name === 'Color');
+    const size = (v.selectedOptions || []).find((o) => o.name === 'Size');
+    return {
+      id: v.id,
+      color: color ? color.value : '',
+      size: size ? size.value : '',
+      price: parseFloat(v.price.amount),
+      available: typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true,
+    };
+  });
+
   const images = (node.images && node.images.edges || []).map((e) => e.node && e.node.url).filter(Boolean);
   const featured = node.featuredImage && node.featuredImage.url;
   const image = featured || images[0] || PLACEHOLDER_IMG;
@@ -105,6 +120,7 @@ function mapShopifyProduct(node) {
     fibre: meta.fibre || '',
     colors: Array.isArray(colors) ? colors : [],
     sizes,
+    variants: variantList,
     image,
     gallery: gallery.length ? gallery : [image],
     badge: meta.badge || null,
@@ -268,6 +284,9 @@ const BumiData = {
 };
 
 window.BumiData = BumiData;
+
+// Storefront config dibuka untuk dipakai modul lain (cart.js createShopifyCart).
+window.BumiShop = { endpoint: SHOPIFY_ENDPOINT, token: SHOPIFY_STOREFRONT_TOKEN };
 
 // Eagerly start the fetch as soon as the script loads (parallel with page parsing).
 BumiData.ready();

@@ -140,8 +140,9 @@
                 <p class="promo-field__msg" id="promo-msg" style="display:none;"></p>
                 <div class="cart-summary__row"><span>Subtotal</span><span id="cart-subtotal">—</span></div>
                 <div class="cart-summary__row" id="cart-discount-row" style="display:none;"><span id="cart-discount-label">Discount</span><span id="cart-discount">—</span></div>
-                <div class="cart-summary__row"><span>Shipping</span><span id="cart-shipping">—</span></div>
-                <div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="cart-total">—</span></div>
+                <div class="cart-summary__row"><span>Shipping (est.)</span><span id="cart-shipping">—</span></div>
+                <div class="cart-summary__row cart-summary__row--total"><span>Estimated total</span><span id="cart-total">—</span></div>
+                <p style="font-size:var(--text-xs);opacity:0.7;margin-top:var(--space-2);">Shipping &amp; taxes finalized at Shopify checkout.</p>
                 <p style="font-size:var(--text-xs);opacity:0.6;text-align:right;margin:var(--space-1) 0 0;">Prices include GST.</p>
                 <button class="btn btn--primary btn--full" type="button" id="checkout-btn">Proceed to Checkout</button>
                 <a href="products" class="btn btn--ghost btn--full" style="margin-top: var(--space-2);">Continue Shopping</a>
@@ -231,8 +232,6 @@
 
   <script src="js/app.js"></script>
   <script src="js/cart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js"></script>
   <script src="js/currency.js"></script>
   <script src="js/data.js"></script>
   <script src="js/wishlist.js"></script>
@@ -320,7 +319,22 @@
       }
     });
 
-    checkoutBtn.addEventListener('click', () => { window.location.href = 'checkout'; });
+    checkoutBtn.addEventListener('click', async () => {
+      if (checkoutBtn.disabled) return;
+      checkoutBtn.disabled = true;
+      const original = checkoutBtn.textContent;
+      checkoutBtn.textContent = 'Preparing checkout…';
+      try {
+        await BumiData.ready(); // pastikan katalog (variant GID) sudah dimuat
+        const url = await BumiCart.createShopifyCart();
+        window.location.href = url;
+      } catch (err) {
+        console.error('Checkout failed', err);
+        alert('Sorry, checkout could not start: ' + (err.message || err) + '. Please try again.');
+        checkoutBtn.disabled = false;
+        checkoutBtn.textContent = original;
+      }
+    });
 
     // Promo code
     const promoInput = document.getElementById('promo-input');

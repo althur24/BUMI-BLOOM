@@ -12,53 +12,11 @@ const BumiCart = {
   /* AU shipping (AUD). freeThreshold applies to the (pre-discount) subtotal. */
   SHIPPING: { flat: 9.95, express: 14.95, freeThreshold: 60 },
 
-  /* Promo codes — single source of truth is the Promotion table (managed in
-     the admin). Loaded once per page load; applyPromo awaits the fetch. */
-  PROMOS: {},
-  _promosPromise: null,
-
-  promosReady() {
-    if (!this._promosPromise) this._promosPromise = this._loadPromos();
-    return this._promosPromise;
-  },
-
-  async _loadPromos() {
-    // js/supabase.js may load after this script — wait briefly for it.
-    for (let i = 0; i < 50 && !window.bbSupabase; i++) {
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    if (!window.bbSupabase) return;
-    try {
-      const supabase = window.bbSupabase.getClient();
-      const { data, error } = await supabase
-        .from('Promotion')
-        .select('code,label,type,value,startsAt,endsAt,usageLimit,usedCount')
-        .eq('isActive', true);
-      if (error) throw error;
-
-      const now = Date.now();
-      const map = {};
-      (data || []).forEach((p) => {
-        const starts = p.startsAt ? Date.parse(p.startsAt) : null;
-        const ends = p.endsAt ? Date.parse(p.endsAt) : null;
-        if ((starts && now < starts) || (ends && now > ends)) return;
-        if (p.usageLimit != null && (p.usedCount || 0) >= p.usageLimit) return;
-        map[String(p.code).toUpperCase()] = p.type === 'FIXED_AMOUNT'
-          ? { fixed: (p.value || 0) / 100, label: p.label }   // value is AUD cents
-          : { rate: p.value || 0, label: p.label };           // value is a rate (0.10)
-      });
-      this.PROMOS = map;
-      // Drop any stored promo that no longer exists, then refresh the UI.
-      try {
-        const stored = JSON.parse(localStorage.getItem(this.PROMO_KEY) || 'null');
-        if (stored && !this.PROMOS[stored.code]) localStorage.removeItem(this.PROMO_KEY);
-      } catch {
-        localStorage.removeItem(this.PROMO_KEY);
-      }
-      window.dispatchEvent(new CustomEvent('promo-updated'));
-    } catch (err) {
-      console.error('BumiCart: failed to load promotions', err);
-    }
+  /* Promo codes — kini dikelola sebagai Shopify discount codes (Fase 6).
+     Local config ini hanya untuk tampilan ringkasan cart; validasi nyata
+     dilakukan Shopify saat checkout. */
+  PROMOS: {
+    WELCOME10: { rate: 0.10, label: 'Welcome — 10% off' },
   },
 
   getCart() {
@@ -145,7 +103,6 @@ const BumiCart = {
 
   /* ── Promo codes ── */
   async applyPromo(code) {
-    await this.promosReady();
     const key = String(code || '').trim().toUpperCase();
     const promo = this.PROMOS[key];
     if (!promo) {
@@ -177,6 +134,62 @@ const BumiCart = {
     if (!p) return 0;
     if (p.fixed != null) return Math.min(p.fixed, subtotal);
     return subtotal * (p.rate || 0);
+  },
+
+  /* ── Shopify checkout (Fase 4/5) ──
+     Bangun Shopify cart dari isi localStorage cart, lalu kembalikan
+     checkoutUrl Shopify (pembayaran asli). Promo code (kalau ada) dikirim
+     sebagai discountCodes — Shopify yang validasi. */
+  async createShopifyCart() {
+    const items = this.getCart();
+    if (!items.length) throw new Error('Cart is empty');
+
+    const lineItems = [];
+    const skipped = [];
+    for (const item of items) {
+      const product = window.BumiData ? BumiData.getProduct(item.id) : null;
+      const variant = product && product.variants
+        ? product.variants.find((v) => v.color === item.color && v.size === item.size)
+        : null;
+      if (!variant) { skipped.push(item); continue; }
+      lineItems.push({ merchandiseId: variant.id, quantity: item.quantity || 1 });
+    }
+    if (skipped.length) {
+      // Jangan diam-diam drop item — beri tahu customer agar bisa hapus & retry.
+      throw new Error('Some cart items could not be matched to a variant: '
+        + skipped.map((s) => s.name || s.id).join(', ')
+        + '. Please remove them and try again.');
+    }
+    if (!lineItems.length) throw new Error('No matching product variants (catalog not loaded?)');
+
+    const input = { lines: lineItems };
+    const promo = this.getPromo();
+    if (promo && promo.code) input.discountCodes = [promo.code];
+
+    const shop = window.BumiShop;
+    if (!shop) throw new Error('Shopify config missing');
+    const res = await fetch(shop.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': shop.token },
+      body: JSON.stringify({
+        query: `mutation CartCreate($input: CartInput!) {
+          cartCreate(input: $input) {
+            cart { id checkoutUrl }
+            userErrors { field message code }
+          }
+        }`,
+        variables: { input },
+      }),
+    });
+    if (!res.ok) throw new Error(`Storefront HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.errors && json.errors.length) throw new Error('Cart GraphQL: ' + JSON.stringify(json.errors));
+    const cart = json.data.cartCreate.cart;
+    if (json.data.cartCreate.userErrors && json.data.cartCreate.userErrors.length) {
+      throw new Error('Cart errors: ' + json.data.cartCreate.userErrors.map((e) => e.message).join('; '));
+    }
+    if (!cart) throw new Error('Shopify did not return a cart');
+    return cart.checkoutUrl;
   },
 
   /* Display formatting — delegates to BumiCurrency (AUD base, IDR
@@ -260,6 +273,5 @@ document.head.appendChild(notifStyle);
 // Make BumiCart globally available
 window.BumiCart = BumiCart;
 
-// Eagerly fetch active promotions (parallel with page parsing).
-BumiCart.promosReady();
+// Promo kini local config (tidak perlu fetch). Trigger initial cart badge.
 window.dispatchEvent(new CustomEvent('cart-updated'));
