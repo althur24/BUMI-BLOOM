@@ -1,0 +1,478 @@
+<!-- Crayon path down the page edge (wide screens) -->
+  <div class="paper-path" aria-hidden="true"></div>
+
+  <!-- Announcement Bar -->
+  <div class="announcement-bar" id="announcement-bar">
+    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="/products?category=kids">Shop Now</a></span>
+    <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="/" class="header__logo">BUMI / BLOOM</a>
+
+      <nav class="header__nav" id="main-nav">
+        <ul class="header__nav-list">
+          <li><a href="/products?category=new" class="header__nav-link">New In</a></li>
+          <li><a href="/products?category=girls" class="header__nav-link">Girls</a></li>
+          <li><a href="/products?category=boys" class="header__nav-link">Boys</a></li>
+          <li><a href="/products?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="/products?category=women" class="header__nav-link">Women</a></li>
+          <li><a href="/brands" class="header__nav-link">Brands</a></li>
+          <li><a href="/products?category=essentials" class="header__nav-link">Essentials</a></li>
+          <li><a href="/products?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
+          <li><a href="/journal" class="header__nav-link">Journal</a></li>
+        </ul>
+      </nav>
+
+      <div class="header__actions">
+        <div class="currency-switch" role="group" aria-label="Currency">
+          <button class="currency-switch__btn" data-currency="AUD" type="button">AUD</button>
+          <button class="currency-switch__btn" data-currency="IDR" type="button">IDR</button>
+        </div>
+        <button class="header__action-btn" id="search-toggle" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <a href="/account" class="header__action-btn header__action-btn--account" aria-label="Account">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </a>
+        <a href="/wishlist" class="header__action-btn" aria-label="Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span class="header__cart-count" id="wishlist-count">0</span>
+        </a>
+        <a href="/cart" class="header__action-btn header__cart-btn" id="cart-toggle" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span class="header__cart-count" id="cart-count">0</span>
+        </a>
+        <button class="header__action-btn header__menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Nav Drawer -->
+  <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav__overlay" id="mobile-nav-overlay"></div>
+    <div class="mobile-nav__drawer">
+      <div class="mobile-nav__header">
+        <span class="header__logo">BUMI / BLOOM</span>
+        <button class="mobile-nav__close" id="mobile-nav-close" aria-label="Close menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <nav class="mobile-nav__links">
+        <a href="/products?category=new" class="mobile-nav__link">New In</a>
+        <a href="/products?category=girls" class="mobile-nav__link">Girls</a>
+        <a href="/products?category=boys" class="mobile-nav__link">Boys</a>
+        <a href="/products?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="/products?category=women" class="mobile-nav__link">Women</a>
+        <a href="/brands" class="mobile-nav__link">Brands</a>
+        <a href="/products?category=essentials" class="mobile-nav__link">Essentials</a>
+        <a href="/products?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
+        <a href="/journal" class="mobile-nav__link">Journal</a>
+      </nav>
+      <div class="mobile-nav__footer">
+        <a href="/account" class="mobile-nav__footer-link">My Account</a>
+        <a href="/wishlist" class="mobile-nav__footer-link">Wishlist</a>
+        <a href="/cart" class="mobile-nav__footer-link">Cart</a>
+        <div class="currency-switch" role="group" aria-label="Currency">
+          <button class="currency-switch__btn" data-currency="AUD" type="button">AUD</button>
+          <button class="currency-switch__btn" data-currency="IDR" type="button">IDR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Modal -->
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal__overlay" id="search-modal-overlay"></div>
+    <div class="search-modal__content">
+      <form class="search-modal__form" id="search-form">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" class="search-modal__input" id="search-input" placeholder="Search for kids' clothing..." aria-label="Search products">
+        <button type="button" class="search-modal__close" id="search-close" aria-label="Close search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- Hero (static, centered) -->
+    <section class="hero-playful" id="hero">
+      <div class="hero-characters" aria-hidden="true">
+        <img src="/images/characters/bunny.webp" alt="" class="hero-character hero-character--bunny" loading="lazy">
+        <svg class="hero-doodle hero-doodle--star1" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 L24 15 L36 16 L27 24 L30 36 L20 29 L10 36 L13 24 L4 16 L16 15 Z"/></svg>
+        <svg class="hero-doodle hero-doodle--star2" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 L24 15 L36 16 L27 24 L30 36 L20 29 L10 36 L13 24 L4 16 L16 15 Z"/></svg>
+        <svg class="hero-doodle hero-doodle--pencil" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 46 L40 14 L50 22 L28 54 L14 58 Z"/><path d="M40 14 L46 6 L56 18 L50 22"/><path d="M22 44 L32 50"/><path d="M54 8 L58 4 M60 14 L64 12 M50 2 L52 6"/></svg>
+        <span class="hero-doodle-badge"><img src="/images/characters/octopus.webp" alt="" loading="lazy"></span>
+      </div>
+
+      <div class="container hero-playful__inner">
+        <p class="hero-playful__badge">★★★★★ Loved by 2,000+ Aussie families</p>
+        <h1 class="hero-playful__title">
+          <span class="hero-title__word--accent">Dress</span> your little ones in
+          <span class="script-accent hero-title__script">colourful</span>
+          <span class="hero-title__underlined">confidence!<svg class="hero-title__squiggle" viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 14 Q 34 4 64 12 T 124 12 T 196 9" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/></svg></span>
+        </h1>
+        <p class="hero-playful__subtitle">Thoughtfully curated kids' pieces from Indonesian designers — plus women's casual staples — in soft, premium fabrics that are made to last and made to play in.</p>
+        <div class="hero-playful__actions">
+          <a href="/products?category=kids" class="btn btn--primary btn--lg">Shop the Collection</a>
+          <a href="/products?category=bestsellers" class="btn btn--secondary btn--lg">Shop Bestsellers</a>
+          <svg class="doodle-arrow" viewBox="0 0 100 60" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M92 8 C 62 12, 36 26, 16 46 M 32 40 L 14 48 L 24 30"/></svg>
+        </div>
+        <ul class="hero-chips">
+          <li>🧵 Designed &amp; made in Indonesia</li>
+          <li>🚚 Free AU shipping over $60</li>
+          <li>🛡️ 14-day damage guarantee</li>
+          <li>💳 Afterpay available</li>
+        </ul>
+      </div>
+
+      <div class="hero-arch-row" aria-hidden="true">
+        <div class="hero-arch-card hero-arch-card--peach">
+          <img src="/images/categories/baby.png" alt="" loading="lazy">
+        </div>
+        <div class="hero-arch-card hero-arch-card--pink hero-arch-card--character">
+          <img src="/images/characters/dino.webp" alt="" loading="lazy">
+        </div>
+        <div class="hero-arch-card hero-arch-card--blue">
+          <img src="/images/categories/kids.png" alt="" loading="eager">
+        </div>
+        <div class="hero-arch-card hero-arch-card--pink hero-arch-card--character">
+          <img src="/images/characters/cat.webp" alt="" loading="lazy">
+        </div>
+        <div class="hero-arch-card hero-arch-card--peach">
+          <img src="/images/hero/hero-main.png" alt="" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Trust Bar -->
+    <section class="trust-bar">
+      <img src="/images/characters/penguin.webp" alt="" class="margin-friend friend--penguin" loading="lazy" aria-hidden="true">
+      <div class="container trust-bar__inner">
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg><span>Designed &amp; made in Indonesia</span></div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg><span>Honest materials</span></div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg><span>14-day damage guarantee</span></div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg><span>Free AU shipping over $60</span></div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg><span>Afterpay available</span></div>
+      </div>
+    </section>
+
+    <!-- Shop by Age -->
+    <section class="section" id="shop-by-age">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Shop the <span class="script-accent">Family</span></h2>
+          <p class="section__subtitle">From first onesies to playground-ready favourites — and easy pieces for you.</p>
+        </div>
+        <div class="age-tiles">
+          <a class="age-tile" href="/products?category=girls">
+            <div class="age-tile__character"><img src="/images/characters/bunny.webp" alt="Bunny character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="/images/categories/kids.png" alt="Girl jumping in a comfy BUMI / BLOOM outfit" loading="lazy"></div>
+            <div class="age-tile__label"><h3>Girls</h3><p>Twirl-ready dresses &amp; soft tops</p></div>
+          </a>
+          <a class="age-tile" href="/products?category=boys">
+            <div class="age-tile__image age-tile__image--doodle"><img src="/images/characters/dino.webp" alt="Hand-drawn dino doodle" loading="lazy"></div>
+            <div class="age-tile__label"><h3>Boys</h3><p>Tough-comfy basics for adventurers</p></div>
+          </a>
+          <a class="age-tile" href="/products?category=baby">
+            <div class="age-tile__character"><img src="/images/characters/whale.webp" alt="Whale character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="/images/categories/baby.png" alt="Baby in a soft striped BUMI / BLOOM onesie" loading="lazy"></div>
+            <div class="age-tile__label"><h3>Baby</h3><p>Gentle, soft pieces for little ones</p></div>
+          </a>
+          <a class="age-tile" href="/products?category=women">
+            <div class="age-tile__character"><img src="/images/characters/cat.webp" alt="Cat character" loading="lazy"></div>
+            <div class="age-tile__image"><img src="/images/categories/dresses.png" alt="Woman in a relaxed casual dress" loading="lazy"></div>
+            <div class="age-tile__label"><h3>Women</h3><p>Easy, everyday casual pieces</p></div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Bestsellers / Collections -->
+    <section class="section collections-section" id="collections">
+      <img src="/images/characters/dino.webp" alt="" class="margin-friend friend--dino" loading="lazy" aria-hidden="true">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Loved by <span class="script-accent">Aussie families</span></h2>
+          <p class="section__subtitle">Bestsellers and fresh favourites — all in AUD, all GST-inclusive.</p>
+        </div>
+        <div class="collection-tabs" id="collection-tabs">
+          <button class="collection-tab is-active" data-filter="all">All</button>
+          <button class="collection-tab" data-filter="tshirts">Tops</button>
+          <button class="collection-tab" data-filter="shorts">Bottoms</button>
+          <button class="collection-tab" data-filter="dresses">Dresses</button>
+          <button class="collection-tab" data-filter="outerwear">Outerwear</button>
+        </div>
+        <!-- Cards rendered by js/products.js (getFeatured) -->
+        <div class="collection-grid" id="collection-grid"></div>
+        <div style="text-align:center;margin-top:var(--space-8);">
+          <a href="/products" class="btn btn--primary">View All Products</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Offer Band -->
+    <section class="section" id="offer-band">
+      <div class="container">
+        <div class="offer-band">
+          <img src="/images/characters/octopus.webp" alt="" class="margin-friend friend--octopus" loading="lazy" aria-hidden="true">
+          <div class="offer-band__content">
+            <p class="offer-band__eyebrow">Welcome offer</p>
+            <h2 class="offer-band__title">10% off your first order</h2>
+            <p class="offer-band__text">Join the family — use code <span class="crayon-code">WELCOME10</span> at checkout. Stacks with free AU shipping over $60.</p>
+            <a href="/products?category=kids" class="btn btn--primary btn--lg">Start Shopping</a>
+          </div>
+          <div class="offer-band__image">
+            <img src="/images/editorial/bumi-edit.png" alt="Kids wearing colourful BUMI / BLOOM outfits" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Why Choose Us -->
+    <section class="section why-choose-section" id="why-choose">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Our <span class="script-accent">promises</span> to you</h2>
+          <p class="section__subtitle">Honest kidswear from a family-run brand — designed &amp; made in Indonesia.</p>
+        </div>
+        <div class="why-choose-grid">
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon">🧵</div>
+            <div>
+              <h3 class="why-choose-item__title">Designed &amp; made in Indonesia</h3>
+              <p class="why-choose-item__text">Every piece is designed and made in Indonesia by the independent studios we partner with.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon">🌿</div>
+            <div>
+              <h3 class="why-choose-item__title">Honest materials</h3>
+              <p class="why-choose-item__text">Real fabrics, clearly listed on every product — organic cotton where stated, and non-toxic, azo-free dyes.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon">🛡️</div>
+            <div>
+              <h3 class="why-choose-item__title">14-day damage guarantee</h3>
+              <p class="why-choose-item__text">Faulty or damaged? Tell us within 14 days of delivery and we'll refund or replace — on top of your Australian consumer rights.</p>
+            </div>
+          </div>
+          <div class="why-choose-item">
+            <div class="why-choose-item__icon">🤍</div>
+            <div>
+              <h3 class="why-choose-item__title">Independent &amp; family-run</h3>
+              <p class="why-choose-item__text">A small, family-run business — not a faceless conglomerate. Your order supports real people.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider (whale spout) -->
+    <div class="squiggle-divider squiggle-divider--red" aria-hidden="true">
+      <img src="/images/characters/whale.webp" alt="" class="divider-friend" loading="lazy">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Testimonials -->
+    <section class="section testimonials-section" id="testimonials">
+      <img src="/images/characters/cat.webp" alt="" class="margin-friend friend--cat" loading="lazy" aria-hidden="true">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Loved by <span class="script-accent">parents</span></h2>
+          <p class="section__subtitle">★★★★★ 4.9 average from 2,000+ reviews.</p>
+        </div>
+        <div class="testimonials-grid">
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"The quality is amazing! My daughter loves her new dress and it's held up beautifully through countless washes. Shipping to Brisbane was fast too."</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar">S</div>
+              <div>
+                <p class="testimonial-card__name">Sarah M.</p>
+                <p class="testimonial-card__role">Mum of 2 · Brisbane ✅ Verified buyer</p>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"Finally found comfy AND stylish kids' clothes. The colours are gorgeous and the fabrics so soft. Afterpay made it easy."</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar">A</div>
+              <div>
+                <p class="testimonial-card__name">Andrew P.</p>
+                <p class="testimonial-card__role">Dad of 1 · Melbourne ✅ Verified buyer</p>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+            <p class="testimonial-card__text">"Customer service was exceptional and delivery to Perth was super quick. My son's new wardrobe is sorted thanks to BUMI / BLOOM!"</p>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar">R</div>
+              <div>
+                <p class="testimonial-card__name">Rachael S.</p>
+                <p class="testimonial-card__role">Mum of 3 · Perth ✅ Verified buyer</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crayon divider -->
+    <div class="squiggle-divider squiggle-divider--blue" aria-hidden="true">
+      <svg viewBox="0 0 720 24" preserveAspectRatio="none"><path pathLength="1" d="M4 14 Q 26 4 48 13 T 92 13 T 136 13 T 180 13 T 224 13 T 268 13 T 312 13 T 356 13 T 400 13 T 444 13 T 488 13 T 532 13 T 576 13 T 620 13 T 664 13 T 708 13"/></svg>
+    </div>
+
+    <!-- Newsletter + Payment trust -->
+    <section class="section" id="newsletter">
+      <div class="container">
+        <div class="newsletter">
+          <img src="/images/characters/turtle.webp" alt="" class="margin-friend friend--turtle" loading="lazy" aria-hidden="true">
+          <h2 class="newsletter__title">Get <span class="script-accent">10% off</span> your first order</h2>
+          <p class="newsletter__text">Join our list for new drops, local stories and playful style — and we'll send your welcome code.</p>
+          <form class="newsletter__form" id="newsletter-form">
+            <input type="email" class="input" placeholder="Your email address" aria-label="Email address" required>
+            <button type="submit" class="btn btn--primary">Get my 10% off</button>
+          </form>
+          <p class="newsletter__code-hint" style="display:none;"></p>
+        </div>
+        <div class="pay-strip" aria-label="We accept">
+          <span class="pay-strip__label">Secure checkout</span>
+          <span class="pay-chip">Afterpay</span>
+          <span class="pay-chip">Visa</span>
+          <span class="pay-chip">Mastercard</span>
+          <span class="pay-chip">PayPal</span>
+          <span class="pay-chip">Apple Pay</span>
+          <span class="pay-strip__label">🇦🇺 Australian owned &amp; operated</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="/" class="footer__logo">BUMI / BLOOM</a>
+          <p class="footer__desc">Colourful, comfy kidswear and women's casual, designed &amp; made in Indonesia and delivered Australia-wide. Made to last, made to play in.</p>
+          <div class="footer__social">
+            <a href="#" class="footer__social-link" aria-label="Instagram">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="Facebook">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+              </svg>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="TikTok">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Shop</h4>
+          <ul class="footer__nav-list">
+            <li><a href="/products?category=new">New In</a></li>
+            <li><a href="/products?category=girls">Girls</a></li>
+            <li><a href="/products?category=boys">Boys</a></li>
+            <li><a href="/products?category=baby">Baby</a></li>
+            <li><a href="/products?category=women">Women</a></li>
+            <li><a href="/products?category=sale">Sale</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Help</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#shop-by-age">Size Guide</a></li>
+            <li><a href="#why-choose">Shipping &amp; Returns</a></li>
+            <li><a href="#newsletter">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">About</h4>
+          <ul class="footer__nav-list">
+            <li><a href="#why-choose">Our Story</a></li>
+            <li><a href="#why-choose">Sustainability</a></li>
+            <li><a href="/journal">Journal</a></li>
+            <li><a href="/brands">Our Brands</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; 2026 BUMI / BLOOM. All prices in AUD, GST-inclusive.</p>
+        <div class="footer__bottom-links">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="/admin">Admin</a>
+        </div>
+      </div>
+    </div>
+  </footer>

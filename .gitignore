@@ -9,6 +9,8 @@ node_modules/
 # Build output
 dist/
 build/
+.next/
+next-env.d.ts
 
 # OS files
 .DS_Store
