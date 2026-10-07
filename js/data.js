@@ -2,72 +2,123 @@
    BUMI / BLOOM — Product Catalog (Kids)
    Storefront data facade.
 
-   Loads published products and brands from Supabase
-   (anon key + RLS) once per page load, caches them in
-   the SAME shape the PLP, PDP, homepage grid, wishlist
-   and cart already consume, and exposes the same
-   synchronous BumiData API.
+   Sumber produk & brand: Shopify Storefront API (public token).
+   Produk & brand di-fetch terpisah (Promise.allSettled) agar kegagalan
+   satu tidak mengosongkan yang lain.
 
-   `id` === Product.slug, kept stable so cart/wishlist
-   and ?id= URLs keep working. Load-time renderers must
-   `await BumiData.ready()` before reading; click-time
-   consumers (cart add, wishlist move) run after load.
+   Memetakan Shopify → bentuk {id,name,brand,price,colors,sizes,image,
+   gallery,...} yang SAMA dengan konsumen PLP/PDP/cart/wishlist/homepage.
+   `id` === product.handle (sebelumnya === Product.slug), tetap stabil
+   supaya cart/wishlist dan ?id= URLs jalan. Load-time renderers harus
+   `await BumiData.ready()` sebelum baca; click-time consumers aman setelah load.
    ============================================ */
 
-const PLACEHOLDER_IMG = 'images/placeholder.png';
+const PLACEHOLDER_IMG = '/images/placeholder.png';
 
-// Placeholder photography showing adult men is out of scope (kids + women's
-// casual only). Remap those assets to in-scope kidswear photography until
-// proper product photos are uploaded.
-const IMAGE_REMAP = {
-  'images/categories/tshirts.png': 'images/categories/kids.png',
-  'images/categories/shirts.png': 'images/categories/kids.png',
-};
-function remapImage(url) {
-  return IMAGE_REMAP[url] || url;
+// ── Shopify Storefront config (public token, aman di browser) ──────────────
+const SHOPIFY_SHOP = 'p9gcf7-wj';
+const SHOPIFY_STOREFRONT_TOKEN = 'f221d7b0fcb996294ab2cb0732cf01b5';
+const SHOPIFY_API_VERSION = '2026-10';
+
+const SHOPIFY_ENDPOINT = `https://${SHOPIFY_SHOP}.myshopify.com/api/${SHOPIFY_API_VERSION}/graphql.json`;
+
+// Query produk (semua field yang dipakai mapShopifyProduct).
+const PRODUCTS_QUERY = `{
+  products(first: 100) {
+    edges {
+      node {
+        handle
+        title
+        description
+        productType
+        vendor
+        featuredImage { url }
+        images(first: 10) { edges { node { url } } }
+        variants(first: 100) {
+          edges {
+            node {
+              price { amount currencyCode }
+              compareAtPrice { amount }
+              selectedOptions { name value }
+            }
+          }
+        }
+        metafields(identifiers: [
+          {namespace:"bumi",key:"colors"},
+          {namespace:"bumi",key:"fibre"},
+          {namespace:"bumi",key:"material"},
+          {namespace:"bumi",key:"audience"},
+          {namespace:"bumi",key:"badge"},
+          {namespace:"bumi",key:"is_new"},
+          {namespace:"bumi",key:"is_bestseller"},
+          {namespace:"bumi",key:"rating"},
+          {namespace:"bumi",key:"reviews_count"},
+          {namespace:"bumi",key:"added_at_rank"}
+        ]) { key value }
+      }
+    }
+  }
+}`;
+
+// Query brand metaobjects.
+const BRANDS_QUERY = `{
+  metaobjects(type: "brand", first: 50) {
+    edges { node { handle fields { key value } } }
+  }
+}`;
+
+function safeParseJSON(s, fallback) {
+  if (!s) return fallback;
+  try { return JSON.parse(s); } catch { return fallback; }
 }
 
-// Supabase Product (+relations) → data.js product shape.
-function mapProduct(p) {
-  const rawImgs = (p.ProductImage || []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  const gallery = [...new Set(rawImgs.map((i) => remapImage(i.MediaAsset && i.MediaAsset.publicUrl)).filter(Boolean))];
-  const primary = rawImgs.find((i) => i.isPrimary) || rawImgs[0];
-  const image = remapImage((primary && primary.MediaAsset && primary.MediaAsset.publicUrl)) || gallery[0] || PLACEHOLDER_IMG;
+// Shopify Storefront product node → data.js product shape.
+function mapShopifyProduct(node) {
+  const meta = {};
+  for (const m of (node.metafields || [])) if (m && m.key) meta[m.key] = m.value;
 
-  const colors = (p.ProductColor || [])
-    .slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((c) => ({ name: c.name, hex: c.hex || '#cccccc' }));
+  const colors = safeParseJSON(meta.colors, []);
+  const variants = (node.variants && node.variants.edges || []).map((e) => e.node);
 
-  // Variants are one row per color×size — de-dupe sizes, preserve first-seen order.
   const sizes = [];
-  (p.ProductVariant || []).forEach((v) => {
-    if (v.size && !sizes.includes(v.size)) sizes.push(v.size);
+  variants.forEach((v) => {
+    const size = (v.selectedOptions || []).find((o) => o.name === 'Size');
+    if (size && size.value && !sizes.includes(size.value)) sizes.push(size.value);
   });
 
+  const images = (node.images && node.images.edges || []).map((e) => e.node && e.node.url).filter(Boolean);
+  const featured = node.featuredImage && node.featuredImage.url;
+  const image = featured || images[0] || PLACEHOLDER_IMG;
+  const gallery = images.length ? images : [image];
+
+  const priceAmt = variants.length ? parseFloat(variants[0].price.amount) : 0;
+  const compareAt = variants.length && variants[0].compareAtPrice ? parseFloat(variants[0].compareAtPrice.amount) : undefined;
+
   return {
-    id: p.slug,
-    name: p.name || '',
-    brand: (p.Brand && p.Brand.name) || '',
-    audience: (p.audience || '').toLowerCase(),
-    category: (p.category || '').toLowerCase(),
-    price: Math.round((p.priceAudCents || 0) / 100),
-    compareAt: p.compareAtAudCents ? Math.round(p.compareAtAudCents / 100) : undefined,
-    fibre: p.fibre || '',
-    colors,
+    id: node.handle,
+    name: node.title || '',
+    brand: node.vendor || '',
+    audience: (meta.audience || '').toLowerCase(),
+    category: (node.productType || '').toLowerCase(),
+    price: Math.round(priceAmt),
+    compareAt: compareAt ? Math.round(compareAt) : undefined,
+    fibre: meta.fibre || '',
+    colors: Array.isArray(colors) ? colors : [],
     sizes,
     image,
     gallery: gallery.length ? gallery : [image],
-    badge: p.badge ? String(p.badge).toLowerCase() : null,
-    isNew: !!p.isNew,
-    isBestseller: !!p.isBestseller,
-    rating: p.rating || 0,
-    reviews: p.reviewsCount || 0,
-    addedAt: p.addedAtRank != null ? p.addedAtRank : (p.createdAt ? Date.parse(p.createdAt) : 0),
-    description: p.description || '',
-    material: p.material || '',
+    badge: meta.badge || null,
+    isNew: meta.is_new === 'true',
+    isBestseller: meta.is_bestseller === 'true',
+    rating: meta.rating ? parseFloat(meta.rating) : 0,
+    reviews: meta.reviews_count ? parseInt(meta.reviews_count, 10) : 0,
+    addedAt: meta.added_at_rank ? parseInt(meta.added_at_rank, 10) : 0,
+    description: node.description || '',
+    material: meta.material || '',
   };
 }
 
+// Brand shape converter (sama dengan konsumen lama: slug/name/city/audience/website/desc).
 function mapBrand(b) {
   return {
     slug: b.slug,
@@ -77,6 +128,46 @@ function mapBrand(b) {
     website: b.website || '',
     desc: b.shortDesc || '',
   };
+}
+
+// Shopify brand metaobject node → brand shape.
+function mapShopifyBrand(node) {
+  const f = {};
+  for (const field of (node.fields || [])) if (field && field.key) f[field.key] = field.value;
+  return mapBrand({
+    slug: node.handle,
+    name: f.name || '',
+    city: f.city || 'Indonesia',
+    audience: f.audience || '',
+    website: f.website || '',
+    shortDesc: f.desc || '',
+  });
+}
+
+// Satu helper untuk POST Storefront GraphQL.
+async function storefrontPost(query) {
+  const res = await fetch(SHOPIFY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
+    },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`Storefront API HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.errors && json.errors.length) throw new Error('Storefront GraphQL: ' + JSON.stringify(json.errors));
+  return json.data;
+}
+
+async function fetchShopifyProducts() {
+  const data = await storefrontPost(PRODUCTS_QUERY);
+  return (data.products.edges || []).map((e) => mapShopifyProduct(e.node));
+}
+
+async function fetchBrands() {
+  const data = await storefrontPost(BRANDS_QUERY);
+  return (data.metaobjects.edges || []).map((e) => mapShopifyBrand(e.node));
 }
 
 const BumiData = {
@@ -91,35 +182,26 @@ const BumiData = {
     return this._readyPromise;
   },
 
+  // Produk & brand di-fetch paralel tapi independen (allSettled):
+  // kegagalan brand (mis. definition/scope metaobject bermasalah) tidak
+  // mengosongkan produk, dan sebaliknya. loadError hanya true kalau produk gagal.
   async _load() {
-    if (!window.bbSupabase) {
-      this.loadError = true;
-      return;
-    }
-    try {
-      const supabase = window.bbSupabase.getClient();
-      const [productsRes, brandsRes] = await Promise.all([
-        supabase.from('Product').select(`
-          id,slug,name,fibre,material,description,priceAudCents,compareAtAudCents,
-          badge,isNew,isBestseller,rating,reviewsCount,addedAtRank,audience,category,createdAt,
-          Brand(name),
-          ProductColor(name,hex,sortOrder),
-          ProductVariant(size),
-          ProductImage(sortOrder,isPrimary,MediaAsset(publicUrl))
-        `).eq('status', 'PUBLISHED'),
-        supabase.from('Brand').select('slug,name,city,audience,website,shortDesc')
-          .eq('status', 'PUBLISHED').order('name'),
-      ]);
-
-      if (productsRes.error) throw productsRes.error;
-      if (brandsRes.error) throw brandsRes.error;
-
-      this.PRODUCTS = (productsRes.data || []).map(mapProduct);
-      this.BRANDS = (brandsRes.data || []).map(mapBrand);
-    } catch (err) {
-      console.error('BumiData: failed to load catalog from Supabase', err);
-      this.loadError = true;
+    const [prodRes, brandRes] = await Promise.allSettled([
+      fetchShopifyProducts(),
+      fetchBrands(),
+    ]);
+    if (prodRes.status === 'fulfilled') {
+      this.PRODUCTS = prodRes.value;
+      this.loadError = false;
+    } else {
+      console.error('BumiData: failed to load products from Shopify', prodRes.reason);
       this.PRODUCTS = [];
+      this.loadError = true;
+    }
+    if (brandRes.status === 'fulfilled') {
+      this.BRANDS = brandRes.value;
+    } else {
+      console.error('BumiData: failed to load brands from Shopify', brandRes.reason);
       this.BRANDS = [];
     }
   },
@@ -133,7 +215,7 @@ const BumiData = {
     return this.BRANDS.find(b => b.slug === slug) || null;
   },
 
-  /* Homepage "Collections" grid: newest first (Product has no isFeatured field). */
+  /* Homepage "Collections" grid: newest first (by addedAt rank). */
   getFeatured(limit = 8) {
     return this.PRODUCTS.slice().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).slice(0, limit);
   },
