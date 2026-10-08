@@ -47,8 +47,11 @@ async function processJob(jobId: string): Promise<void> {
       // keep original URLs
     }
 
-    // Enrich: rule-based cleaning (always) + AI layer if OPENAI_API_KEY is set.
+    // Enrich: rule-based cleaning (always) + AI layer if GEMINI_API_KEY is set.
     const { enriched, aiUsed, aiMeta } = await enrichProduct({ ...np, images });
+
+    // Convert IDR → AUD (Shopify store currency). Rate configurable via env.
+    convertCurrency(enriched);
 
     await prisma.importJob.update({
       where: { id: jobId },
@@ -202,5 +205,31 @@ export async function bootWorker(): Promise<void> {
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
+
+// Convert IDR price → AUD (Shopify store currency). Configurable rate via env
+// IDR_TO_AUD_RATE (default 10000 = 1 AUD ≈ 10,000 IDR). Original IDR price is
+// kept in specs for reference. Only runs when currency is IDR.
+function convertCurrency(np: NormalizedProduct): void {
+  if (np.currency !== "IDR" || np.price == null) return;
+  const rate = Number(process.env.IDR_TO_AUD_RATE) || 10000;
+  const originalIDR = np.price;
+  np.specs = {
+    ...(np.specs || {}),
+    originalPriceIDR: String(originalIDR),
+    originalCurrency: "IDR",
+  };
+  np.price = Math.round((originalIDR / rate) * 100) / 100; // 2 decimal places
+  np.currency = "AUD";
+  // Convert variant prices too (they inherit product price if not set individually).
+  for (const v of np.variants) {
+    if (v.price != null) {
+      v.price = Math.round((v.price / rate) * 100) / 100;
+    } else {
+      v.price = np.price;
+    }
+  }
+}
+
+import type { NormalizedProduct } from "./scrapers/base";
 
 export type { ImportSource, ImportStatus };
