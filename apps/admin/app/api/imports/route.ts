@@ -64,14 +64,19 @@ export async function GET(request: Request) {
     Math.max(1, Number(u.searchParams.get("pageSize")) || 20),
   );
 
-  const [jobs, total] = await Promise.all([
-    prisma.importJob.findMany({
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.importJob.count(),
-  ]);
+  try {
+    const [jobs, total] = await Promise.all([
+      prisma.importJob.findMany({
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.importJob.count(),
+    ]);
 
-  return NextResponse.json({ jobs, page, pageSize, total });
+    return NextResponse.json({ jobs, page, pageSize, total });
+  } catch (e: any) {
+    // Surface the real DB/Prisma error instead of a generic 500.
+    return jsonError(500, `${e?.name || "Error"}: ${e?.message || String(e)}`);
+  }
 }
