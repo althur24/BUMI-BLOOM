@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+.claude
+_archive
+backend
+apps/storefront/.next
+apps/storefront/node_modules
+apps/admin/.env.local
+apps/admin/.env*.local
+**/.DS_Store
+*.log
+PLAN.md
+check_plan.md

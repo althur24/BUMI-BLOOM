@@ -2,22 +2,18 @@
   "name": "bumi-bloom",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev:storefront": "npm run dev -w apps/storefront",
+    "dev:admin": "npm run dev -w apps/admin",
+    "build:storefront": "npm run build -w apps/storefront",
+    "build:admin": "npm run build -w apps/admin",
+    "typecheck:storefront": "npm run typecheck -w apps/storefront",
+    "typecheck:admin": "npm run typecheck -w apps/admin",
+    "db:generate": "npm run generate -w packages/db",
+    "db:push": "npm run push -w packages/db"
   },
-  "dependencies": {
-    "next": "^14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "playwright": "^1.63.0",
-    "typescript": "^5"
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -1,0 +1,21 @@
+{
+  "name": "@bumi/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./client.ts",
+  "types": "./client.ts",
+  "scripts": {
+    "generate": "prisma generate",
+    "push": "prisma db push",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "typescript": "^5.6.0"
+  }
+}
