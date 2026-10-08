@@ -179,7 +179,7 @@ function normalizeVendor(s: string): string {
   return s
     .toLowerCase()
     .replace(/official|shop|store|officialshop/g, "")
-    .replace(/\band\b/g, "")
+    .replace(/and/g, "")
     .replace(/[^a-z0-9]/g, "");
 }
 
