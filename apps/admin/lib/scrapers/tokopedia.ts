@@ -1,72 +1,74 @@
-// Tokopedia adapter. Tokopedia is a Next.js SSR app: it embeds product data in
-// both JSON-LD (<script type="application/ld+json">) and __NEXT_DATA__.
-// Strategy: JSON-LD first (most stable) → __NEXT_DATA__ deep-search fallback.
+// Tokopedia adapter — reworked for modern Tokopedia SSR.
+// Tokopedia no longer exposes JSON-LD or __NEXT_DATA__. Instead, product data is
+// in: (1) data-testid DOM attributes, (2) og: meta tags, (3) inline relay state
+// (escaped JSON with URLOriginal images, shopName, variant value+stock).
+//
+// Strategy: DOM extraction via Playwright locators (no page.evaluate to avoid
+// tsx __name injection issues) → regex relay state from page.content().
 
-import { withPage, readJsonLd } from "./browser";
-import {
-  extractProductFromJsonLd,
-  toNum,
-  type NormalizedProduct,
-  type ScrapeResult,
-} from "./base";
+import { withPage } from "./browser";
+import { toNum, type NormalizedProduct, type ScraperVariant, type ScrapeResult } from "./base";
 
 export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
   try {
     return await withPage(
       async (page) => {
-        const jsonLd = await readJsonLd(page);
-        const partial = extractProductFromJsonLd(jsonLd);
+        // ── 1. DOM extraction via locators (Node-side, no page.evaluate) ─────
+        const title = await getText(page, "lblPDPDetailProductName");
+        const priceText = await getText(page, "lblPDPDetailProductPrice");
+        const description = await getText(page, "lblPDPDescriptionProduk");
+        const ogTitle = await getMeta(page, "og:title");
+        const ogImage = await getMeta(page, "og:image");
+        const pageTitle = await page.title().catch(() => "");
 
-        const nextData = await page.evaluate(() => {
-          const el = document.getElementById("__NEXT_DATA__");
-          if (!el?.textContent) return null;
-          try {
-            return JSON.parse(el.textContent);
-          } catch {
-            return null;
-          }
-        });
+        // ── 2. Full page HTML (for regex extraction) ─────────────────────────
+        const html = await page.content();
 
-        const title =
-          partial?.title ||
-          (await page.title().catch(() => "")) ||
-          undefined;
+        // ── 3. Resolve title ─────────────────────────────────────────────────
+        const resolvedTitle =
+          title ||
+          (ogTitle ? ogTitle.split(" | Tokopedia")[0].trim() : "") ||
+          pageTitle ||
+          "";
 
-        if (!title) {
+        if (!resolvedTitle) {
           return {
             ok: false,
             error:
               "Title tidak ditemukan — kemungkinan halaman butuh login atau anti-bot memblok render.",
-            raw: { jsonLd },
+            raw: {},
           };
         }
+
+        // ── 4. Price ─────────────────────────────────────────────────────────
+        const price = toNum(priceText) || undefined;
+
+        // ── 5. Images (full signed URLs from relay state) ────────────────────
+        const images = extractImages(html, ogImage);
+
+        // ── 6. Brand ─────────────────────────────────────────────────────────
+        const brand = extractBrand(html, ogTitle);
+
+        // ── 7. Variants (size/color + stock) ─────────────────────────────────
+        const variants = extractVariants(html, price);
 
         const normalized: NormalizedProduct = {
           platform: "TOKPED",
           sourceUrl: url,
-          title,
-          description: partial?.description,
-          price: partial?.price,
-          currency: partial?.currency || "IDR",
-          images: partial?.images || [],
-          variants: [],
-          brand: partial?.brand,
-          rating: partial?.rating,
+          title: resolvedTitle,
+          description: description || undefined,
+          price,
+          currency: "IDR",
+          images,
+          variants,
+          brand,
         };
 
-        // Fill gaps from __NEXT_DATA__ when JSON-LD was thin.
-        if (nextData && (!normalized.price || normalized.images.length === 0)) {
-          const extra = deepFindProduct(nextData);
-          if (extra) {
-            normalized.price ??= extra.price;
-            if (normalized.images.length === 0)
-              normalized.images = extra.images || [];
-            normalized.description ??= extra.description;
-            normalized.brand ??= extra.brand;
-          }
-        }
-
-        return { ok: true, raw: { jsonLdCount: jsonLd.length, nextData }, normalized };
+        return {
+          ok: true,
+          raw: { domFound: !!title, imgCount: images.length, variantCount: variants.length },
+          normalized,
+        };
       },
       { url },
     );
@@ -75,40 +77,81 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
   }
 }
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+// ── Playwright locator helpers (Node-side, avoid page.evaluate) ──────────────
+
+async function getText(page: import("playwright").Page, testid: string): Promise<string> {
+  const loc = page.locator(`[data-testid="${testid}"]`);
+  if ((await loc.count()) === 0) return "";
+  return (await loc.first().textContent())?.trim() || "";
 }
 
-// Heuristic BFS through __NEXT_DATA__ for a product-shaped object.
-function deepFindProduct(
-  root: unknown,
-): Partial<NormalizedProduct> | null {
-  const queue: unknown[] = [root];
-  let visited = 0;
-  while (queue.length && visited < 80000) {
-    visited++;
-    const n = queue.shift() as any;
-    if (!n || typeof n !== "object") continue;
-    const price = n.price ?? n.price_int ?? n.price_int_str;
-    const hasImg = n.image_url || n.images || n.pictures;
-    if (price != null && (hasImg || n.name)) {
-      const rawImgs = [n.image_url, n.images, n.pictures].flat();
-      const images: string[] = [];
-      for (const img of rawImgs) {
-        if (!img) continue;
-        if (typeof img === "string") images.push(img);
-        else if (img?.url) images.push(img.url);
-        else if (img?.image_url) images.push(img.image_url);
-      }
-      return {
-        title: n.name,
-        description: n.description,
-        price: toNum(price),
-        images,
-        brand: typeof n.brand === "string" ? n.brand : n.brand?.name,
-      };
-    }
-    for (const k of Object.keys(n)) queue.push(n[k]);
+async function getMeta(page: import("playwright").Page, prop: string): Promise<string> {
+  const loc = page.locator(`meta[property="${prop}"]`);
+  if ((await loc.count()) === 0) return "";
+  return (await loc.first().getAttribute("content")) || "";
+}
+
+// ── Regex extractors (run on page.content() HTML string) ─────────────────────
+
+function extractImages(html: string, ogImage: string): string[] {
+  const urls = new Set<string>();
+  // URLOriginal":"https://..." — full URL including signature query params.
+  const re = /URLOriginal":"(https[^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    urls.add(m[1].replace(/&amp;/g, "&"));
   }
-  return null;
+  if (urls.size === 0 && ogImage) {
+    urls.add(ogImage.replace(/&amp;/g, "&"));
+  }
+  return [...urls].slice(0, 10);
+}
+
+function extractBrand(html: string, ogTitle: string): string | undefined {
+  // Relay state: "shopName":"sabineandheemofficial"
+  const m = html.match(/"shopName":"([^"]+)"/);
+  if (m) return m[1];
+  // og:title tail: "... - shopname | Tokopedia"
+  if (ogTitle) {
+    const beforePipe = ogTitle.split(" | Tokopedia")[0];
+    const tail = beforePipe.split(" - ").pop();
+    if (tail && tail.trim()) return tail.trim();
+  }
+  return undefined;
+}
+
+function extractVariants(
+  html: string,
+  productPrice?: number,
+): ScraperVariant[] {
+  // Detect variant type: "identifier":"size" or "identifier":"color"
+  const isSize = /"identifier":"size"/.test(html);
+  const isColor = /"identifier":"color"/.test(html);
+  if (!isSize && !isColor) return [];
+
+  const variantKey = isSize ? "Ukuran" : "Warna";
+
+  // Pattern: "value":"S (1-2 YO)","hex":"","stock":"27"
+  // The hex+stock requirement filters out non-variant "value" fields.
+  const re = /"value":"([^"]+)","hex":"([^"]*)","stock":"?(\d+)/g;
+  const variants: ScraperVariant[] = [];
+  const seen = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const value = m[1];
+    const stock = parseInt(m[3], 10);
+    // Skip numeric-only values (productVariantIDs) and duplicates.
+    if (/^\d+$/.test(value) || seen.has(value)) continue;
+    seen.add(value);
+    variants.push({
+      options: { [variantKey]: value },
+      price: productPrice,
+      stock,
+    });
+  }
+  return variants;
+}
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
 }
