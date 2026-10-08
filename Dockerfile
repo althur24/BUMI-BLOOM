@@ -1,8 +1,9 @@
-# apps/admin Dockerfile — Next.js self-host + Playwright (Chromium).
+# BUMI / BLOOM — admin service Dockerfile (Next.js self-host + Playwright).
 #
-# Railway setup (monorepo):
-#   - Root Directory: .          (repo root — build context needs packages/db)
-#   - Dockerfile path:  apps/admin/Dockerfile
+# Railway setup (MONOREPO):
+#   - Root Directory:  /    (repo root — MUST be repo root, not apps/admin,
+#                            so the build context can access packages/db)
+#   - Dockerfile:      ./Dockerfile   (this file, auto-detected at repo root)
 #
 # Build context = repo root. The Dockerfile copies both apps/admin and packages/db
 # so the @bumi/db workspace resolves.
