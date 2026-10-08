@@ -10,10 +10,25 @@ type BrowserClient = ReturnType<typeof createBrowserClient>;
 
 let _client: BrowserClient | null = null;
 
+// Resolve public Supabase config. Prefer the runtime-injected global
+// (window.__PUBLIC_ENV__, set by app/layout.tsx) so the client works on Railway
+// where NEXT_PUBLIC_* vars are injected at runtime, not build time. Fall back to
+// process.env for local dev where .env.local inlines them at build.
+function readPublicEnv(): { url?: string; anon?: string } {
+  const injected =
+    typeof window !== "undefined"
+      ? (window as { __PUBLIC_ENV__?: { supabaseUrl?: string; supabaseAnonKey?: string } })
+          .__PUBLIC_ENV__
+      : undefined;
+  return {
+    url: injected?.supabaseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anon: injected?.supabaseAnonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
 export function supabaseBrowser(): BrowserClient {
   if (_client) return _client;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { url, anon } = readPublicEnv();
   if (!url || !anon) {
     throw new Error(
       "NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY belum di-set",
