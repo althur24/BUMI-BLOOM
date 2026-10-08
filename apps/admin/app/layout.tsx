@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Force runtime rendering. Without this, the layout is statically prerendered at
+// build time, so process.env.SUPABASE_URL / SUPABASE_ANON_KEY (runtime vars) are
+// read at BUILD (empty on Railway Docker, which injects env at runtime) and
+// baked empty into window.__PUBLIC_ENV__ -> client login throws. force-dynamic
+// makes the layout render per-request so runtime env is read correctly.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Admin — BUMI / BLOOM",
   description: "BUMI / BLOOM admin — import produk & analytics.",
