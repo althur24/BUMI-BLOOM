@@ -230,11 +230,29 @@ export default function ImportPage() {
             <label>Description</label>
             <textarea
               className="input"
-              rows={3}
+              rows={6}
               value={preview.description || ""}
               onChange={(e) => setEdits((d) => ({ ...d, description: e.target.value }))}
             />
           </div>
+          {preview.variants?.length > 0 && (
+            <div className="field">
+              <label>Varian ({preview.variants.length})</label>
+              <div className="history">
+                {preview.variants.map((v, i) => (
+                  <div className="history-item" key={i}>
+                    <span>
+                      {Object.entries(v.options).map(([k, val]) => `${k}: ${val}`).join(" · ")}
+                    </span>
+                    <span className="muted">stock: {v.stock ?? "-"}</span>
+                    <span className="muted">
+                      Rp {(v.price ?? preview.price ?? 0).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {preview.images?.length > 0 && (
             <div className="field">
               <label>Images ({preview.images.length})</label>
@@ -246,6 +264,10 @@ export default function ImportPage() {
               </div>
             </div>
           )}
+          <p className="muted" style={{ margin: "8px 0 0", fontSize: 11 }}>
+            Source: {preview.platform} · {preview.sourceUrl?.slice(0, 80)}
+            {preview.sourceUrl && preview.sourceUrl.length > 80 ? "..." : ""}
+          </p>
           <button className="btn btn--primary" onClick={onPush} disabled={busy}>
             {busy ? "Pushing…" : "Push to Shopify"}
           </button>

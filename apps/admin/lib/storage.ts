@@ -16,6 +16,22 @@ function mimeToExt(ct: string): string {
   return "jpg";
 }
 
+// Marketplace-aware Referer: CDN images need the MARKETPLACE origin as Referer,
+// not the CDN's own origin. Without this, Tokopedia/Shopee CDNs return 403.
+function marketplaceReferer(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes("tokopedia"))
+      return "https://www.tokopedia.com/";
+    if (host.includes("shopee") || host.includes("susercontent"))
+      return "https://shopee.co.id/";
+    return u.origin + "/";
+  } catch {
+    return undefined;
+  }
+}
+
 // Returns the public URLs of successfully re-hosted images (in order).
 // Throws if Supabase is not configured (caller falls back to original URLs).
 export async function rehostImages(urls: string[]): Promise<string[]> {
@@ -25,11 +41,7 @@ export async function rehostImages(urls: string[]): Promise<string[]> {
   for (const url of urls.slice(0, MAX_IMAGES)) {
     if (!url) continue;
     try {
-      // Referer = marketplace origin helps past anti-hotlink checks on some CDNs.
-      let referer: string | undefined;
-      try {
-        referer = new URL(url).origin + "/";
-      } catch {}
+      const referer = marketplaceReferer(url);
       const res = await fetch(url, {
         redirect: "follow",
         headers: {
