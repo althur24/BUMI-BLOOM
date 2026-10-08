@@ -62,8 +62,17 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
             inventory_management: "shopify",
             inventory_quantity: v.stock ?? 0,
           };
-          if (colorKey) variant.option1 = opt(v, "Warna", "Color") || "Default";
-          if (sizeKey) variant.option2 = opt(v, "Ukuran", "Size");
+          // Assign options in order: option1 FIRST (Shopify requires option1
+          // before option2). If only size (no color), size goes to option1.
+          let optIdx = 1;
+          if (colorKey) {
+            variant[`option${optIdx}`] = opt(v, "Warna", "Color") || "Default";
+            optIdx++;
+          }
+          if (sizeKey) {
+            variant[`option${optIdx}`] = opt(v, "Ukuran", "Size");
+            optIdx++;
+          }
           if (v.sku) variant.sku = v.sku;
           return variant;
         })
