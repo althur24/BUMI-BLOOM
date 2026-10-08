@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@bumi/db";
 import { ImportStatus } from "@prisma/client";
 import { requireAdmin, jsonError } from "@/lib/auth";
-import { pushProductToShopify } from "@/lib/shopify";
+import { pushProductToShopify, fetchExistingVendors, resolveVendorSimple } from "@/lib/shopify";
 import { buildShopifyPushInput } from "@/lib/import-mapper";
 import { rehostImages } from "@/lib/storage";
+import { aiMatchVendor } from "@/lib/ai/enrich";
 import type { NormalizedProduct } from "@/lib/scrapers/base";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,25 @@ export async function POST(
         if (rehosted.length) np.images = rehosted;
       } catch {
         // Supabase not configured — keep originals (Shopify may fail to fetch).
+      }
+    }
+
+    // Resolve vendor: match scraped brand to existing Shopify vendor (case-
+    // insensitive fuzzy + AI). Avoids duplicate vendors like
+    // "sabineandheemofficial" vs "Sabine & Heem".
+    if (np.brand) {
+      try {
+        const existing = await fetchExistingVendors();
+        // 1) Simple normalization match (fast, free).
+        let resolved = resolveVendorSimple(np.brand, existing);
+        // 2) AI fuzzy match if simple match didn't find an existing vendor.
+        if (resolved === np.brand && existing.length > 0) {
+          const aiMatch = await aiMatchVendor(np.brand, existing);
+          if (aiMatch) resolved = aiMatch;
+        }
+        np.brand = resolved;
+      } catch {
+        // vendor resolution failed (non-critical) — keep original brand.
       }
     }
 

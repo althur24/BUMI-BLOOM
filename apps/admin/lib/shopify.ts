@@ -160,6 +160,54 @@ export async function deleteProduct(id: number | string): Promise<void> {
   await adminRest("DELETE", `/products/${id}.json`);
 }
 
+// Fetch existing vendor names from Shopify (unique list from all products).
+export async function fetchExistingVendors(): Promise<string[]> {
+  const res = await adminRest<{ products: { vendor: string }[] }>(
+    "GET",
+    "/products.json?limit=250&fields=vendor",
+  );
+  const vendors = new Set<string>();
+  for (const p of res?.products || []) {
+    if (p.vendor) vendors.add(p.vendor);
+  }
+  return [...vendors];
+}
+
+// Normalize vendor string for fuzzy matching: lowercase, remove common
+// suffixes (official/shop/store), strip non-alphanumeric.
+function normalizeVendor(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/official|shop|store|officialshop/g, "")
+    .replace(/\band\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+// Resolve scraped brand → existing Shopify vendor (case-insensitive fuzzy).
+// 1) Simple normalization match (fast, free).
+// 2) Partial containment match.
+// Returns the exact existing vendor string if matched, or the original brand.
+export function resolveVendorSimple(
+  brand: string,
+  existingVendors: string[],
+): string {
+  if (!brand) return "";
+  const normBrand = normalizeVendor(brand);
+  if (!normBrand) return brand;
+  // exact normalized match
+  for (const v of existingVendors) {
+    if (normalizeVendor(v) === normBrand) return v;
+  }
+  // partial containment (one contains the other)
+  for (const v of existingVendors) {
+    const nv = normalizeVendor(v);
+    if (nv.length > 2 && (nv.includes(normBrand) || normBrand.includes(nv))) {
+      return v;
+    }
+  }
+  return brand; // no match → new vendor
+}
+
 export async function setMetafields(
   ownerId: string,
   metafields: { namespace: string; key: string; value: string; type: string }[],

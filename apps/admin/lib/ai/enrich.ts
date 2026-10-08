@@ -130,3 +130,50 @@ Return JSON: {"title_en": concise clean English title (no fluff), "description_e
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
+
+// AI-powered vendor matching via Gemini. Given a scraped brand + existing
+// Shopify vendors, returns the exact matching vendor name or null (no match / new).
+export async function aiMatchVendor(
+  brand: string,
+  existingVendors: string[],
+): Promise<string | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key || existingVendors.length === 0) return null;
+  try {
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const prompt = `Match the scraped brand "${brand}" to one of these existing Shopify vendors (case-insensitive, fuzzy match — account for missing spaces, punctuation, suffixes like "official"):
+
+${existingVendors.map((v) => "- " + v).join("\n")}
+
+Return JSON: {"vendor": "<exact vendor name from the list>" or "NEW"}`;
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0,
+            maxOutputTokens: 100,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const json: any = await res.json();
+    const content =
+      json?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const parsed = JSON.parse(content);
+    const match = parsed.vendor;
+    if (match && match !== "NEW" && existingVendors.includes(match)) {
+      return match;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
