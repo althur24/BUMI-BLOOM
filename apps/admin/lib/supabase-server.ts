@@ -25,12 +25,15 @@ export function supabaseAdmin(): SupabaseClient {
 // the signed-in user. Cookie refresh is handled by middleware (setAll is a
 // safe no-op here because route-handler cookies() may be readonly).
 export function createSupabaseServerClient(): SupabaseClient {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Read NON-public vars first (runtime on Railway Docker). NEXT_PUBLIC_* are
+  // build-inlined and empty at runtime on Railway, so they're only a fallback
+  // for local dev where .env.local provides them at build.
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon =
+    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY belum di-set",
+      "Supabase URL/anon key missing: set SUPABASE_URL + SUPABASE_ANON_KEY",
     );
   }
   const store = cookies();
