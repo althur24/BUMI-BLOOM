@@ -3,7 +3,11 @@
 // matching the storefront cart's identity (id + size + color). Prices are AUD, GST-inclusive.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Runtime container is mcr.microsoft.com/playwright (Ubuntu jammy, openssl 3).
+  // Generate both native (builder) + debian-openssl-3.0.x (runtime) engines so
+  // Prisma can locate the query engine in the runtime container.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
