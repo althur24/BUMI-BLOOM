@@ -1,6 +1,7 @@
 import pg from 'pg';
 
-const connectionString = process.env.DIRECT_URL || "postgresql://postgres.xugmxibdqiffhklhsawu:penangkap4us@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?schema=public";
+const connectionString = process.env.DIRECT_URL;
+if (!connectionString) { console.error('Missing DIRECT_URL env — set it in backend/.env'); process.exit(1); }
 
 const pool = new pg.Pool({ connectionString });
 
