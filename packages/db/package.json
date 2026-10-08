@@ -9,13 +9,16 @@
     "push": "prisma db push",
     "migrate": "prisma migrate dev",
     "studio": "prisma studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
     "prisma": "^5.22.0",
+    "tsx": "^4.19.1",
     "typescript": "^5.6.0"
   }
 }

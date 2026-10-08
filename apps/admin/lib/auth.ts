@@ -1,5 +1,5 @@
 import { prisma } from "@bumi/db";
-import { getUserFromJwt } from "./supabase-server";
+import { getServerUser } from "./supabase-server";
 
 // Roles mirror the Prisma AdminRole enum (packages/db/schema.prisma).
 export type AdminRole =
@@ -21,17 +21,13 @@ export function jsonError(status: number, message: string) {
   return Response.json({ error: message }, { status });
 }
 
-// Verifies the Bearer JWT, then re-checks the role against AdminUser (Prisma)
-// by email. The client is never trusted to assert its own role.
+// Verifies the signed-in user from the cookie session (via @supabase/ssr),
+// then re-checks the role against AdminUser (Prisma) by email. The client is
+// never trusted to assert its own role.
 export async function requireAdmin(
-  request: Request,
   roles: AdminRole[] = IMPORT_ROLES,
 ): Promise<AdminContext> {
-  const auth = request.headers.get("authorization") || "";
-  const match = auth.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw httpError(401, "Missing bearer token");
-
-  const user = await getUserFromJwt(match[1]);
+  const user = await getServerUser();
   if (!user || !user.email) throw httpError(401, "Invalid session");
 
   const admin = await prisma.adminUser.findUnique({

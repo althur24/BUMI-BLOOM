@@ -36,3 +36,44 @@ body {
   padding: 24px;
   background: #fff;
 }
+
+/* ── Forms / buttons ─────────────────────────────────────────────────────── */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+.input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; font-size: 14px; background: #fff; color: var(--ink);
+}
+.input:focus { outline: none; border-color: #9a8f80; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  font-size: 14px; font-weight: 600; cursor: pointer; color: var(--ink);
+}
+.btn:hover { background: #f6f2ec; }
+.btn--primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.btn--primary:hover { background: #333; }
+.btn--primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn--ghost { background: transparent; border-color: transparent; }
+.error { color: #b3261e; font-size: 13px; margin-top: 8px; }
+.auth-card { max-width: 360px; }
+
+/* ── Import UI ───────────────────────────────────────────────────────────── */
+.import-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+.import-bar .input { flex: 1; }
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.card {
+  border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: #fff; margin-bottom: 16px;
+}
+.card h3 { margin: 0 0 12px; font-size: 15px; }
+.preview-images { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.preview-images img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+.badge--green { background: #e6f4ea; color: #1e6e34; }
+.badge--yellow { background: #fdf2d6; color: #8a6a00; }
+.badge--coral { background: #fbe4e2; color: #b3261e; }
+.badge--dark { background: #ece7e0; color: #555; }
+.history { width: 100%; }
+.history-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.history-item a { color: #1a1a1a; text-decoration: underline; }
+.muted { color: var(--muted); font-size: 12px; }

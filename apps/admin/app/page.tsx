@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { checkEnv } from "@/lib/env";
+import AnalyticsWidget from "@/components/AnalyticsWidget";
 
-// Fase 1: dashboard placeholder. Belum ter-protect (login UI + page-level
-// middleware enforcement datang di Fase 3). Hanya /api/imports & /api/analytics
-// yang di-gate middleware untuk sekarang. Tab Import + widget analytics
-// menyusul di Fase 3 & 4.
+// Fase 3: dashboard placeholder with links. Page-level session enforcement +
+// login redirect are client-handled in /import; server-side page gating is a
+// Fase 5 hardening item.
 export default function Page() {
   const env = checkEnv();
   return (
@@ -11,15 +12,23 @@ export default function Page() {
       <h1>BUMI / BLOOM — Admin</h1>
       <p>Import produk &middot; Analytics</p>
       <div className="admin-placeholder">
+        <p style={{ marginTop: 0 }}>
+          <strong>Fase 1–3 siap.</strong> Import pipeline (scrape → preview →
+          push to Shopify) sudah live.
+        </p>
         <p>
-          <strong>Fase 1 — fondasi siap.</strong> Scaffolded. Tab &ldquo;Import&rdquo;
-          dan widget analytics menyusul di Fase 3 &amp; 4.
+          <Link href="/import" className="btn btn--primary">Buka Import →</Link>{" "}
+          <Link href="/login" className="btn">Sign In</Link>
         </p>
         <ul>
           <li>Shopify Admin API: {env.shopify ? "configured" : "missing env"}</li>
           <li>Supabase: {env.supabase ? "configured" : "missing env"}</li>
           <li>Database: {env.database ? "configured" : "missing env"}</li>
         </ul>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <AnalyticsWidget />
       </div>
     </main>
   );

@@ -29,7 +29,7 @@ RUN npm run generate -w packages/db
 RUN npm run build -w apps/admin
 
 # ── Stage 2: runtime (Playwright base bundles Chromium + OS deps) ───────────
-FROM mcr.microsoft.com/playwright:v1.49.0-jammy AS runtime
+FROM mcr.microsoft.com/playwright:v1.64.0-jammy AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
 ENV PORT=4001
