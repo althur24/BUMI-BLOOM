@@ -251,7 +251,7 @@ const BumiData = {
     if (category === 'sale') return this.PRODUCTS.filter(p => p.compareAt && p.compareAt > p.price);
     if (category === 'bestsellers') return this.PRODUCTS.filter(p => p.isBestseller);
     if (category === 'essentials') return this.PRODUCTS.filter(p => ['tshirts', 'shorts', 'accessories'].includes(p.category));
-    if (['girls', 'boys', 'baby'].includes(category)) {
+    if (['girls', 'boys', 'baby', 'women'].includes(category)) {
       return this.PRODUCTS.filter(p => p.audience === category || p.audience === 'unisex');
     }
     // otherwise treat as a product category (tshirts, dresses, ...)
