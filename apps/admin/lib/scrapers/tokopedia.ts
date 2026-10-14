@@ -111,11 +111,11 @@ function extractBrand(html: string, ogTitle: string): string | undefined {
   // Relay state: "shopName":"sabineandheemofficial"
   const m = html.match(/"shopName":"([^"]+)"/);
   if (m) return m[1];
-  // og:title tail: "... - shopname | Tokopedia"
+  // og:title format: "...product... di {shopname} | Tokopedia"
   if (ogTitle) {
     const beforePipe = ogTitle.split(" | Tokopedia")[0];
-    const tail = beforePipe.split(" - ").pop();
-    if (tail && tail.trim()) return tail.trim();
+    const diMatch = beforePipe.match(/ di (.+)$/);
+    if (diMatch) return diMatch[1].trim();
   }
   return undefined;
 }
@@ -124,30 +124,63 @@ function extractVariants(
   html: string,
   productPrice?: number,
 ): ScraperVariant[] {
-  // Detect variant type: "identifier":"size" or "identifier":"color"
+  // Detect variant dimensions: "identifier":"size" and/or "identifier":"color"
   const isSize = /"identifier":"size"/.test(html);
   const isColor = /"identifier":"color"/.test(html);
   if (!isSize && !isColor) return [];
 
-  const variantKey = isSize ? "Ukuran" : "Warna";
-
-  // Pattern: "value":"S (1-2 YO)","hex":"","stock":"27"
-  // The hex+stock requirement filters out non-variant "value" fields.
+  // Extract ALL variant options: "value":"...","hex":"...","stock":"..."
+  // hex="" → size option; hex="#XXXXXX" → color option.
+  interface RawOption { value: string; hex: string; stock: number; }
   const re = /"value":"([^"]+)","hex":"([^"]*)","stock":"?(\d+)/g;
-  const variants: ScraperVariant[] = [];
-  const seen = new Set<string>();
+  const sizes: RawOption[] = [];
+  const colors: RawOption[] = [];
+  const seenSize = new Set<string>();
+  const seenColor = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     const value = m[1];
+    const hex = m[2];
     const stock = parseInt(m[3], 10);
-    // Skip numeric-only values (productVariantIDs) and duplicates.
-    if (/^\d+$/.test(value) || seen.has(value)) continue;
-    seen.add(value);
-    variants.push({
-      options: { [variantKey]: value },
+    if (/^\d+$/.test(value)) continue; // skip numeric IDs
+    if (hex) {
+      if (!seenColor.has(value)) { seenColor.add(value); colors.push({ value, hex, stock }); }
+    } else {
+      if (!seenSize.has(value)) { seenSize.add(value); sizes.push({ value, hex, stock }); }
+    }
+  }
+
+  // ── Single dimension: flat list ─────────────────────────────────────────
+  if (sizes.length > 0 && colors.length === 0) {
+    return sizes.map((s) => ({
+      options: { Ukuran: s.value },
       price: productPrice,
-      stock,
-    });
+      stock: s.stock,
+    }));
+  }
+  if (colors.length > 0 && sizes.length === 0) {
+    return colors.map((c) => ({
+      options: { Warna: c.value },
+      price: productPrice,
+      stock: c.stock,
+      hex: c.hex,
+    }));
+  }
+
+  // ── Multi dimension: cartesian product (size × color) ───────────────────
+  const variants: ScraperVariant[] = [];
+  for (const s of sizes) {
+    for (const c of colors) {
+      // Best-effort stock per combination: use the size's stock (color stock is
+      // usually an aggregate, not per-combination). This may overcount total
+      // inventory but is the safest fallback without parsing children[].
+      variants.push({
+        options: { Warna: c.value, Ukuran: s.value },
+        price: productPrice,
+        stock: s.stock,
+        hex: c.hex,
+      });
+    }
   }
   return variants;
 }

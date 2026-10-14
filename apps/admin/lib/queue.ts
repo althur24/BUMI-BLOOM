@@ -12,6 +12,7 @@ import { prisma } from "@bumi/db";
 import type { ImportSource, ImportStatus } from "@prisma/client";
 import { rehostImages } from "./storage";
 import { enrichProduct } from "./ai/enrich";
+import { getAudToIdrRate } from "./currency";
 
 const useBullMQ = (): boolean => Boolean(process.env.REDIS_URL);
 
@@ -50,8 +51,8 @@ async function processJob(jobId: string): Promise<void> {
     // Enrich: rule-based cleaning (always) + AI layer if GEMINI_API_KEY is set.
     const { enriched, aiUsed, aiMeta } = await enrichProduct({ ...np, images });
 
-    // Convert IDR → AUD (Shopify store currency). Rate configurable via env.
-    convertCurrency(enriched);
+    // Convert IDR → AUD (Shopify store currency). Uses live exchange rate.
+    await convertCurrency(enriched);
 
     await prisma.importJob.update({
       where: { id: jobId },
@@ -206,21 +207,20 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-// Convert IDR price → AUD (Shopify store currency). Configurable rate via env
-// IDR_TO_AUD_RATE (default 10000 = 1 AUD ≈ 10,000 IDR). Original IDR price is
-// kept in specs for reference. Only runs when currency is IDR.
-function convertCurrency(np: NormalizedProduct): void {
+// Convert IDR price → AUD (Shopify store currency). Uses LIVE exchange rate
+// from open.er-api.com (cached 1h), falls back to IDR_TO_AUD_RATE env.
+async function convertCurrency(np: NormalizedProduct): Promise<void> {
   if (np.currency !== "IDR" || np.price == null) return;
-  const rate = Number(process.env.IDR_TO_AUD_RATE) || 10000;
+  const rate = await getAudToIdrRate();
   const originalIDR = np.price;
   np.specs = {
     ...(np.specs || {}),
     originalPriceIDR: String(originalIDR),
     originalCurrency: "IDR",
+    audRateUsed: String(rate),
   };
-  np.price = Math.round((originalIDR / rate) * 100) / 100; // 2 decimal places
+  np.price = Math.round((originalIDR / rate) * 100) / 100;
   np.currency = "AUD";
-  // Convert variant prices too (they inherit product price if not set individually).
   for (const v of np.variants) {
     if (v.price != null) {
       v.price = Math.round((v.price / rate) * 100) / 100;

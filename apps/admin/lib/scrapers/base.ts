@@ -8,6 +8,7 @@ export interface ScraperVariant {
   price?: number; // major units (e.g. 49950)
   sku?: string;
   stock?: number;
+  hex?: string; // color hex code (e.g. "#000000") — only for color variants
 }
 
 export interface NormalizedProduct {

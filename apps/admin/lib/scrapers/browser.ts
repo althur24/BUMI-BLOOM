@@ -53,8 +53,8 @@ export async function withPage<T>(
       waitUntil: "domcontentloaded",
       timeout: opts.timeoutMs ?? 45000,
     });
-    // Let client hydration / lazy state settle.
-    await new Promise((r) => setTimeout(r, 2000));
+    // Let client hydration / lazy state settle (Tokopedia React needs ~3s).
+    await new Promise((r) => setTimeout(r, 3000));
   }
   try {
     return await fn(page);
