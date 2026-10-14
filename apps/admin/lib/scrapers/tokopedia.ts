@@ -124,26 +124,42 @@ function extractVariants(
   html: string,
   productPrice?: number,
 ): ScraperVariant[] {
-  // Detect variant dimensions: "identifier":"size" and/or "identifier":"color"
-  const isSize = /"identifier":"size"/.test(html);
-  const isColor = /"identifier":"color"/.test(html);
-  if (!isSize && !isColor) return [];
+  // Find group definition positions. Tokopedia uses "colour" (British) OR "color".
+  const sizePos = html.indexOf('"identifier":"size"');
+  const colorPos = html.search(/"identifier":"colou?r"/); // matches color or colour
+  if (sizePos < 0 && colorPos < 0) return [];
 
-  // Extract ALL variant options: "value":"...","hex":"...","stock":"..."
-  // hex="" → size option; hex="#XXXXXX" → color option.
+  // Build sorted list of group markers: [{pos, type}]
+  const markers: { pos: number; type: "size" | "color" }[] = [];
+  if (sizePos >= 0) markers.push({ pos: sizePos, type: "size" });
+  if (colorPos >= 0) markers.push({ pos: colorPos, type: "color" });
+  markers.sort((a, b) => a.pos - b.pos);
+
+  // Extract ALL value+hex+stock with position, assign to group by nearest
+  // preceding marker.
   interface RawOption { value: string; hex: string; stock: number; }
-  const re = /"value":"([^"]+)","hex":"([^"]*)","stock":"?(\d+)/g;
   const sizes: RawOption[] = [];
   const colors: RawOption[] = [];
   const seenSize = new Set<string>();
   const seenColor = new Set<string>();
+  const re = /"value":"([^"]+)","hex":"([^"]*)","stock":"?(\d+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     const value = m[1];
     const hex = m[2];
     const stock = parseInt(m[3], 10);
-    if (/^\d+$/.test(value)) continue; // skip numeric IDs
-    if (hex) {
+    const pos = m.index;
+    if (/^\d+$/.test(value)) continue;
+
+    // Find nearest preceding marker
+    let groupType: "size" | "color" | null = null;
+    for (const mk of markers) {
+      if (mk.pos < pos) groupType = mk.type;
+      else break;
+    }
+    if (!groupType) continue;
+
+    if (groupType === "color") {
       if (!seenColor.has(value)) { seenColor.add(value); colors.push({ value, hex, stock }); }
     } else {
       if (!seenSize.has(value)) { seenSize.add(value); sizes.push({ value, hex, stock }); }
@@ -167,17 +183,17 @@ function extractVariants(
     }));
   }
 
-  // ── Multi dimension: cartesian product (size × color) ───────────────────
+  // ── Multi dimension: cartesian product (colour × size) ──────────────────
   const variants: ScraperVariant[] = [];
-  for (const s of sizes) {
-    for (const c of colors) {
-      // Best-effort stock per combination: use the size's stock (color stock is
-      // usually an aggregate, not per-combination). This may overcount total
-      // inventory but is the safest fallback without parsing children[].
+  for (const c of colors) {
+    for (const s of sizes) {
+      // Stock: colour stock is usually the aggregate (more reliable).
+      // Size stock is often 0 (not maintained per-size).
+      const stock = c.stock > 0 ? c.stock : s.stock;
       variants.push({
         options: { Warna: c.value, Ukuran: s.value },
         price: productPrice,
-        stock: s.stock,
+        stock,
         hex: c.hex,
       });
     }
