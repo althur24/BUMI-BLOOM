@@ -26,10 +26,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="admin-shell">
-      <h1>Admin Sign In</h1>
-      <p className="muted">Restricted to BUMI / BLOOM staff accounts.</p>
-      <form onSubmit={onSubmit} className="auth-card">
+    <main className="admin-shell" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      <div className="login-brand">
+        <h1>BUMI / BLOOM</h1>
+        <p>Panel Admin</p>
+      </div>
+      <form onSubmit={onSubmit} className="auth-card card" style={{ width: "100%" }}>
         <div className="field">
           <label htmlFor="email">Email</label>
           <input
@@ -40,11 +42,11 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@bumiandbloom.com"
+            placeholder="email@bumibloom.com"
           />
         </div>
         <div className="field">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">Kata Sandi</label>
           <input
             id="password"
             className="input"
@@ -56,10 +58,10 @@ export default function LoginPage() {
             placeholder="••••••••"
           />
         </div>
-        <button className="btn btn--primary" type="submit" disabled={loading}>
-          {loading ? "Signing in…" : "Sign In"}
+        <button className="btn btn--primary" type="submit" disabled={loading} style={{ width: "100%", justifyContent: "center" }}>
+          {loading ? "Memproses…" : "Masuk"}
         </button>
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error" style={{ textAlign: "center" }}>{error}</p>}
       </form>
     </main>
   );
