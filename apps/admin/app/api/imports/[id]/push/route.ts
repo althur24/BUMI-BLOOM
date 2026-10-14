@@ -47,6 +47,14 @@ export async function POST(
   const np: NormalizedProduct = { ...base, ...overrides } as NormalizedProduct;
   if (!np.title) return jsonError(400, "Title kosong — tidak bisa push.");
 
+  // If the user edited the product price, propagate it to ALL variants so the
+  // edited price is what Shopify receives (not the auto-converted AUD price).
+  if (overrides.price != null && np.variants.length > 0) {
+    for (const v of np.variants) {
+      v.price = overrides.price;
+    }
+  }
+
   // Persist the (edited) extraction + move to PUSHING.
   await prisma.importJob.update({
     where: { id: job.id },
