@@ -194,11 +194,6 @@ export default function ImportPage() {
     }
   }
 
-  async function onSignOut() {
-    await supabaseBrowser().auth.signOut();
-    router.replace("/login");
-  }
-
   if (!ready) return <main className="admin-shell"><p className="muted">Memuat…</p></main>;
 
   const preview: NormalizedProduct | null = active?.extractedJson
@@ -230,7 +225,6 @@ export default function ImportPage() {
           <h1>Import Produk</h1>
           <p className="muted">Tempel link Tokopedia / Shopee → ekstrak → push ke Shopify</p>
         </div>
-        <button className="btn btn--ghost" onClick={onSignOut}>Keluar</button>
       </div>
 
       <form className="import-bar" onSubmit={onExtract}>

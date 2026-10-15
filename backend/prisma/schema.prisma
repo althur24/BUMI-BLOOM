@@ -265,3 +265,25 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
 }
+
+// ── Newsletter subscribers ──────────────────────────────────────────────────
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+}
+
+model NewsletterSubscriber {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  status         SubscriberStatus @default(ACTIVE)
+  source         String?          // "HOMEPAGE" | "BRANDS" | "JOURNAL"
+  promoCodeSent  Boolean          @default(true)
+  subscribedAt   DateTime         @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status])
+  @@index([subscribedAt])
+}

@@ -13,7 +13,6 @@ export default function Page() {
           <h1>BUMI / BLOOM</h1>
           <p className="muted">Panel Admin — Import produk & Analytics</p>
         </div>
-        <Link href="/import" className="btn btn--primary">Import Produk →</Link>
       </div>
 
       <div className="card">
@@ -29,6 +28,18 @@ export default function Page() {
 
       <div style={{ marginTop: 16 }}>
         <AnalyticsWidget />
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Newsletter Subscribers</h3>
+              <p className="muted" style={{ margin: "6px 0 0" }}>View and manage subscriber list</p>
+            </div>
+            <Link href="/subscribers" className="btn btn--primary">Manage →</Link>
+          </div>
+        </div>
       </div>
     </main>
   );

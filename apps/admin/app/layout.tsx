@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Nav } from "@/components/Nav";
 
 // Force runtime rendering. Without this, the layout is statically prerendered at
 // build time, so process.env.SUPABASE_URL / SUPABASE_ANON_KEY (runtime vars) are
@@ -49,7 +50,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: `window.__PUBLIC_ENV__=${publicEnv};` }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Nav />
+        {children}
+      </body>
     </html>
   );
 }

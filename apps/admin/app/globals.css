@@ -300,3 +300,145 @@ textarea.input { resize: vertical; font-family: inherit; }
   letter-spacing: -0.02em;
 }
 .login-brand p { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+
+/* ── Top navigation bar ────────────────────────────────────────────────────── */
+.admin-nav-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+}
+.admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.admin-nav__link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.admin-nav__link:hover { background: #f6f2ec; color: var(--ink); }
+.admin-nav__link--active { background: var(--ink); color: #fff; }
+.admin-nav__signout {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.admin-nav__signout:hover { background: #f6f2ec; color: #b3261e; }
+
+/* ── Data table ────────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid var(--line);
+}
+.table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.table tbody tr:hover { background: #faf7f2; }
+.table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Search bar ────────────────────────────────────────────────────────────── */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.search-bar .input { flex: 1; }
+
+/* ── Filter tabs ───────────────────────────────────────────────────────────── */
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-tab:hover { border-color: var(--accent); }
+.filter-tab--active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ── Pagination ────────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.pagination button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+  transition: all 0.15s;
+}
+.pagination button:hover:not(:disabled) { background: #f6f2ec; }
+.pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Action buttons (in table rows) ────────────────────────────────────────── */
+.action-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+  transition: all 0.15s;
+  margin-right: 4px;
+}
+.action-btn:hover { background: #f6f2ec; }
+.action-btn--danger { color: #b3261e; border-color: #f0c8c5; }
+.action-btn--danger:hover { background: #fbe4e2; }
+.action-btn--danger:disabled { opacity: 0.5; cursor: not-allowed; }

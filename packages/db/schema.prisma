@@ -308,3 +308,28 @@ model ImportJob {
   @@index([status])
   @@index([createdAt])
 }
+
+// ── Newsletter subscribers ──────────────────────────────────────────────────
+// Email dikumpulkan dari storefront newsletter form. Promo code WELCOME10
+// di-reveal di UI storefront (tidak via email). Admin bisa view, search,
+// filter, export CSV, unsubscribe, dan delete dari /subscribers.
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+}
+
+model NewsletterSubscriber {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  status         SubscriberStatus @default(ACTIVE)
+  source         String?          // "HOMEPAGE" | "BRANDS" | "JOURNAL"
+  promoCodeSent  Boolean          @default(true)
+  subscribedAt   DateTime         @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status])
+  @@index([subscribedAt])
+}

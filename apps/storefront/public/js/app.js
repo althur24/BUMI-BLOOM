@@ -196,25 +196,53 @@
   const newsletterForm = document.getElementById('newsletter-form');
 
   if (newsletterForm) {
-    newsletterForm.addEventListener('submit', (e) => {
+    newsletterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const emailInput = newsletterForm.querySelector('input[type="email"]');
       const submitBtn = newsletterForm.querySelector('button[type="submit"]');
 
-      if (emailInput && emailInput.value.trim()) {
-        // Lead magnet: reveal the working welcome code
-        const code = 'WELCOME10';
+      if (!emailInput || !emailInput.value.trim()) return;
+
+      const path = window.location.pathname;
+      const source = path.indexOf('/brands') === 0 ? 'BRANDS'
+        : path.indexOf('/journal') === 0 ? 'JOURNAL'
+        : 'HOMEPAGE';
+
+      let hint = newsletterForm.querySelector('.newsletter__code-hint');
+      if (!hint) {
+        hint = document.createElement('p');
+        hint.className = 'newsletter__code-hint';
+        newsletterForm.appendChild(hint);
+      }
+
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Subscribing…';
+
+      try {
+        const adminApi = (window.BumiConfig && BumiConfig.adminApiUrl)
+          || 'http://localhost:3001';
+        const res = await fetch(adminApi + '/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.value.trim(), source: source }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to subscribe');
+
+        const code = data.code || 'WELCOME10';
         submitBtn.textContent = 'Your code: ' + code + ' ✓';
-        submitBtn.disabled = true;
         emailInput.disabled = true;
         emailInput.value = '';
-        const hint = newsletterForm.querySelector('.newsletter__code-hint');
-        if (hint) {
-          hint.textContent = 'Use ' + code + ' at checkout for 10% off your first order.';
-          hint.style.display = 'block';
-        }
+        hint.textContent = 'Use ' + code + ' at checkout for 10% off your first order.';
+        hint.style.display = 'block';
         if (window.BumiTrack) BumiTrack.event('generate_lead', { currency: 'AUD', value: 0 });
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        hint.textContent = 'Something went wrong. Please try again.';
+        hint.style.display = 'block';
       }
     });
   }
