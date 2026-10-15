@@ -24,3 +24,13 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Agent skills (local tooling, not project code)
+.agents/
+.claude/
+agent/
+skills-lock.json
+
+# Plan/scratch files
+check_plan.md
+judul.plan.md
