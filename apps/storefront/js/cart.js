@@ -33,6 +33,17 @@ const BumiCart = {
   },
 
   addItem(product) {
+    const fullProduct = window.BumiData ? BumiData.getProduct(product.id) : null;
+    if (fullProduct && fullProduct.variants && fullProduct.variants.length) {
+      const variant = fullProduct.variants.find(v =>
+        v.color === product.color && v.size === product.size
+      );
+      if (variant && !variant.available) {
+        this.showOutOfStockNotification(product.name, product.id);
+        return null;
+      }
+    }
+
     const cart = this.getCart();
     const existingIndex = cart.findIndex(item =>
       item.id === product.id &&
@@ -51,7 +62,7 @@ const BumiCart = {
     }
 
     this.saveCart(cart);
-    this.showNotification(product.name);
+    this.showNotification(product.name, { size: product.size, color: product.color });
 
     if (window.BumiTrack) {
       BumiTrack.event('add_to_cart', {
@@ -198,32 +209,64 @@ const BumiCart = {
     return BumiCurrency.format(amount);
   },
 
-  showNotification(productName) {
-    // Remove existing notification
+  showNotification(productName, variant) {
     const existing = document.querySelector('.cart-notification');
     if (existing) existing.remove();
+
+    const variantLine = (variant && (variant.size || variant.color))
+      ? '<span style="opacity:0.7;font-size:12px;">Size: ' + (variant.size || '—') + ' · Colour: ' + (variant.color || '—') + '</span>'
+      : '';
 
     const notification = document.createElement('div');
     notification.className = 'cart-notification';
     notification.innerHTML = `
       <div class="cart-notification__inner">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span><strong>${productName}</strong> added to bag</span>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <span><strong>${productName}</strong> added to bag</span>
+          ${variantLine}
+        </div>
         <a href="/cart" class="cart-notification__link">View Bag</a>
       </div>
     `;
     document.body.appendChild(notification);
 
-    // Animate in
     requestAnimationFrame(() => {
       notification.classList.add('is-visible');
     });
 
-    // Auto dismiss
     setTimeout(() => {
       notification.classList.remove('is-visible');
       setTimeout(() => notification.remove(), 400);
     }, 3000);
+  },
+
+  showOutOfStockNotification(productName, productId) {
+    const existing = document.querySelector('.cart-notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.className = 'cart-notification cart-notification--warning';
+    notification.innerHTML = `
+      <div class="cart-notification__inner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <span><strong>${productName}</strong> is out of stock</span>
+          <span style="opacity:0.7;font-size:12px;">Try a different size or colour.</span>
+        </div>
+        <a href="product-detail?id=${productId}" class="cart-notification__link">Choose Another</a>
+      </div>
+    `;
+    document.body.appendChild(notification);
+
+    requestAnimationFrame(() => {
+      notification.classList.add('is-visible');
+    });
+
+    setTimeout(() => {
+      notification.classList.remove('is-visible');
+      setTimeout(() => notification.remove(), 400);
+    }, 4000);
   }
 };
 
@@ -259,6 +302,9 @@ notifStyle.textContent = `
     text-underline-offset: 2px;
     white-space: nowrap;
     margin-left: auto;
+  }
+  .cart-notification--warning .cart-notification__inner {
+    background: var(--color-coral);
   }
   @media (max-width: 480px) {
     .cart-notification {

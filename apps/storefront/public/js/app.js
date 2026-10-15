@@ -262,6 +262,14 @@
     const id = addBtn.dataset.id;
     const p = window.BumiData && BumiData.getProduct(id);
     if (!p || !window.BumiCart) return;
+
+    const hasMultipleSizes = p.sizes && p.sizes.length > 1;
+    const hasMultipleColors = p.colors && p.colors.length > 1;
+    if (hasMultipleSizes || hasMultipleColors) {
+      window.location.href = 'product-detail?id=' + p.id;
+      return;
+    }
+
     BumiCart.addItem({
       id: p.id, name: p.name, brand: p.brand, price: p.price,
       size: (p.sizes && p.sizes[0]) || 'One Size',

@@ -63,7 +63,7 @@ const BumiWishlist = {
     const product = window.BumiData ? BumiData.getProduct(id) : null;
     if (!product) return;
     if (window.BumiCart) {
-      BumiCart.addItem({
+      const result = BumiCart.addItem({
         id: product.id,
         name: product.name,
         brand: product.brand,
@@ -72,6 +72,7 @@ const BumiWishlist = {
         color: (product.colors && product.colors[0] && product.colors[0].name) || '—',
         image: product.image
       });
+      if (result === null) return;
     }
     this.remove(id);
   }
