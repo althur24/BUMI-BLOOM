@@ -25,6 +25,10 @@ export interface NormalizedProduct {
   rating?: number;
   soldCount?: number;
   location?: string;
+  materialCare?: string;
+  sizeGuide?: string;
+  shippingReturns?: string;
+  fibre?: string;
 }
 
 export interface ScrapeResult {

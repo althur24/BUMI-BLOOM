@@ -48,10 +48,10 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
   const handle = slugify(np.title) || `import-${Date.now()}`;
 
   const colorKey = np.variants.some((v) => opt(v, "Warna", "Color"))
-    ? "Warna"
+    ? "Color"
     : null;
   const sizeKey = np.variants.some((v) => opt(v, "Ukuran", "Size"))
-    ? "Ukuran"
+    ? "Size"
     : null;
 
   const variants =
@@ -111,16 +111,18 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
 
   const options = [];
   if (colorKey)
-    options.push({ name: "Warna", values: colorValues.length ? colorValues : ["Default"] });
+    options.push({ name: "Color", values: colorValues.length ? colorValues : ["Default"] });
   if (sizeKey)
-    options.push({ name: "Ukuran", values: sizeValues.length ? sizeValues : ["Default"] });
+    options.push({ name: "Size", values: sizeValues.length ? sizeValues : ["Default"] });
+
+  const body_html = `<p>${escHtml(np.description || "")}</p>`;
 
   const productPayload: Record<string, unknown> = {
     title: np.title,
     handle,
-    body_html: `<p>${escHtml(np.description || "")}</p>`,
+    body_html,
     vendor: np.brand || "",
-    product_type: "",
+    product_type: (np.specs?.category || "").toLowerCase(),
     tags,
     status: "active",
     variants,
@@ -170,6 +172,45 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
       value: String(np.soldCount),
       type: "number_integer",
     });
+
+  // Colors metafield — JSON array of {name, hex} for storefront swatches.
+  const colorHexMap: Record<string, string> = {};
+  for (const v of np.variants) {
+    const name = opt(v, "Warna", "Color");
+    if (name && v.hex && !colorHexMap[name]) colorHexMap[name] = v.hex;
+  }
+  const colorsJson = Object.entries(colorHexMap)
+    .map(([name, hex]) => ({ name, hex }))
+    .filter(c => c.hex);
+  if (colorsJson.length)
+    metafields.push({
+      namespace: "bumi",
+      key: "colors",
+      value: JSON.stringify(colorsJson),
+      type: "json",
+    });
+
+  // AI-generated fields — key "material" matches storefront data.js query.
+  if (np.materialCare)
+    metafields.push({ namespace: "bumi", key: "material", value: np.materialCare, type: "single_line_text_field" });
+  if (np.sizeGuide)
+    metafields.push({ namespace: "bumi", key: "size_guide", value: np.sizeGuide, type: "single_line_text_field" });
+  if (np.shippingReturns)
+    metafields.push({ namespace: "bumi", key: "shipping_returns", value: np.shippingReturns, type: "single_line_text_field" });
+  if (np.fibre)
+    metafields.push({ namespace: "bumi", key: "fibre", value: np.fibre, type: "single_line_text_field" });
+
+  // Audience — for Girls/Boys/Baby storefront filters.
+  const audience = np.specs?.audience || "unisex";
+  metafields.push({ namespace: "bumi", key: "audience", value: audience, type: "single_line_text_field" });
+
+  // New product defaults.
+  metafields.push({ namespace: "bumi", key: "is_new", value: "true", type: "true_false" });
+  metafields.push({ namespace: "bumi", key: "badge", value: "new", type: "single_line_text_field" });
+  metafields.push({ namespace: "bumi", key: "reviews_count", value: "0", type: "number_integer" });
+
+  // Sort rank — newest first on homepage.
+  metafields.push({ namespace: "bumi", key: "added_at_rank", value: String(Date.now()), type: "number_integer" });
 
   return { handle, productPayload, metafields };
 }

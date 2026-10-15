@@ -15,6 +15,7 @@ interface ImportJob {
   shopifyHandle: string | null;
   errorMessage: string | null;
   createdAt: string;
+  rawJson?: any;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -209,11 +210,16 @@ export default function ImportPage() {
   const originalIDR = preview?.specs?.originalPriceIDR;
   const audRate = preview?.specs?.audRateUsed;
 
+  const currentStep = active?.rawJson?.step;
+  const stepOrder = ["scraping", "rehosting", "enriching", "converting"];
+  const stepIdx = stepOrder.indexOf(currentStep);
+  const isPending = active?.status === "PENDING";
   const steps = [
-    { label: "Hubungi marketplace", active: active?.status === "PENDING" },
-    { label: "Ekstrak data", active: active?.status === "EXTRACTING" },
-    { label: "Konversi AUD", active: active?.status === "EXTRACTING" },
-    { label: "AI translate", active: active?.status === "EXTRACTING" },
+    { label: "Hubungi marketplace" },
+    { label: "Ekstrak data" },
+    { label: "Re-host gambar" },
+    { label: "AI translate + generate" },
+    { label: "Konversi AUD" },
   ];
   const isProcessing = active && (active.status === "PENDING" || active.status === "EXTRACTING");
 
@@ -247,7 +253,7 @@ export default function ImportPage() {
         <div className="card">
           <div className="stepper">
             {steps.map((s, i) => (
-              <div key={i} className={`step ${s.active ? "step--active" : ""}`}>
+              <div key={i} className={`step ${i <= stepIdx ? "step--done" : ""} ${isPending ? (i === 0 ? "step--active" : "") : (i === stepIdx + 1 ? "step--active" : "")}`}>
                 {s.label}
               </div>
             ))}
@@ -306,6 +312,21 @@ export default function ImportPage() {
                 <label>Deskripsi</label>
                 <textarea className="input" rows={5} value={preview.description || ""}
                   onChange={(e) => setEdits((d) => ({ ...d, description: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Material & Care</label>
+                <textarea className="input" rows={3} value={preview.materialCare || ""}
+                  onChange={(e) => setEdits((d) => ({ ...d, materialCare: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Size Guide</label>
+                <textarea className="input" rows={4} value={preview.sizeGuide || ""}
+                  onChange={(e) => setEdits((d) => ({ ...d, sizeGuide: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Shipping & Returns</label>
+                <textarea className="input" rows={3} value={preview.shippingReturns || ""}
+                  onChange={(e) => setEdits((d) => ({ ...d, shippingReturns: e.target.value }))} />
               </div>
               <p className="hint">
                 Sumber: {preview.platform} · {preview.sourceUrl?.slice(0, 60)}

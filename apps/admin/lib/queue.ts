@@ -24,7 +24,7 @@ async function processJob(jobId: string): Promise<void> {
 
   await prisma.importJob.update({
     where: { id: jobId },
-    data: { status: "EXTRACTING" as ImportStatus },
+    data: { status: "EXTRACTING" as ImportStatus, rawJson: { step: "scraping" } as any },
   });
 
   try {
@@ -40,6 +40,7 @@ async function processJob(jobId: string): Promise<void> {
     const np = result.normalized;
 
     // Re-host images to Supabase Storage (fallback to originals if not configured).
+    await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "rehosting" } as any } });
     let images = np.images;
     try {
       const rehosted = await rehostImages(np.images);
@@ -49,9 +50,11 @@ async function processJob(jobId: string): Promise<void> {
     }
 
     // Enrich: rule-based cleaning (always) + AI layer if GEMINI_API_KEY is set.
+    await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "enriching" } as any } });
     const { enriched, aiUsed, aiMeta } = await enrichProduct({ ...np, images });
 
     // Convert IDR → AUD (Shopify store currency). Uses live exchange rate.
+    await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "converting" } as any } });
     await convertCurrency(enriched);
 
     await prisma.importJob.update({
