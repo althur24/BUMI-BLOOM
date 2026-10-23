@@ -294,7 +294,9 @@
     const hasMultipleSizes = p.sizes && p.sizes.length > 1;
     const hasMultipleColors = p.colors && p.colors.length > 1;
     if (hasMultipleSizes || hasMultipleColors) {
-      window.location.href = 'product-detail?id=' + p.id;
+      window.location.href = (window.BumiCart && BumiCart.productHref)
+        ? BumiCart.productHref(p.id)
+        : 'product-detail?id=' + p.id;
       return;
     }
 
