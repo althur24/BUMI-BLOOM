@@ -20,15 +20,19 @@
 <body>
 
   <header class="admin-topbar">
-    <a href="./" class="admin-topbar__logo">BUMI / BLOOM</a>
+    <a href="./" class="admin-topbar__logo">BUMI / BLOOM<span class="admin-topbar__logo-dot"></span></a>
     <span class="admin-topbar__tag">Admin</span>
   </header>
 
   <!-- Login view -->
   <main id="admin-login" class="admin-login">
+    <span class="floating-shape floating-shape--coral floating-shape--blob floating-shape--lg" style="top:8%;left:6%;"></span>
+    <span class="floating-shape floating-shape--blue floating-shape--blob floating-shape--md" style="bottom:12%;right:8%;animation-delay:1.5s;"></span>
+    <span class="floating-shape floating-shape--yellow floating-shape--blob floating-shape--sm" style="top:20%;right:14%;animation-delay:0.8s;"></span>
     <div class="auth-card">
+      <img src="images/characters/whale.webp" alt="" class="auth-card__logo">
       <h1 class="auth-card__title">Admin Sign In</h1>
-      <p class="auth-card__subtitle">Restricted to BUMI / BLOOM staff accounts.</p>
+      <p class="auth-card__subtitle">Restricted to <span class="font-accent" style="font-size:1.2em;color:var(--color-script-accent);">BUMI / BLOOM</span> staff accounts.</p>
       <form id="login-form">
         <div class="field">
           <label class="field__label" for="login-email">Email <span class="req">*</span></label>
@@ -47,13 +51,35 @@
   <!-- Admin shell -->
   <div id="admin-shell" class="admin-shell">
     <aside class="admin-shell__sidebar">
+      <div class="admin-shell__brand">
+        <img src="images/characters/whale.webp" alt="" class="admin-shell__brand-logo">
+        <span class="admin-shell__brand-dot"></span>
+      </div>
       <nav class="admin-nav" aria-label="Admin sections">
-        <button type="button" class="admin-nav__item is-active" data-tab="dashboard">Dashboard</button>
-        <button type="button" class="admin-nav__item" data-tab="products">Products</button>
-        <button type="button" class="admin-nav__item" data-tab="brands">Brands</button>
-        <button type="button" class="admin-nav__item" data-tab="categories">Categories</button>
-        <button type="button" class="admin-nav__item" data-tab="collections">Collections</button>
-        <button type="button" class="admin-nav__item" data-tab="promotions">Promotions</button>
+        <button type="button" class="admin-nav__item is-active" data-tab="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button type="button" class="admin-nav__item" data-tab="products">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.27L12 12l-8.5-4.73"/><path d="M12 22V12"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Products
+        </button>
+        <button type="button" class="admin-nav__item" data-tab="brands">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Brands
+        </button>
+        <button type="button" class="admin-nav__item" data-tab="categories">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Categories
+        </button>
+        <button type="button" class="admin-nav__item" data-tab="collections">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          Collections
+        </button>
+        <button type="button" class="admin-nav__item" data-tab="promotions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Promotions
+        </button>
       </nav>
       <div class="admin-shell__user">
         <div class="admin-shell__user-info">

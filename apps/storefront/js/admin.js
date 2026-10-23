@@ -80,6 +80,14 @@
     return '<span class="badge ' + (STATUS_BADGE[status] || 'badge--dark') + '">' + esc(status) + '</span>';
   }
 
+  function skeleton() {
+    return '<div class="admin-skeleton">' +
+      '<div class="admin-skeleton__line admin-skeleton__line--lg"></div>' +
+      '<div class="admin-skeleton__line admin-skeleton__line--md"></div>' +
+      '<div class="admin-skeleton__line admin-skeleton__line--sm"></div>' +
+    '</div>';
+  }
+
   /* ── Toast ── */
   let toastTimer = null;
   function toast(msg, type) {
@@ -229,7 +237,7 @@
 
   async function loadDashboard() {
     const el = $('tab-dashboard');
-    el.innerHTML = '<h2 class="admin-tab__title">Dashboard</h2><p>Loading…</p>';
+    el.innerHTML = '<h2 class="admin-tab__title">Dashboard</h2>' + skeleton();
 
     const [prodRes, promoRes, varRes, logRes] = await Promise.all([
       client.from('Product').select('id,status').is('deletedAt', null),
@@ -252,11 +260,11 @@
     el.innerHTML =
       '<h2 class="admin-tab__title">Dashboard</h2>' +
       '<div class="stat-cards">' +
-        statCard(counts.PUBLISHED, 'Published products') +
-        statCard(counts.DRAFT, 'Draft products') +
-        statCard(counts.ARCHIVED, 'Archived products') +
-        statCard(promoRes.error ? '—' : (promoRes.data || []).length, 'Active promotions') +
-        statCard(lowStock.length, 'Low-stock variants', lowStock.length > 0) +
+        statCard(counts.PUBLISHED, 'Published products', { icon: ICONS.published, color: 'blue' }) +
+        statCard(counts.DRAFT, 'Draft products', { icon: ICONS.draft, color: 'peach' }) +
+        statCard(counts.ARCHIVED, 'Archived products', { icon: ICONS.archived, color: 'pink' }) +
+        statCard(promoRes.error ? '—' : (promoRes.data || []).length, 'Active promotions', { icon: ICONS.promo, color: 'blue' }) +
+        statCard(lowStock.length, 'Low-stock variants', { icon: ICONS.warning, accent: lowStock.length > 0 }) +
       '</div>' +
 
       '<h3 class="admin-section-title">Low stock</h3>' +
@@ -295,11 +303,25 @@
       row.addEventListener('click', () => openProductModal(row.dataset.lowstockProduct)));
   }
 
-  function statCard(value, label, accent) {
-    return '<div class="stat-card' + (accent ? ' stat-card--accent' : '') + '">' +
+  function statCard(value, label, opts) {
+    opts = opts || {};
+    var cls = 'stat-card';
+    if (opts.accent) cls += ' stat-card--accent';
+    if (opts.color) cls += ' stat-card--' + opts.color;
+    var icon = opts.icon ? '<div class="stat-card__icon">' + opts.icon + '</div>' : '';
+    return '<div class="' + cls + '">' +
+      icon +
       '<div class="stat-card__value">' + esc(value) + '</div>' +
       '<div class="stat-card__label">' + esc(label) + '</div></div>';
   }
+
+  var ICONS = {
+    published: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    draft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+    archived: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',
+    promo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  };
 
   /* ────────────────────────────────────────────
      PRODUCTS
@@ -320,7 +342,7 @@
         '<span class="admin-toolbar__spacer"></span>' +
         '<button type="button" class="btn btn--primary" id="product-new">+ New product</button>' +
       '</div>' +
-      '<div id="products-table"><p>Loading…</p></div>';
+      '<div id="products-table">' + skeleton() + '</div>';
 
     $('product-search').addEventListener('input', (e) => { prodState.q = e.target.value; renderProductsTable(); });
     $('product-status-filter').addEventListener('change', (e) => { prodState.status = e.target.value; renderProductsTable(); });
@@ -503,13 +525,13 @@
 
       (p
         ? '<div class="modal__section" id="image-manager-section">' +
-            '<h4 class="modal__section-title">Images</h4><div id="image-manager"><p>Loading…</p></div>' +
+            '<h4 class="modal__section-title">Images</h4><div id="image-manager">' + skeleton() + '</div>' +
           '</div>' +
           '<div class="modal__section">' +
-            '<h4 class="modal__section-title">Colors</h4><div id="color-manager"><p>Loading…</p></div>' +
+            '<h4 class="modal__section-title">Colors</h4><div id="color-manager">' + skeleton() + '</div>' +
           '</div>' +
           '<div class="modal__section">' +
-            '<h4 class="modal__section-title">Variants (stock)</h4><div id="variant-manager"><p>Loading…</p></div>' +
+            '<h4 class="modal__section-title">Variants (stock)</h4><div id="variant-manager">' + skeleton() + '</div>' +
           '</div>'
         : '<p class="form-grid__hint" style="margin-top:var(--space-4);">Save the product first — then you can add images, colors and variants.</p>');
   }
@@ -911,7 +933,7 @@
         '<span class="admin-toolbar__spacer"></span>' +
         '<button type="button" class="btn btn--primary" id="brand-new">+ New brand</button>' +
       '</div>' +
-      '<div id="brands-table"><p>Loading…</p></div>';
+      '<div id="brands-table">' + skeleton() + '</div>';
     $('brand-new').addEventListener('click', () => openBrandModal(null));
     refreshBrands();
   }
@@ -1139,7 +1161,7 @@
         '<span class="admin-toolbar__spacer"></span>' +
         '<button type="button" class="btn btn--primary" id="category-new">+ New category</button>' +
       '</div>' +
-      '<div id="categories-table"><p>Loading…</p></div>';
+      '<div id="categories-table">' + skeleton() + '</div>';
     $('category-new').addEventListener('click', () => openCategoryModal(null));
     refreshCategories();
   }
@@ -1312,7 +1334,7 @@
         '<span class="admin-toolbar__spacer"></span>' +
         '<button type="button" class="btn btn--primary" id="collection-new">+ New collection</button>' +
       '</div>' +
-      '<div id="collections-table"><p>Loading…</p></div>';
+      '<div id="collections-table">' + skeleton() + '</div>';
     $('collection-new').addEventListener('click', () => openCollectionModal(null));
     refreshCollections();
   }
@@ -1524,7 +1546,7 @@
         '<span class="admin-toolbar__spacer"></span>' +
         '<button type="button" class="btn btn--primary" id="promo-new">+ New promotion</button>' +
       '</div>' +
-      '<div id="promotions-table"><p>Loading…</p></div>';
+      '<div id="promotions-table">' + skeleton() + '</div>';
     $('promo-new').addEventListener('click', () => openPromoModal(null));
     refreshPromotions();
   }
