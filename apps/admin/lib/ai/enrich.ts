@@ -8,6 +8,12 @@
 // Pluggable: swap the provider in `aiEnrich` without touching the queue/routes.
 
 import type { NormalizedProduct } from "../scrapers/base";
+import {
+  colorOptionOf,
+  colorsFromVariants,
+  normalizeColorName,
+  normalizeHex,
+} from "../colors";
 
 export interface EnrichResult {
   enriched: NormalizedProduct;
@@ -91,7 +97,7 @@ Brand: ${np.brand || ""}
 Description: ${(np.description || "").slice(0, 1000)}
 Sizes: ${np.variants.map(v => Object.values(v.options).join(", ")).join(" | ")}
 
-Return JSON: {"title_en": concise clean English title (no fluff), "description_en": clean English SEO description (1-2 sentences, no marketing spam), "category": one of ["TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "", "material_care": "Material: ... Care: ... (infer from description, standard kids clothing care)", "size_guide": "Size chart with height/weight measurements per size", "shipping_returns": "Short shipping + returns policy text", "colors_en": {"Hitam":"Black","Merah":"Red"} (translate ALL color names found in variant data to English — only include colors that appear, empty object {} if no colors), "audience": one of ["girls","boys","baby","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys, "bayi"=baby), "fibre": "short material tag (e.g. 100% Cotton, 95% Cotton 5% Elastane — extract from description, empty string if unknown)"}`;
+Return JSON: {"title_en": concise clean English title (no fluff), "description_en": clean English SEO description (1-2 sentences, no marketing spam), "category": one of ["TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "", "material_care": "Material: ... Care: ... (infer from description, standard kids clothing care)", "size_guide": "Size chart with height/weight measurements per size", "shipping_returns": "Short shipping + returns policy text", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","baby","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys, "bayi"=baby), "fibre": "short material tag (e.g. 100% Cotton, 95% Cotton 5% Elastane — extract from description, empty string if unknown)"}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -103,7 +109,7 @@ Return JSON: {"title_en": concise clean English title (no fluff), "description_e
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,
-          maxOutputTokens: 1000,
+          maxOutputTokens: 1600,
           // Gemini 2.5 Flash is a "thinking" model — disable thinking so the
           // token budget goes to the JSON output (otherwise it gets truncated).
           thinkingConfig: { thinkingBudget: 0 },
@@ -132,16 +138,46 @@ Return JSON: {"title_en": concise clean English title (no fluff), "description_e
   if (parsed.audience) {
     product.specs = { ...(product.specs || {}), audience: String(parsed.audience).toLowerCase() };
   }
-  if (parsed.colors_en && typeof parsed.colors_en === 'object') {
-    const colorMap = parsed.colors_en as Record<string, string>;
-    product.variants = product.variants.map(v => {
-      const newOptions: Record<string, string> = {};
-      for (const [key, val] of Object.entries(v.options)) {
-        newOptions[key] = colorMap[val] || val;
-      }
-      return { ...v, options: newOptions };
+  // Colors: translate names to English AND infer a hex per color. The hex is
+  // essential — Tokopedia often ships color names (OCEAN, MAHESA, …) with an
+  // empty hex, which previously dropped the whole bumi.colors metafield.
+  const aiColorHex = new Map<string, string>();
+  const originalToEnglish = new Map<string, string>();
+  if (Array.isArray(parsed.colors)) {
+    for (const entry of parsed.colors) {
+      if (!entry || typeof entry !== "object") continue;
+      const original = String((entry as any).original || "").trim();
+      const name = String((entry as any).name || original).trim();
+      if (!name) continue;
+      if (original) originalToEnglish.set(normalizeColorName(original), name);
+      const rawHex = String((entry as any).hex || "").trim();
+      const hex = rawHex
+        ? normalizeHex(rawHex.startsWith("#") ? rawHex : `#${rawHex}`)
+        : null;
+      if (hex) aiColorHex.set(normalizeColorName(name), hex);
+    }
+  }
+  if (originalToEnglish.size) {
+    product.variants = product.variants.map((v) => {
+      const color = colorOptionOf(v.options);
+      if (!color) return v;
+      const translated = originalToEnglish.get(normalizeColorName(color.value));
+      return translated
+        ? { ...v, options: { ...v.options, [color.key]: translated } }
+        : v;
     });
   }
+
+  // Derive the final palette from the (possibly translated) variants, using the
+  // AI hex when available and the deterministic dictionary as last resort.
+  // Variants are the source of truth: colors without a variant are dropped so
+  // every swatch on the storefront maps to something that can be bought.
+  const explicitColors = [
+    ...Array.from(aiColorHex, ([name, hex]) => ({ name, hex })),
+    ...(np.colors || []),
+  ];
+  product.colors = colorsFromVariants(product.variants, explicitColors);
+
   return { product, raw: parsed };
 }
 

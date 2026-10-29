@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import type { NormalizedProduct, ScraperVariant } from "@/lib/scrapers/base";
+import type { NormalizedColor, NormalizedProduct, ScraperVariant } from "@/lib/scrapers/base";
+import {
+  addColorToVariants,
+  colorOptionOf,
+  colorsFromVariants,
+  hexForColorName,
+  normalizeColorName,
+  normalizeHex,
+} from "@/lib/colors";
 
 interface ImportJob {
   id: string;
@@ -46,6 +54,17 @@ function fmtAud(n: number | undefined): string {
   return `$${n.toFixed(2)} AUD`;
 }
 
+// Colour palette for the preview/push. Variant Color options are the source of
+// truth; scraper/AI/admin colors only supply hex (dictionary as last resort).
+// This guarantees every swatch the admin sees can actually be checked out.
+function buildColors(
+  np: NormalizedProduct | null,
+  variants?: ScraperVariant[],
+): NormalizedColor[] {
+  if (!np) return [];
+  return colorsFromVariants(variants ?? np.variants ?? [], np.colors || []);
+}
+
 export default function ImportPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -61,6 +80,8 @@ export default function ImportPage() {
   const [primaryImageIdx, setPrimaryImageIdx] = useState(0);
   const [variantStockEdits, setVariantStockEdits] = useState<Record<number, number>>({});
   const [removedVariants, setRemovedVariants] = useState<Set<number>>(new Set());
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex, setNewColorHex] = useState("#CCCCCC");
   const [elapsed, setElapsed] = useState(0);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef(0);
@@ -108,6 +129,8 @@ export default function ImportPage() {
             setPrimaryImageIdx(0);
             setVariantStockEdits({});
             setRemovedVariants(new Set());
+            setNewColorName("");
+            setNewColorHex("#CCCCCC");
           }
           return;
         }
@@ -168,6 +191,15 @@ export default function ImportPage() {
           stock: variantStockEdits[preview.variants.indexOf(v)] ?? v.stock,
         }));
     }
+    // Storefront swatches (metafield bumi.colors) — always send the palette the
+    // admin sees in the preview, including manually added colors. Removed
+    // variants must not resurrect their color in the palette.
+    if (preview) {
+      const keptVariants = (preview.variants || []).filter(
+        (_, i) => !removedVariants.has(i),
+      );
+      body.colors = buildColors(preview, keptVariants);
+    }
     return body;
   }
 
@@ -202,8 +234,102 @@ export default function ImportPage() {
 
   const activeImages = preview?.images || [];
   const activeVariants = preview?.variants || [];
+  const keptVariants = activeVariants.filter((_, i) => !removedVariants.has(i));
+  const activeColors = buildColors(preview, keptVariants);
   const originalIDR = preview?.specs?.originalPriceIDR;
   const audRate = preview?.specs?.audRateUsed;
+
+  function updateColorAt(index: number, patch: Partial<NormalizedColor>) {
+    const current = activeColors[index];
+    if (!current) return;
+
+    const nextPatch: Partial<NormalizedColor> = { ...patch };
+    if (patch.name !== undefined) {
+      const name = String(patch.name).trim();
+      // A blank name would make Shopify fall back to "Default" and break the
+      // Color option; ignore it instead of corrupting the variant data.
+      if (!name) return;
+      const key = normalizeColorName(name);
+      if (
+        activeColors.some(
+          (c, i) => i !== index && normalizeColorName(c.name) === key,
+        )
+      ) {
+        setError(`Warna "${name}" sudah ada.`);
+        return;
+      }
+      nextPatch.name = name;
+    }
+
+    const nextColors = activeColors.map((c, i) =>
+      i === index ? { ...c, ...nextPatch } : c,
+    );
+    // Keep the Shopify Color option in sync when the name changes.
+    const renaming =
+      nextPatch.name != null && nextPatch.name !== current.name;
+    const nextVariants = renaming && preview?.variants
+      ? preview.variants.map((v) => {
+          const color = colorOptionOf(v.options);
+          return color && color.value === current.name
+            ? {
+                ...v,
+                options: { ...v.options, [color.key]: nextPatch.name as string },
+              }
+            : v;
+        })
+      : undefined;
+    setEdits((d) => ({
+      ...d,
+      colors: nextColors,
+      ...(nextVariants ? { variants: nextVariants } : {}),
+    }));
+  }
+
+  function removeColorAt(index: number) {
+    const target = activeColors[index];
+    if (!target) return;
+    setEdits((d) => ({
+      ...d,
+      colors: activeColors.filter((_, i) => i !== index),
+    }));
+    // Also drop the variants that belong to the removed color.
+    if (preview?.variants) {
+      const n = new Set(removedVariants);
+      preview.variants.forEach((v, i) => {
+        const color = colorOptionOf(v.options);
+        if (color && color.value === target.name) n.add(i);
+      });
+      setRemovedVariants(n);
+    }
+  }
+
+  function addColor() {
+    const name = newColorName.trim();
+    if (!name) return;
+    const nameKey = normalizeColorName(name);
+    if (activeColors.some((c) => normalizeColorName(c.name) === nameKey)) {
+      setError(`Warna "${name}" sudah ada.`);
+      return;
+    }
+    const hex = normalizeHex(newColorHex) || hexForColorName(name);
+    const nextColors = [...activeColors, { name, hex }];
+    const { variants: nextVariants } = addColorToVariants(
+      preview?.variants || [],
+      name,
+      hex,
+      removedVariants,
+      preview?.price,
+    );
+
+    setEdits((d) => ({
+      ...d,
+      colors: nextColors,
+      variants: nextVariants,
+    }));
+    setError("");
+    setNewColorName("");
+    setNewColorHex("#CCCCCC");
+  }
 
   const currentStep = active?.rawJson?.step;
   const stepOrder = ["scraping", "rehosting", "enriching", "converting"];
@@ -385,6 +511,66 @@ export default function ImportPage() {
                   <p className="hint">Centang untuk aktif · edit stok · hapus yang tidak perlu</p>
                 </div>
               )}
+
+              {/* Colors — swatches on the storefront product page/listing */}
+              <div className="field">
+                <label>Warna / Colors ({activeColors.length})</label>
+                {activeColors.length === 0 && (
+                  <p className="hint">
+                    Belum ada warna terdeteksi dari marketplace. Tambahkan manual di bawah.
+                  </p>
+                )}
+                {activeColors.map((c, i) => (
+                  <div key={i} className="color-row">
+                    <input
+                      className="input"
+                      value={c.name}
+                      placeholder="Color name"
+                      onChange={(e) => updateColorAt(i, { name: e.target.value })}
+                    />
+                    <input
+                      type="color"
+                      className="color-row__hex"
+                      value={normalizeHex(c.hex) || "#CCCCCC"}
+                      onChange={(e) => updateColorAt(i, { hex: e.target.value })}
+                      aria-label={`Hex for ${c.name}`}
+                    />
+                    <button
+                      className="btn btn--ghost btn--sm"
+                      type="button"
+                      onClick={() => removeColorAt(i)}
+                      aria-label={`Remove ${c.name}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <div className="color-row">
+                  <input
+                    className="input"
+                    placeholder="New color, e.g. Khaki"
+                    value={newColorName}
+                    onChange={(e) => setNewColorName(e.target.value)}
+                  />
+                  <input
+                    type="color"
+                    className="color-row__hex"
+                    value={newColorHex}
+                    onChange={(e) => setNewColorHex(e.target.value)}
+                    aria-label="Hex for new color"
+                  />
+                  <button
+                    className="btn btn--secondary btn--sm"
+                    type="button"
+                    onClick={addColor}
+                  >
+                    + Add
+                  </button>
+                </div>
+                <p className="hint">
+                  Hex dipakai untuk swatch storefront · warna pertama diterapkan ke varian yang ada; warna berikutnya dibuatkan varian stok 0 per size.
+                </p>
+              </div>
             </div>
           </div>
 

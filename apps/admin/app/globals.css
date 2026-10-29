@@ -224,6 +224,26 @@ textarea.input { resize: vertical; font-family: inherit; }
   text-align: center;
 }
 
+/* ── Colors ──────────────────────────────────────────────────────────────── */
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.color-row:last-of-type { border-bottom: none; }
+.color-row .input { flex: 1; min-width: 0; }
+.color-row__hex {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
 /* ── Progress stepper ────────────────────────────────────────────────────── */
 .stepper {
   display: flex;

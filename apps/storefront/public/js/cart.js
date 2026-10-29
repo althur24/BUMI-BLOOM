@@ -5,6 +5,30 @@
    - fires add_to_cart analytics
    ============================================ */
 
+// Resolve the Shopify variant for a cart line. Products without Color/Size
+// options (single-variant, color-only) store empty strings; older carts used
+// "—"/"One Size" placeholders, so normalize those too and fall back to the
+// only variant when the product has exactly one.
+function findCartVariant(product, color, size) {
+  if (!product || !product.variants || !product.variants.length) return null;
+  const variants = product.variants;
+  const c = color === '—' ? '' : (color || '');
+  const s = size === 'One Size' ? '' : (size || '');
+
+  const exact = variants.find((v) => v.color === c && v.size === s);
+  if (exact) return exact;
+
+  // Match only the dimensions the product actually has. This covers
+  // color-only products, size-only products whose colors are cosmetic
+  // (metafield-only), and legacy cart lines with "One Size"/"—".
+  const hasColors = variants.some((v) => v.color);
+  const hasSizes = variants.some((v) => v.size);
+  if (!hasColors && hasSizes) return variants.find((v) => v.size === s) || null;
+  if (hasColors && !hasSizes) return variants.find((v) => v.color === c) || null;
+  if (variants.length === 1) return variants[0];
+  return null;
+}
+
 const BumiCart = {
   STORAGE_KEY: 'bb-cart',
   PROMO_KEY: 'bb-promo',
@@ -54,9 +78,7 @@ const BumiCart = {
   addItem(product) {
     const fullProduct = window.BumiData ? BumiData.getProduct(product.id) : null;
     if (fullProduct && fullProduct.variants && fullProduct.variants.length) {
-      const variant = fullProduct.variants.find(v =>
-        v.color === product.color && v.size === product.size
-      );
+      const variant = findCartVariant(fullProduct, product.color, product.size);
       if (variant && !variant.available) {
         this.showOutOfStockNotification(product.name, product.id);
         return null;
@@ -179,9 +201,7 @@ const BumiCart = {
     const skipped = [];
     for (const item of items) {
       const product = window.BumiData ? BumiData.getProduct(item.id) : null;
-      const variant = product && product.variants
-        ? product.variants.find((v) => v.color === item.color && v.size === item.size)
-        : null;
+      const variant = findCartVariant(product, item.color, item.size);
       if (!variant) { skipped.push(item); continue; }
       lineItems.push({ merchandiseId: variant.id, quantity: item.quantity || 1 });
     }

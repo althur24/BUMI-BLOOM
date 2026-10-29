@@ -11,6 +11,11 @@ export interface ScraperVariant {
   hex?: string; // color hex code (e.g. "#000000") — only for color variants
 }
 
+export interface NormalizedColor {
+  name: string;
+  hex: string;
+}
+
 export interface NormalizedProduct {
   platform: Platform;
   sourceUrl: string;
@@ -20,6 +25,9 @@ export interface NormalizedProduct {
   currency?: string; // "IDR"
   images: string[]; // original marketplace URLs (pre-rehost)
   variants: ScraperVariant[];
+  // Color swatches for the storefront (bumi.colors). Scrapers/AI/admin edits
+  // fill this; the Shopify mapper falls back to variants + a name→hex dictionary.
+  colors?: NormalizedColor[];
   specs?: Record<string, string>;
   brand?: string;
   rating?: number;

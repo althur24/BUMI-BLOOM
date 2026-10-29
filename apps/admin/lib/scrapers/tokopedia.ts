@@ -7,7 +7,14 @@
 // tsx __name injection issues) → regex relay state from page.content().
 
 import { withPage } from "./browser";
-import { toNum, type NormalizedProduct, type ScraperVariant, type ScrapeResult } from "./base";
+import {
+  toNum,
+  type NormalizedColor,
+  type NormalizedProduct,
+  type ScraperVariant,
+  type ScrapeResult,
+} from "./base";
+import { dedupeColors, looksLikeSize, normalizeHex } from "../colors";
 
 export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
   try {
@@ -50,7 +57,7 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
         const brand = extractBrand(html, ogTitle);
 
         // ── 7. Variants (size/color + stock) ─────────────────────────────────
-        const variants = extractVariants(html, price);
+        const { variants, colors } = extractVariants(html, price);
 
         const normalized: NormalizedProduct = {
           platform: "TOKPED",
@@ -61,6 +68,7 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
           currency: "IDR",
           images,
           variants,
+          colors,
           brand,
         };
 
@@ -123,69 +131,77 @@ function extractBrand(html: string, ogTitle: string): string | undefined {
 function extractVariants(
   html: string,
   productPrice?: number,
-): ScraperVariant[] {
-  // Find group definition positions. Tokopedia uses "colour" (British) OR "color".
-  const sizePos = html.indexOf('"identifier":"size"');
-  const colorPos = html.search(/"identifier":"colou?r"/); // matches color or colour
-  if (sizePos < 0 && colorPos < 0) return [];
+): { variants: ScraperVariant[]; colors: NormalizedColor[] } {
+  const empty = { variants: [] as ScraperVariant[], colors: [] as NormalizedColor[] };
 
-  // Build sorted list of group markers: [{pos, type}]
-  const markers: { pos: number; type: "size" | "color" }[] = [];
-  if (sizePos >= 0) markers.push({ pos: sizePos, type: "size" });
-  if (colorPos >= 0) markers.push({ pos: colorPos, type: "color" });
-  markers.sort((a, b) => a.pos - b.pos);
+  // Group markers tell us which dimensions exist. We deliberately do NOT use
+  // their positions to slice the value list: Tokopedia sometimes emits every
+  // group definition before a single shared options array, which made the
+  // nearest-preceding-marker heuristic dump colours into Size. Instead we use
+  // the markers only to know whether Color/Size dimensions exist, then classify
+  // each value by its content (valid hex / size-shaped name).
+  const hasSize = /"identifier":"(?:size|ukuran)"/i.test(html);
+  const hasColor = /"identifier":"(?:colou?r|warna)"/i.test(html);
+  if (!hasSize && !hasColor) return empty;
 
-  // Extract ALL value+hex+stock with position, assign to group by nearest
-  // preceding marker.
   interface RawOption { value: string; hex: string; stock: number; }
   const sizes: RawOption[] = [];
-  const colors: RawOption[] = [];
+  const colorOptions: RawOption[] = [];
   const seenSize = new Set<string>();
   const seenColor = new Set<string>();
   const re = /"value":"([^"]+)","hex":"([^"]*)","stock":"?(\d+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     const value = m[1];
-    const hex = m[2];
+    const hex = cleanHex(m[2]);
     const stock = parseInt(m[3], 10);
-    const pos = m.index;
-    if (/^\d+$/.test(value)) continue;
+    // Long numeric strings are variant IDs, not sizes. Keep numeric sizes
+    // like "2", "4", "100" (height in cm).
+    if (/^\d{6,}$/.test(value)) continue;
+    if (!value.trim()) continue;
 
-    // Find nearest preceding marker
-    let groupType: "size" | "color" | null = null;
-    for (const mk of markers) {
-      if (mk.pos < pos) groupType = mk.type;
-      else break;
-    }
-    if (!groupType) continue;
-
-    if (groupType === "color") {
-      if (!seenColor.has(value)) { seenColor.add(value); colors.push({ value, hex, stock }); }
-    } else {
-      if (!seenSize.has(value)) { seenSize.add(value); sizes.push({ value, hex, stock }); }
+    const isColor = classifyOption(value, hex, hasSize, hasColor);
+    if (isColor) {
+      if (!seenColor.has(value)) {
+        seenColor.add(value);
+        colorOptions.push({ value, hex, stock });
+      }
+    } else if (!seenSize.has(value)) {
+      seenSize.add(value);
+      sizes.push({ value, hex, stock });
     }
   }
+
+  const colors = dedupeColors(
+    colorOptions.map((c) => ({ name: c.value, hex: c.hex })),
+  );
 
   // ── Single dimension: flat list ─────────────────────────────────────────
-  if (sizes.length > 0 && colors.length === 0) {
-    return sizes.map((s) => ({
-      options: { Ukuran: s.value },
-      price: productPrice,
-      stock: s.stock,
-    }));
+  if (sizes.length > 0 && colorOptions.length === 0) {
+    return {
+      variants: sizes.map((s) => ({
+        options: { Ukuran: s.value },
+        price: productPrice,
+        stock: s.stock,
+      })),
+      colors: [],
+    };
   }
-  if (colors.length > 0 && sizes.length === 0) {
-    return colors.map((c) => ({
-      options: { Warna: c.value },
-      price: productPrice,
-      stock: c.stock,
-      hex: c.hex,
-    }));
+  if (colorOptions.length > 0 && sizes.length === 0) {
+    return {
+      variants: colorOptions.map((c) => ({
+        options: { Warna: c.value },
+        price: productPrice,
+        stock: c.stock,
+        hex: c.hex,
+      })),
+      colors,
+    };
   }
 
   // ── Multi dimension: cartesian product (colour × size) ──────────────────
   const variants: ScraperVariant[] = [];
-  for (const c of colors) {
+  for (const c of colorOptions) {
     for (const s of sizes) {
       // Stock: colour stock is usually the aggregate (more reliable).
       // Size stock is often 0 (not maintained per-size).
@@ -198,7 +214,31 @@ function extractVariants(
       });
     }
   }
-  return variants;
+  return { variants, colors };
+}
+
+// Decide whether an option belongs to Color or Size.
+// 1. A real hex always means Color.
+// 2. Size-shaped values (S/M/L, 1Y, 3-6M, 110cm, "One Size") are Size.
+// 3. Everything else is a Color — marketplaces often use pattern/colorway
+//    names like OCEAN, CRAB, MAHESA that the old parser treated as sizes.
+function classifyOption(
+  value: string,
+  hex: string,
+  hasSize: boolean,
+  hasColor: boolean,
+): boolean {
+  if (hex) return true;
+  if (!hasSize && hasColor) return true; // only one dimension, and it's Color
+  if (hasSize && !hasColor) return false; // only one dimension, and it's Size
+  return !looksLikeSize(value);
+}
+
+// Tokopedia stores hex without "#" in some payloads; normalize both forms.
+function cleanHex(raw: string): string {
+  if (!raw) return "";
+  const withHash = raw.startsWith("#") ? raw : `#${raw}`;
+  return normalizeHex(withHash) || normalizeHex(raw) || "";
 }
 
 function errMsg(e: unknown): string {

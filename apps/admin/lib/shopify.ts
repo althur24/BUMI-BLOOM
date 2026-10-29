@@ -212,15 +212,49 @@ export async function setMetafields(
   ownerId: string,
   metafields: { namespace: string; key: string; value: string; type: string }[],
 ): Promise<void> {
-  await adminGraphQL(
+  // single_line_text_field rejects line breaks, and one bad item rejects the
+  // whole metafieldsSet batch. Normalize text and drop blanks before sending.
+  const cleaned = metafields
+    .map((m) =>
+      m.type === "single_line_text_field"
+        ? {
+            ...m,
+            value: String(m.value || "")
+              .replace(/[\r\n\t]+/g, " ")
+              .replace(/\s+/g, " ")
+              .trim(),
+          }
+        : m,
+    )
+    .filter((m) => !(m.type === "single_line_text_field" && !m.value));
+  if (!cleaned.length) return;
+  const data = await adminGraphQL<{
+    metafieldsSet: {
+      metafields: { namespace: string; key: string }[];
+      userErrors: { field?: string[] | null; message: string; code?: string }[];
+    };
+  }>(
     `mutation SetMeta($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
         metafields { namespace key }
-        userErrors { field message }
+        userErrors { field message code }
       }
     }`,
-    { metafields: metafields.map((m) => ({ ownerId, ...m })) },
+    { metafields: cleaned.map((m) => ({ ownerId, ...m })) },
   );
+  // metafieldsSet is a batch: one bad item (e.g. a type mismatch with an
+  // existing definition) rejects the whole batch. Surface it instead of
+  // reporting a successful push that silently stored nothing.
+  const errors = data?.metafieldsSet?.userErrors || [];
+  if (errors.length) {
+    const detail = errors
+      .map((e) => {
+        const field = (e.field || []).filter(Boolean).join(".");
+        return [field, e.message].filter(Boolean).join(": ");
+      })
+      .join("; ");
+    throw new Error(`metafieldsSet gagal: ${detail}`);
+  }
 }
 
 // Full import push: create (+ idempotent replace by handle) → metafields → publish.
@@ -241,8 +275,13 @@ export async function pushProductToShopify(input: {
   const created = await createProduct(input.productPayload);
   const ownerId = `gid://shopify/Product/${created.id}`;
 
-  if (input.metafields?.length) {
-    await setMetafields(ownerId, input.metafields);
+  // Blank single-line text fields are rejected by Shopify; drop them so one
+  // empty optional value cannot fail the whole metafields batch.
+  const metafields = (input.metafields || []).filter(
+    (m) => !(m.type === "single_line_text_field" && !String(m.value || "").trim()),
+  );
+  if (metafields.length) {
+    await setMetafields(ownerId, metafields);
   }
 
   await publishToHeadless(created.id, publicationId);

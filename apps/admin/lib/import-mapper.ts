@@ -4,6 +4,7 @@
 // the old Supabase Product rows.
 
 import type { NormalizedProduct, ScraperVariant } from "./scrapers/base";
+import { colorsFromVariants } from "./colors";
 
 export interface ShopifyPushInput {
   handle: string;
@@ -47,12 +48,21 @@ function priceStr(cents: number | undefined): string {
 export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
   const handle = slugify(np.title) || `import-${Date.now()}`;
 
-  const colorKey = np.variants.some((v) => opt(v, "Warna", "Color"))
-    ? "Color"
-    : null;
-  const sizeKey = np.variants.some((v) => opt(v, "Ukuran", "Size"))
-    ? "Size"
-    : null;
+  const colorOf = (v: ScraperVariant): string | undefined =>
+    opt(v, "Warna", "Color", "Colour");
+  const sizeOf = (v: ScraperVariant): string | undefined =>
+    opt(v, "Ukuran", "Size");
+
+  const colorKey = np.variants.some((v) => colorOf(v)) ? "Color" : null;
+  const sizeKey = np.variants.some((v) => sizeOf(v)) ? "Size" : null;
+
+  // Values assigned to the REST payload. If a dimension exists but a given
+  // variant lacks it, Shopify needs a concrete value; "Default" is used and
+  // included in the option values below so the payload stays consistent.
+  const variantColor = (v: ScraperVariant): string | undefined =>
+    colorOf(v) || (colorKey ? "Default" : undefined);
+  const variantSize = (v: ScraperVariant): string | undefined =>
+    sizeOf(v) || (sizeKey ? "Default" : undefined);
 
   const variants =
     np.variants.length > 0
@@ -66,11 +76,11 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
           // before option2). If only size (no color), size goes to option1.
           let optIdx = 1;
           if (colorKey) {
-            variant[`option${optIdx}`] = opt(v, "Warna", "Color") || "Default";
+            variant[`option${optIdx}`] = variantColor(v);
             optIdx++;
           }
           if (sizeKey) {
-            variant[`option${optIdx}`] = opt(v, "Ukuran", "Size");
+            variant[`option${optIdx}`] = variantSize(v);
             optIdx++;
           }
           if (v.sku) variant.sku = v.sku;
@@ -94,18 +104,20 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
     .filter(Boolean)
     .join(", ");
 
+  // Derive option values from the exact same functions used for variants, so
+  // a "Default" placeholder is never missing from the options array.
   const colorValues = [
     ...new Set(
       np.variants
-        .map((v) => opt(v, "Warna", "Color"))
-        .filter(Boolean) as string[],
+        .map((v) => variantColor(v))
+        .filter((v): v is string => Boolean(v)),
     ),
   ];
   const sizeValues = [
     ...new Set(
       np.variants
-        .map((v) => opt(v, "Ukuran", "Size"))
-        .filter(Boolean) as string[],
+        .map((v) => variantSize(v))
+        .filter((v): v is string => Boolean(v)),
     ),
   ];
 
@@ -174,14 +186,9 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
     });
 
   // Colors metafield — JSON array of {name, hex} for storefront swatches.
-  const colorHexMap: Record<string, string> = {};
-  for (const v of np.variants) {
-    const name = opt(v, "Warna", "Color");
-    if (name && v.hex && !colorHexMap[name]) colorHexMap[name] = v.hex;
-  }
-  const colorsJson = Object.entries(colorHexMap)
-    .map(([name, hex]) => ({ name, hex }))
-    .filter(c => c.hex);
+  // Variants are the source of truth (so every swatch can be checked out);
+  // explicit colors only supply hex, falling back to the name→hex dictionary.
+  const colorsJson = colorsFromVariants(np.variants, np.colors || []);
   if (colorsJson.length)
     metafields.push({
       namespace: "bumi",
@@ -205,7 +212,7 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
   metafields.push({ namespace: "bumi", key: "audience", value: audience, type: "single_line_text_field" });
 
   // New product defaults.
-  metafields.push({ namespace: "bumi", key: "is_new", value: "true", type: "true_false" });
+  metafields.push({ namespace: "bumi", key: "is_new", value: "true", type: "boolean" });
   metafields.push({ namespace: "bumi", key: "badge", value: "new", type: "single_line_text_field" });
   metafields.push({ namespace: "bumi", key: "reviews_count", value: "0", type: "number_integer" });
 

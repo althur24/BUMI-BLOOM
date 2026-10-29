@@ -23,6 +23,17 @@ else __bbProductsInit();
 
 const BG_CYCLE = ['yellow', 'green', 'pink', 'blue', 'orange', 'purple'];
 
+function bbEscapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[ch]);
+}
+
+function bbSafeHex(value) {
+  const hex = String(value || '').trim();
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex) ? hex : '#CCCCCC';
+}
+
 function wishlisted(id) {
   return window.BumiWishlist ? BumiWishlist.isWishlisted(id) : false;
 }
@@ -50,7 +61,7 @@ function productCardHTML(product, index) {
     : BumiData.formatPrice(product.price);
 
   const swatches = (product.colors || []).slice(0, 4).map(c =>
-    `<span class="product-card__swatch" style="background:${c.hex};" title="${c.name}"></span>`
+    `<span class="product-card__swatch" style="background:${bbSafeHex(c.hex)};" title="${bbEscapeHtml(c.name)}"></span>`
   ).join('');
 
   const ratingHTML = product.rating

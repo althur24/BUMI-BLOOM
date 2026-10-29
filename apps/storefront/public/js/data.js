@@ -15,6 +15,112 @@
 
 const PLACEHOLDER_IMG = '/images/placeholder.png';
 
+// ── Color helpers ───────────────────────────────────────────────────────────
+// The storefront renders swatches from the optional `bumi.colors` metafield.
+// Products created/edited directly in Shopify Admin (or pushed before the
+// metafield existed) only have Color variant options, so we derive the palette
+// from those and fill hexes from this dictionary.
+const COLOR_HEX = {
+  black: '#111111', hitam: '#111111', white: '#FFFFFF', putih: '#FFFFFF',
+  'broken white': '#F2EEE9', 'off white': '#F7F3EE', cream: '#F2EEE9', krem: '#F2EEE9',
+  ivory: '#F7F3EE', beige: '#E4D5C1', sand: '#D9C6A5', tan: '#C19A6B', khaki: '#B9A88A',
+  brown: '#7B4B2A', coklat: '#7B4B2A', cokelat: '#7B4B2A', chocolate: '#5A3A22',
+  grey: '#8A8A8A', gray: '#8A8A8A', abu: '#8A8A8A', 'abu abu': '#8A8A8A',
+  silver: '#C0C0C0', charcoal: '#36454F', slate: '#708090',
+  blue: '#96ADD6', biru: '#96ADD6', 'light blue': '#B8D4E8', 'biru muda': '#B8D4E8',
+  'dark blue': '#1F3D68', 'biru tua': '#1F3D68', navy: '#00408C', denim: '#4A6FA5',
+  teal: '#2F7F7F', turquoise: '#40C4C4', tosca: '#40C4C4',
+  green: '#7BA05B', hijau: '#7BA05B', 'light green': '#B7D3A8', 'hijau muda': '#B7D3A8',
+  'dark green': '#3F5F3A', 'hijau tua': '#3F5F3A', army: '#57652D', olive: '#6B704A',
+  sage: '#A8BBA2', mint: '#A8E6CF', moss: '#7B8B4A',
+  red: '#D7263D', merah: '#D7263D', maroon: '#7B2D26', marun: '#7B2D26', burgundy: '#6D1A36',
+  pink: '#F2D7D3', 'hot pink': '#E45A8A', fuchsia: '#C2185B', magenta: '#C2185B',
+  coral: '#FF6F61', peach: '#F9B8AF', rose: '#E8A2A2',
+  yellow: '#F4C95D', kuning: '#F4C95D', mustard: '#D4A017', gold: '#C9A227',
+  orange: '#F08A3C', oranye: '#F08A3C', jingga: '#F08A3C',
+  purple: '#8B6BB1', ungu: '#8B6BB1', lilac: '#C7B6DE', lavender: '#B9A7D1',
+  plum: '#6A3D6B', violet: '#8B6BB1',
+  multicolor: '#CCCCCC', 'multi color': '#CCCCCC', rainbow: '#CCCCCC'
+};
+
+function normalizeColorName(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeHex(hex) {
+  if (typeof hex !== 'string') return '';
+  const value = hex.trim();
+  if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return '';
+  if (value.length === 4) {
+    return '#' + value[1] + value[1] + value[2] + value[2] + value[3] + value[3];
+  }
+  return value.toUpperCase();
+}
+
+function hexForColorName(name) {
+  const key = normalizeColorName(name);
+  if (!key) return '#CCCCCC';
+  if (COLOR_HEX[key]) return COLOR_HEX[key];
+  for (const token of key.split(' ')) if (COLOR_HEX[token]) return COLOR_HEX[token];
+  const keys = Object.keys(COLOR_HEX).sort((a, b) => b.length - a.length);
+  for (const k of keys) if (key.includes(k)) return COLOR_HEX[k];
+  return '#CCCCCC';
+}
+
+const COLOR_OPTION_NAMES = ['color', 'colour', 'warna'];
+const SIZE_OPTION_NAMES = ['size', 'ukuran'];
+
+function optionValue(options, names) {
+  for (const o of (options || [])) {
+    if (names.includes(String(o && o.name || '').toLowerCase())) {
+      return o && o.value ? String(o.value) : '';
+    }
+  }
+  return '';
+}
+
+function isPlaceholderColor(name) {
+  return /^(default|default title)$/i.test(String(name || '').trim());
+}
+
+function buildColors(rawColors, variants) {
+  // Variants are the source of truth: every swatch must map to a real variant
+  // so Add to Bag / Shopify checkout can resolve it. The metafield supplies
+  // the hex (dictionary fallback), never extra colors that cannot be bought.
+  const hexByName = new Map();
+  for (const c of (Array.isArray(rawColors) ? rawColors : [])) {
+    const key = normalizeColorName(c && c.name);
+    if (!key) continue;
+    const hex = normalizeHex(c.hex);
+    if (!hexByName.has(key)) hexByName.set(key, hex || hexForColorName(c.name));
+    else if (hex) hexByName.set(key, hex);
+  }
+
+  const out = [];
+  const seen = new Set();
+  for (const v of (variants || [])) {
+    const name = String(v && v.color || '').trim();
+    if (!name || isPlaceholderColor(name)) continue;
+    const key = normalizeColorName(name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, hex: hexByName.get(key) || hexForColorName(name) });
+  }
+
+  // Legacy products that only have colors in the metafield (no Color option).
+  if (!out.length) {
+    for (const c of (Array.isArray(rawColors) ? rawColors : [])) {
+      const name = String(c && c.name || '').trim();
+      if (!name || isPlaceholderColor(name)) continue;
+      const key = normalizeColorName(name);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ name, hex: normalizeHex(c.hex) || hexForColorName(name) });
+    }
+  }
+  return out;
+}
+
 // ── Shopify Storefront config (public token, aman di browser) ──────────────
 const SHOPIFY_SHOP = 'p9gcf7-wj';
 const SHOPIFY_STOREFRONT_TOKEN = 'f221d7b0fcb996294ab2cb0732cf01b5';
@@ -79,27 +185,31 @@ function mapShopifyProduct(node) {
   const meta = {};
   for (const m of (node.metafields || [])) if (m && m.key) meta[m.key] = m.value;
 
-  const colors = safeParseJSON(meta.colors, []);
+  const metaColors = safeParseJSON(meta.colors, []);
   const variants = (node.variants && node.variants.edges || []).map((e) => e.node);
 
   const sizes = [];
   variants.forEach((v) => {
-    const size = (v.selectedOptions || []).find((o) => o.name === 'Size');
-    if (size && size.value && !sizes.includes(size.value)) sizes.push(size.value);
+    const size = optionValue(v.selectedOptions, SIZE_OPTION_NAMES);
+    if (size && !sizes.includes(size)) sizes.push(size);
   });
 
   // Daftar varian lengkap (dipakai cart untuk dapat merchandiseId/GID saat checkout Shopify).
   const variantList = variants.map((v) => {
-    const color = (v.selectedOptions || []).find((o) => o.name === 'Color');
-    const size = (v.selectedOptions || []).find((o) => o.name === 'Size');
+    const color = optionValue(v.selectedOptions, COLOR_OPTION_NAMES);
+    const size = optionValue(v.selectedOptions, SIZE_OPTION_NAMES);
     return {
       id: v.id,
-      color: color ? color.value : '',
-      size: size ? size.value : '',
+      color,
+      size,
       price: parseFloat(v.price.amount),
       available: typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true,
     };
   });
+
+  // `bumi.colors` is primary; fall back to the Shopify Color options so
+  // swatches still work for products edited directly in Shopify Admin.
+  const colors = buildColors(metaColors, variantList);
 
   const images = (node.images && node.images.edges || []).map((e) => e.node && e.node.url).filter(Boolean);
   const featured = node.featuredImage && node.featuredImage.url;
