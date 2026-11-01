@@ -5,12 +5,36 @@
    - fires add_to_cart analytics
    ============================================ */
 
+// Resolve the Shopify variant for a cart line. Products without Color/Size
+// options (single-variant, color-only) store empty strings; older carts used
+// "—"/"One Size" placeholders, so normalize those too and fall back to the
+// only variant when the product has exactly one.
+function findCartVariant(product, color, size) {
+  if (!product || !product.variants || !product.variants.length) return null;
+  const variants = product.variants;
+  const c = color === '—' ? '' : (color || '');
+  const s = size === 'One Size' ? '' : (size || '');
+
+  const exact = variants.find((v) => v.color === c && v.size === s);
+  if (exact) return exact;
+
+  // Match only the dimensions the product actually has. This covers
+  // color-only products, size-only products whose colors are cosmetic
+  // (metafield-only), and legacy cart lines with "One Size"/"—".
+  const hasColors = variants.some((v) => v.color);
+  const hasSizes = variants.some((v) => v.size);
+  if (!hasColors && hasSizes) return variants.find((v) => v.size === s) || null;
+  if (hasColors && !hasSizes) return variants.find((v) => v.color === c) || null;
+  if (variants.length === 1) return variants[0];
+  return null;
+}
+
 const BumiCart = {
   STORAGE_KEY: 'bb-cart',
   PROMO_KEY: 'bb-promo',
 
-  /* AU shipping (AUD). freeThreshold applies to the (pre-discount) subtotal. */
-  SHIPPING: { flat: 9.95, express: 14.95, freeThreshold: 60 },
+  /* AU shipping (AUD). freeThreshold applies to the post-discount subtotal. */
+  SHIPPING: { flat: 15, express: 14.95, freeThreshold: 99 },
 
   /* Promo codes — kini dikelola sebagai Shopify discount codes (Fase 6).
      Local config ini hanya untuk tampilan ringkasan cart; validasi nyata
@@ -54,9 +78,7 @@ const BumiCart = {
   addItem(product) {
     const fullProduct = window.BumiData ? BumiData.getProduct(product.id) : null;
     if (fullProduct && fullProduct.variants && fullProduct.variants.length) {
-      const variant = fullProduct.variants.find(v =>
-        v.color === product.color && v.size === product.size
-      );
+      const variant = findCartVariant(fullProduct, product.color, product.size);
       if (variant && !variant.available) {
         this.showOutOfStockNotification(product.name, product.id);
         return null;
@@ -126,21 +148,28 @@ const BumiCart = {
     return cart.reduce((count, item) => count + (item.quantity || 1), 0);
   },
 
-  /* AU shipping cost for a given method + subtotal. */
+  /* AU shipping cost for a given method + subtotal. Free shipping is based
+     on the subtotal after discounts, matching Shopify's order-price rule. */
   shippingCost(method, subtotal) {
     if (method === 'express') return this.SHIPPING.express;
-    return subtotal >= this.SHIPPING.freeThreshold ? 0 : this.SHIPPING.flat;
+    const discounted = subtotal - this.getDiscount(subtotal);
+    return discounted >= this.SHIPPING.freeThreshold ? 0 : this.SHIPPING.flat;
   },
 
-  /* ── Promo codes ── */
+  /* ── Promo codes ──
+     Shopify discount codes are the source of truth. Known codes get a local
+     estimate for the cart summary; any other code is stored and passed to
+     Shopify checkout for validation. */
   async applyPromo(code) {
     const key = String(code || '').trim().toUpperCase();
-    const promo = this.PROMOS[key];
-    if (!promo) {
+    if (!key) {
       this.clearPromo();
       return { valid: false };
     }
-    const stored = { code: key, ...promo };
+    const known = this.PROMOS[key];
+    const stored = known
+      ? { code: key, ...known }
+      : { code: key, label: 'Discount code', pending: true };
     localStorage.setItem(this.PROMO_KEY, JSON.stringify(stored));
     window.dispatchEvent(new CustomEvent('promo-updated'));
     return { valid: true, ...stored };
@@ -149,7 +178,7 @@ const BumiCart = {
   getPromo() {
     try {
       const p = JSON.parse(localStorage.getItem(this.PROMO_KEY) || 'null');
-      return (p && this.PROMOS[p.code]) ? p : null;
+      return (p && p.code) ? p : null;
     } catch {
       return null;
     }
@@ -162,7 +191,7 @@ const BumiCart = {
 
   getDiscount(subtotal) {
     const p = this.getPromo();
-    if (!p) return 0;
+    if (!p || p.pending) return 0;
     if (p.fixed != null) return Math.min(p.fixed, subtotal);
     return subtotal * (p.rate || 0);
   },
@@ -179,9 +208,7 @@ const BumiCart = {
     const skipped = [];
     for (const item of items) {
       const product = window.BumiData ? BumiData.getProduct(item.id) : null;
-      const variant = product && product.variants
-        ? product.variants.find((v) => v.color === item.color && v.size === item.size)
-        : null;
+      const variant = findCartVariant(product, item.color, item.size);
       if (!variant) { skipped.push(item); continue; }
       lineItems.push({ merchandiseId: variant.id, quantity: item.quantity || 1 });
     }
@@ -193,7 +220,13 @@ const BumiCart = {
     }
     if (!lineItems.length) throw new Error('No matching product variants (catalog not loaded?)');
 
-    const input = { lines: lineItems };
+    // BUMI / BLOOM sells to Australia. Sending the buyer country keeps the
+    // Shopify checkout in AUD / en-AU instead of falling back to the visitor's
+    // IP country (which produced en-ID and comma-decimal prices).
+    const input = {
+      lines: lineItems,
+      buyerIdentity: { countryCode: 'AU' },
+    };
     const promo = this.getPromo();
     if (promo && promo.code) input.discountCodes = [promo.code];
 
@@ -347,7 +380,7 @@ const BumiCart = {
             <div class="bb-cart-drawer__total-row"><span>Subtotal</span><strong data-cart-subtotal>—</strong></div>
             <div class="bb-cart-drawer__total-row bb-cart-drawer__total-row--discount" data-cart-discount hidden><span data-cart-discount-label>Discount</span><strong data-cart-discount-value>—</strong></div>
           </div>
-          <p class="bb-cart-drawer__note">Shipping &amp; taxes finalized at checkout.</p>
+          <p class="bb-cart-drawer__note">Charged in AUD. Discounts, shipping &amp; taxes finalized at Shopify checkout.</p>
           <button class="btn btn--primary btn--full" type="button" data-cart-checkout>Checkout</button>
           <a class="btn btn--ghost btn--full" data-cart-view href="${this._storeHref()}">View Bag</a>
         </footer>
@@ -498,9 +531,10 @@ const BumiCart = {
   _renderShipping(items) {
     const d = this._drawer;
     const subtotal = items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+    const eligible = Math.max(0, subtotal - this.getDiscount(subtotal));
     const threshold = this.SHIPPING.freeThreshold;
-    const remaining = Math.max(0, threshold - subtotal);
-    const pct = Math.min(100, Math.round((subtotal / threshold) * 100));
+    const remaining = Math.max(0, threshold - eligible);
+    const pct = Math.min(100, Math.round((eligible / threshold) * 100));
 
     d.ship.hidden = false;
     d.root.classList.toggle('is-ship-free', remaining <= 0);
@@ -552,7 +586,7 @@ const BumiCart = {
       if (!d.recs) return;
       const cartIds = this.getCart().map((item) => item.id);
       const pool = (window.BumiData && BumiData.getFeatured ? BumiData.getFeatured(10) : [])
-        .filter((product) => cartIds.indexOf(product.id) === -1)
+        .filter((product) => cartIds.indexOf(product.id) === -1 && !product.soldOut)
         .slice(0, 3);
 
       if (!pool.length) {
@@ -646,6 +680,19 @@ const BumiCart = {
     try {
       if (window.BumiData && BumiData.ready) await BumiData.ready();
       const url = await this.createShopifyCart();
+      if (window.BumiTrack) {
+        const items = this.getCart().map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity || 1,
+        }));
+        BumiTrack.event('begin_checkout', {
+          currency: 'AUD',
+          value: this.getTotal() - this.getDiscount(this.getTotal()),
+          items,
+        });
+      }
       window.location.href = url;
     } catch (err) {
       console.error('Checkout failed', err);

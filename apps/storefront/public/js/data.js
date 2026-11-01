@@ -129,7 +129,7 @@ const SHOPIFY_API_VERSION = '2026-10';
 const SHOPIFY_ENDPOINT = `https://${SHOPIFY_SHOP}.myshopify.com/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
 // Query produk (semua field yang dipakai mapShopifyProduct).
-const PRODUCTS_QUERY = `{
+const PRODUCTS_QUERY = `query @inContext(country: AU) {
   products(first: 100) {
     edges {
       node {
@@ -207,6 +207,10 @@ function mapShopifyProduct(node) {
     };
   });
 
+  // Product-level availability for cards and the PDP. A product is available
+  // if at least one of its variants is in stock for the active market (AU).
+  const available = variantList.some((v) => v.available);
+
   // `bumi.colors` is primary; fall back to the Shopify Color options so
   // swatches still work for products edited directly in Shopify Admin.
   const colors = buildColors(metaColors, variantList);
@@ -231,6 +235,8 @@ function mapShopifyProduct(node) {
     colors: Array.isArray(colors) ? colors : [],
     sizes,
     variants: variantList,
+    available,
+    soldOut: !available,
     image,
     gallery: gallery.length ? gallery : [image],
     badge: meta.badge || null,

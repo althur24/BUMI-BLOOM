@@ -9,7 +9,7 @@ export const metadata = {
     default: "BUMI / BLOOM — Colourful, comfy kidswear & women's casual, delivered Australia-wide",
     template: '%s — BUMI / BLOOM',
   },
-  description: "Colourful, comfy kidswear and women's casual from Indonesian designers, delivered Australia-wide. Free AU shipping over $60, 30-day returns, Afterpay.",
+  description: "Colourful, comfy kidswear and women's casual from Indonesian designers, delivered Australia-wide. Free AU shipping over $99, 30-day returns.",
   icons: { icon: '/images/characters/whale.webp' },
 };
 

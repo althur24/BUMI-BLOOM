@@ -49,8 +49,29 @@
 
     const gallery = (product.gallery && product.gallery.length) ? product.gallery : [product.image];
     const productColors = product.colors || [];
-    let selectedColor = (productColors[0] && productColors[0].name) || '';
-    let selectedSize = product.sizes[0] || '';
+    const allSoldOut = !(product.variants || []).some((v) => v.available);
+
+    function variantFor(color, size) {
+      return (product.variants || []).find((v) =>
+        v.size === size && (color ? v.color === color : true)
+      ) || null;
+    }
+
+    function sizeAvailable(color, size) {
+      const variant = variantFor(color, size);
+      return !!(variant && variant.available);
+    }
+
+    function colorAvailable(color) {
+      return (product.variants || []).some((v) => v.available && (!color || v.color === color));
+    }
+
+    function firstAvailableSize(color) {
+      return product.sizes.find((s) => sizeAvailable(color, s)) || product.sizes[0] || '';
+    }
+
+    let selectedColor = (productColors.find((c) => colorAvailable(c.name)) || productColors[0] || {}).name || '';
+    let selectedSize = firstAvailableSize(selectedColor);
 
     function buildPriceHTML() {
       return product.compareAt
@@ -63,18 +84,20 @@
       ? '<span class="badge badge--' + (product.badge === 'new' ? 'green' : 'yellow') + '" style="margin-bottom:var(--space-4);display:inline-block;">' + badges[product.badge] + '</span>'
       : '<span class="badge badge--soft" style="margin-bottom:var(--space-4);display:inline-block;">Designed in Indonesia</span>';
 
-    const colorSwatches = productColors.map((c, i) => {
+    const colorSwatches = productColors.map((c) => {
       const name = escapeHtml(c.name);
-      return '<button class="pdp-color-swatch' + (i === 0 ? ' is-active' : '') + '" style="background:' + safeHex(c.hex) + '" data-color="' + name + '" title="' + name + '" aria-label="' + name + '" type="button"></button>';
+      const soldOutColor = !colorAvailable(c.name);
+      return '<button class="pdp-color-swatch' + (c.name === selectedColor ? ' is-active' : '') + (soldOutColor ? ' is-sold-out' : '') + '" style="background:' + safeHex(c.hex) + '" data-color="' + name + '" title="' + name + '" aria-label="' + name + '" type="button"' + (soldOutColor ? ' disabled aria-disabled="true"' : '') + '></button>';
     }).join('');
 
     const colorOptionHTML = productColors.length
       ? '<div class="pdp-option"><p class="pdp-option__label">Colour — <span id="selected-colour">' + escapeHtml(selectedColor || '—') + '</span></p><div class="pdp-color-swatches">' + colorSwatches + '</div></div>'
       : '';
 
-    const sizeButtons = product.sizes.map((s, i) =>
-      '<button class="pdp-size' + (i === 0 ? ' is-active' : '') + '" data-size="' + s + '" type="button">' + s + '</button>'
-    ).join('');
+    const sizeButtons = product.sizes.map((s) => {
+      const available = sizeAvailable(selectedColor, s);
+      return '<button class="pdp-size' + (s === selectedSize ? ' is-active' : '') + (available ? '' : ' is-sold-out') + '" data-size="' + s + '" type="button"' + (available ? '' : ' disabled aria-disabled="true"') + '>' + s + '</button>';
+    }).join('');
 
     const sizeOptionHTML = product.sizes.length
       ? '<div class="pdp-option"><p class="pdp-option__label">Size</p><div class="pdp-sizes">' + sizeButtons + '</div></div>'
@@ -96,20 +119,21 @@
           '<p class="pdp-brand">' + product.brand + '</p>' +
           '<h1 class="pdp-name">' + product.name + '</h1>' +
           '<p class="pdp-price" id="pdp-price">' + buildPriceHTML() + '</p>' +
-          '<p id="pdp-afterpay" style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
+          '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">Secure checkout · Visa, Mastercard &amp; Amex</p>' +
+          '<p class="pdp-availability" id="pdp-availability" style="display:none;"></p>' +
           '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
           '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
           colorOptionHTML +
           sizeOptionHTML +
           '<div class="pdp-actions">' +
-            '<button class="btn btn--primary btn--full" id="add-to-bag" type="button">Add to Bag</button>' +
+            '<button class="btn btn--primary btn--full" id="add-to-bag" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button>' +
             '<button class="btn btn--secondary btn--full" id="save-wishlist" type="button">' + wishlistIcon(wished) + '<span id="wishlist-label">' + (wished ? 'Saved to Wishlist' : 'Save to Wishlist') + '</span></button>' +
           '</div>' +
           accordionHTML(product) +
         '</div>' +
       '</div></div>' +
-      '<div class="pdp-sticky-bar"><div class="container"><div class="pdp-sticky-bar__inner"><span class="pdp-sticky-bar__price">' + BumiData.formatPrice(product.price) + '</span><button class="btn btn--primary" id="add-to-bag-sticky" type="button">Add to Bag</button></div></div></div>';
+      '<div class="pdp-sticky-bar"><div class="container"><div class="pdp-sticky-bar__inner"><span class="pdp-sticky-bar__price">' + BumiData.formatPrice(product.price) + '</span><button class="btn btn--primary" id="add-to-bag-sticky" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button></div></div></div>';
 
     // Gallery
     root.querySelectorAll('.pdp-gallery__thumb').forEach(thumb => {
@@ -124,24 +148,67 @@
     // Colour
     root.querySelectorAll('.pdp-color-swatch').forEach(sw => {
       sw.addEventListener('click', () => {
-        root.querySelectorAll('.pdp-color-swatch').forEach(s => s.classList.remove('is-active'));
-        sw.classList.add('is-active');
+        if (sw.disabled) return;
         selectedColor = sw.dataset.color;
         document.getElementById('selected-colour').textContent = selectedColor || '—';
+        if (!sizeAvailable(selectedColor, selectedSize)) {
+          selectedSize = firstAvailableSize(selectedColor);
+        }
+        refreshVariantUI();
       });
     });
 
     // Size
     root.querySelectorAll('.pdp-size').forEach(btn => {
       btn.addEventListener('click', () => {
-        root.querySelectorAll('.pdp-size').forEach(b => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
+        if (btn.disabled) return;
         selectedSize = btn.dataset.size;
+        refreshVariantUI();
       });
     });
 
+    function refreshVariantUI() {
+      const available = sizeAvailable(selectedColor, selectedSize);
+
+      root.querySelectorAll('.pdp-size').forEach((btn) => {
+        const ok = sizeAvailable(selectedColor, btn.dataset.size);
+        btn.disabled = !ok;
+        btn.classList.toggle('is-sold-out', !ok);
+        btn.classList.toggle('is-active', btn.dataset.size === selectedSize);
+      });
+
+      root.querySelectorAll('.pdp-color-swatch').forEach((sw) => {
+        const ok = colorAvailable(sw.dataset.color);
+        sw.disabled = !ok;
+        sw.classList.toggle('is-sold-out', !ok);
+        sw.classList.toggle('is-active', sw.dataset.color === selectedColor);
+      });
+
+      const note = document.getElementById('pdp-availability');
+      if (note) {
+        if (available) {
+          note.style.display = 'none';
+          note.textContent = '';
+        } else {
+          note.style.display = '';
+          note.textContent = allSoldOut ? 'Sold Out' : 'This size is sold out';
+        }
+      }
+
+      ['add-to-bag', 'add-to-bag-sticky'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.disabled = !available;
+        btn.textContent = available ? 'Add to Bag' : 'Sold Out';
+      });
+    }
+
     // Add to bag
     function addToBag() {
+      if (!sizeAvailable(selectedColor, selectedSize)) {
+        BumiCart.showOutOfStockNotification(product.name, product.id);
+        return;
+      }
       BumiCart.addItem({
         id: product.id, name: product.name, brand: product.brand, price: product.price,
         size: selectedSize || '', color: selectedColor || '', image: product.image
@@ -150,6 +217,7 @@
     document.getElementById('add-to-bag').addEventListener('click', addToBag);
     const stickyAdd = document.getElementById('add-to-bag-sticky');
     if (stickyAdd) stickyAdd.addEventListener('click', addToBag);
+    refreshVariantUI();
 
     // Wishlist
     const saveBtn = document.getElementById('save-wishlist');
@@ -177,8 +245,6 @@
     window.addEventListener('currency-updated', () => {
       const priceEl = document.getElementById('pdp-price');
       if (priceEl) priceEl.innerHTML = buildPriceHTML();
-      const afterpayEl = document.getElementById('pdp-afterpay');
-      if (afterpayEl) afterpayEl.innerHTML = 'or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong>';
       const stickyPrice = root.querySelector('.pdp-sticky-bar__price');
       if (stickyPrice) stickyPrice.textContent = BumiData.formatPrice(product.price);
       if (related.length) relatedGrid.innerHTML = related.map((p, i) => relatedCardHTML(p, i)).join('');
@@ -205,11 +271,13 @@
 
     function relatedCardHTML(p, i) {
       const bg = BG[i % BG.length];
+      const soldOut = p.soldOut === true;
       const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
       const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
-      return '<article class="product-card product-card--bg-' + bg + '" data-category="' + p.category + '">' +
+      return '<article class="product-card product-card--bg-' + bg + (soldOut ? ' product-card--sold-out' : '') + '" data-category="' + p.category + '">' +
         '<div class="product-card__image-wrap">' +
           '<img src="' + p.image + '" alt="' + p.name + '" class="product-card__image" loading="lazy">' +
+          (soldOut ? '<span class="product-card__badge product-card__badge--soldout">Sold Out</span>' : '') +
           '<button class="product-card__wishlist' + active + '" data-id="' + p.id + '" aria-label="Save ' + p.name + ' to wishlist" type="button"><svg viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>' +
         '</div>' +
         '<div class="product-card__info"><p class="product-card__brand">' + p.brand + '</p>' +
@@ -223,7 +291,7 @@
         item('Description', '<p>' + product.description + '</p>', true) +
         item('Material &amp; Care', '<p>' + product.material + '</p>') +
         item('Size Guide', sizeGuideTable(product.sizes)) +
-        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $60. Standard delivery 3–6 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
+        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
       '</div>';
     }
     function item(title, body, open) {

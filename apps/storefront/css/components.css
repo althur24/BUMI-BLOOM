@@ -287,6 +287,27 @@
   color: var(--color-white);
 }
 
+.product-card__badge--soldout {
+  background-color: var(--color-dark-muted);
+  color: var(--color-white);
+}
+
+.product-card--sold-out .product-card__image {
+  opacity: 0.55;
+}
+
+.product-card--sold-out .product-card__price {
+  opacity: 0.7;
+}
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* Card info */
 .product-card__info {
   padding: var(--space-4) var(--space-5) var(--space-5);

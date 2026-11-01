@@ -41,6 +41,9 @@ function wishlisted(id) {
 function badgeHTML(product) {
   let cls = null;
   let label = '';
+  if (product.soldOut) {
+    return `<span class="product-card__badge product-card__badge--soldout">Sold Out</span>`;
+  }
   if (product.badge === 'new') { cls = 'product-card__badge--new'; label = 'New'; }
   else if (product.badge === 'bestseller') { cls = 'product-card__badge--bestseller'; label = 'Bestseller'; }
   else if (product.badge === 'sale' && product.compareAt) {
@@ -54,6 +57,7 @@ function badgeHTML(product) {
 
 function productCardHTML(product, index) {
   const bg = BG_CYCLE[index % BG_CYCLE.length];
+  const soldOut = product.soldOut === true;
   const active = wishlisted(product.id) ? ' is-active' : '';
   const fill = wishlisted(product.id) ? 'currentColor' : 'none';
   const priceHTML = product.compareAt
@@ -69,7 +73,7 @@ function productCardHTML(product, index) {
     : '';
 
   return `
-    <article class="product-card product-card--bg-${bg}" data-id="${product.id}" data-category="${product.category}">
+    <article class="product-card product-card--bg-${bg}${soldOut ? ' product-card--sold-out' : ''}" data-id="${product.id}" data-category="${product.category}">
       <div class="product-card__image-wrap">
         <img src="${product.image}" alt="${product.name}" class="product-card__image" loading="lazy">
         ${badgeHTML(product)}
@@ -84,7 +88,7 @@ function productCardHTML(product, index) {
         <p class="product-card__price">${priceHTML}</p>
         ${product.fibre ? `<span class="product-card__material">${product.fibre}</span>` : ''}
         ${swatches ? `<div class="product-card__swatches">${swatches}</div>` : ''}
-        <button class="btn btn--primary btn--sm product-card__add" data-id="${product.id}" type="button">Add to Bag</button>
+        <button class="btn btn--primary btn--sm product-card__add" data-id="${product.id}" type="button"${soldOut ? ' disabled' : ''}>${soldOut ? 'Sold Out' : 'Add to Bag'}</button>
       </div>
     </article>
   `;

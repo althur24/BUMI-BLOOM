@@ -81,21 +81,8 @@
       }
     });
 
-    checkoutBtn.addEventListener('click', async () => {
-      if (checkoutBtn.disabled) return;
-      checkoutBtn.disabled = true;
-      const original = checkoutBtn.textContent;
-      checkoutBtn.textContent = 'Preparing checkout…';
-      try {
-        await BumiData.ready();
-        const url = await BumiCart.createShopifyCart();
-        window.location.href = url;
-      } catch (err) {
-        console.error('Checkout failed', err);
-        alert('Sorry, checkout could not start: ' + (err.message || err) + '. Please try again.');
-        checkoutBtn.disabled = false;
-        checkoutBtn.textContent = original;
-      }
+    checkoutBtn.addEventListener('click', () => {
+      BumiCart._handleCheckout(checkoutBtn);
     });
 
     // Promo code
@@ -108,19 +95,30 @@
       if (p) {
         promoMsg.style.display = 'block';
         promoMsg.className = 'promo-field__msg promo-field__msg--ok';
-        promoMsg.textContent = p.label + ' applied';
+        promoMsg.textContent = p.pending
+          ? 'Code saved — it will be validated at Shopify checkout.'
+          : p.label + ' applied';
         if (promoInput) promoInput.value = p.code;
       } else {
         promoMsg.style.display = 'none';
       }
     }
     if (promoApply) promoApply.addEventListener('click', async () => {
-      const res = await BumiCart.applyPromo(promoInput ? promoInput.value : '');
+      const raw = promoInput ? promoInput.value : '';
+      const res = await BumiCart.applyPromo(raw);
       if (promoMsg) {
+        if (!String(raw || '').trim()) {
+          promoMsg.style.display = 'none';
+          promoMsg.textContent = '';
+          renderCart();
+          return;
+        }
         promoMsg.style.display = 'block';
         if (res.valid) {
           promoMsg.className = 'promo-field__msg promo-field__msg--ok';
-          promoMsg.textContent = res.label + ' applied';
+          promoMsg.textContent = res.pending
+            ? 'Code saved — it will be validated at Shopify checkout.'
+            : res.label + ' applied';
         } else {
           promoMsg.className = 'promo-field__msg promo-field__msg--err';
           promoMsg.textContent = 'That code isn’t valid — check it and try again.';
@@ -139,7 +137,7 @@
     function renderRecommendations() {
       const recGrid = document.getElementById('recommendations-grid');
       const BG = ['yellow', 'green', 'pink', 'blue'];
-      recGrid.innerHTML = BumiData.getFeatured(4).map((p, i) => {
+      recGrid.innerHTML = BumiData.getFeatured(8).filter((p) => !p.soldOut).slice(0, 4).map((p, i) => {
         const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
         const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
         return '<article class="product-card product-card--bg-' + (BG[i % BG.length]) + '">' +

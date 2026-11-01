@@ -1,0 +1,14 @@
+api_version = "2026-10"
+uid = "f447ae74-d7dc-fc69-661e-11831703c2fdb18c4f5d"
+
+[[extensions]]
+name = "Bumi Bloom Trust Banner"
+handle = "trust-banner"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+api_access = false

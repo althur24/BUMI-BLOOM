@@ -23,6 +23,7 @@ const BumiCurrency = {
     if (next === this.get()) return;
     localStorage.setItem(this.STORAGE_KEY, next);
     this.syncSwitch();
+    this.syncChargeNote();
     window.dispatchEvent(new CustomEvent('currency-updated'));
   },
 
@@ -45,11 +46,32 @@ const BumiCurrency = {
     });
   },
 
+  /* IDR is display-only. Make the AUD charge explicit wherever the switch
+     is shown so customers are not surprised at checkout. */
+  syncChargeNote() {
+    const show = this.get() === 'IDR';
+    document.querySelectorAll('.currency-switch').forEach((group) => {
+      let note = group.querySelector('.currency-switch__note');
+      if (!show) {
+        if (note) note.remove();
+        return;
+      }
+      if (!note) {
+        note = document.createElement('span');
+        note.className = 'currency-switch__note';
+        note.textContent = 'Charged in AUD';
+        note.style.cssText = 'font-size:10px;line-height:1.2;color:inherit;opacity:.7;margin-left:6px;white-space:nowrap;';
+        group.appendChild(note);
+      }
+    });
+  },
+
   init() {
     document.querySelectorAll('.currency-switch__btn').forEach(btn => {
       btn.addEventListener('click', () => this.set(btn.dataset.currency));
     });
     this.syncSwitch();
+    this.syncChargeNote();
   }
 };
 

@@ -373,10 +373,24 @@ textarea.input {
   color: var(--color-cream);
   border-color: var(--color-dark);
 }
-.pdp-size.is-disabled {
+.pdp-size.is-disabled,
+.pdp-size.is-sold-out {
   opacity: 0.35;
   cursor: not-allowed;
   text-decoration: line-through;
+}
+
+.pdp-color-swatch.is-sold-out {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.pdp-availability {
+  color: var(--color-red);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  margin-top: var(--space-2);
 }
 .pdp-actions {
   display: flex;

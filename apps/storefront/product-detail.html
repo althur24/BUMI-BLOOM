@@ -20,7 +20,7 @@
 
   <!-- Announcement Bar -->
   <div class="announcement-bar" id="announcement-bar">
-    <span>🇦🇺 Free AU shipping over $60 · Afterpay available ✦ <a href="products?category=kids">Shop Now</a></span>
+    <span>🇦🇺 Free AU shipping over $99 · Secure checkout by Stripe ✦ <a href="products?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -281,7 +281,7 @@
           '<p class="pdp-brand">' + product.brand + '</p>' +
           '<h1 class="pdp-name">' + product.name + '</h1>' +
           '<p class="pdp-price" id="pdp-price">' + buildPriceHTML() + '</p>' +
-          '<p id="pdp-afterpay" style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong></p>' +
+          '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">Secure checkout · Visa, Mastercard &amp; Amex</p>' +
           '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
           '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
@@ -362,8 +362,6 @@
     window.addEventListener('currency-updated', () => {
       const priceEl = document.getElementById('pdp-price');
       if (priceEl) priceEl.innerHTML = buildPriceHTML();
-      const afterpayEl = document.getElementById('pdp-afterpay');
-      if (afterpayEl) afterpayEl.innerHTML = 'or 4 payments of ' + BumiData.formatPrice(product.price / 4) + ' with <strong>Afterpay</strong>';
       const stickyPrice = root.querySelector('.pdp-sticky-bar__price');
       if (stickyPrice) stickyPrice.textContent = BumiData.formatPrice(product.price);
       if (related.length) relatedGrid.innerHTML = related.map((p, i) => relatedCardHTML(p, i)).join('');
@@ -408,7 +406,7 @@
         item('Description', '<p>' + product.description + '</p>', true) +
         item('Material &amp; Care', '<p>' + product.material + '</p>') +
         item('Size Guide', sizeGuideTable(product.sizes)) +
-        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $60. Standard delivery 3–6 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
+        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
       '</div>';
     }
     function item(title, body, open) {
