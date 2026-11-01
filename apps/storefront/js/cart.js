@@ -256,8 +256,7 @@ const BumiCart = {
     return cart.checkoutUrl;
   },
 
-  /* Display formatting — delegates to BumiCurrency (AUD base, IDR
-     display). Amounts themselves always stay AUD. */
+  /* Display formatting — delegates to BumiCurrency (AUD only). */
   formatPrice(amount) {
     if (window.BumiCurrency) return BumiCurrency.format(amount);
     return '$' + Number(amount || 0).toFixed(2);
@@ -380,7 +379,7 @@ const BumiCart = {
             <div class="bb-cart-drawer__total-row"><span>Subtotal</span><strong data-cart-subtotal>—</strong></div>
             <div class="bb-cart-drawer__total-row bb-cart-drawer__total-row--discount" data-cart-discount hidden><span data-cart-discount-label>Discount</span><strong data-cart-discount-value>—</strong></div>
           </div>
-          <p class="bb-cart-drawer__note">Charged in AUD. Discounts, shipping &amp; taxes finalized at Shopify checkout.</p>
+          <p class="bb-cart-drawer__note">Shipping &amp; taxes finalized at Shopify checkout.</p>
           <button class="btn btn--primary btn--full" type="button" data-cart-checkout>Checkout</button>
           <a class="btn btn--ghost btn--full" data-cart-view href="${this._storeHref()}">View Bag</a>
         </footer>

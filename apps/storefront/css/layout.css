@@ -244,7 +244,7 @@
   height: 22px;
 }
 
-/* Currency switch (AUD / IDR) */
+/* Currency switch (AUD only) */
 .currency-switch {
   display: flex;
   align-items: center;

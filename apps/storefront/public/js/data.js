@@ -392,7 +392,7 @@ const BumiData = {
   },
 
   /* ── Formatting ──
-     Delegates to BumiCurrency (AUD by default, IDR via the header
+     Delegates to BumiCurrency (AUD only).
      switch). Amounts are always GST-inclusive AUD at source. */
   formatPrice(amount) {
     return BumiCurrency.format(amount);
