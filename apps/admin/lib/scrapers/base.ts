@@ -45,6 +45,10 @@ export interface NormalizedProduct {
   compareAtPrice?: number; // major units
   currency?: string; // "IDR"
   images: string[]; // original marketplace URLs (pre-rehost)
+  // Optional per-colourway image (colour name → source URL). Rehosted and
+  // applied as the Shopify variant image so the storefront switches gallery
+  // images when a colour is selected.
+  colorImages?: Record<string, string>;
   sizeChartImage?: string; // separated from the gallery
   imageReport?: ImageReport;
   extractionPath?: string; // which extraction strategy succeeded

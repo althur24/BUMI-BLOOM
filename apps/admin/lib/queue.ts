@@ -44,13 +44,31 @@ async function processJob(jobId: string): Promise<void> {
     let images = np.images;
     let imageReport = np.imageReport;
     let sizeChartImage = np.sizeChartImage;
+    let colorImages = np.colorImages;
     try {
-      const rehosted = await rehostImages(np.images, { referer: np.sourceUrl });
-      if (rehosted.urls.length) images = rehosted.urls;
-      imageReport = rehosted.report;
-      if (sizeChartImage) {
-        const chart = await rehostImages([sizeChartImage], { referer: np.sourceUrl });
-        if (chart.urls[0]) sizeChartImage = chart.urls[0];
+      // Re-host the gallery plus the per-colour images in one pass so the
+      // mapping from source URL → public URL stays consistent.
+      const sources = [
+        ...np.images,
+        ...(np.sizeChartImage ? [np.sizeChartImage] : []),
+        ...Object.values(np.colorImages || {}).filter(Boolean),
+      ];
+      const rehosted = await rehostImages([...new Set(sources)], { referer: np.sourceUrl });
+      const remap = (u?: string) => (u ? rehosted.map.get(u) || u : u);
+
+      imageReport = {
+        total: rehosted.report.total,
+        used: rehosted.report.used,
+        items: rehosted.report.items,
+        rejected: rehosted.report.rejected,
+      };
+      const galleryUploaded = np.images.map(remap).filter(Boolean) as string[];
+      if (galleryUploaded.length) images = [...new Set(galleryUploaded)];
+      if (sizeChartImage) sizeChartImage = remap(sizeChartImage);
+      if (np.colorImages) {
+        colorImages = Object.fromEntries(
+          Object.entries(np.colorImages).map(([name, src]) => [name, remap(src) as string]),
+        );
       }
     } catch {
       // keep original URLs (Supabase not configured / network failure)
@@ -63,6 +81,7 @@ async function processJob(jobId: string): Promise<void> {
       images,
       imageReport,
       sizeChartImage,
+      colorImages,
     });
 
     // Convert IDR → AUD (Shopify store currency). Uses live exchange rate.

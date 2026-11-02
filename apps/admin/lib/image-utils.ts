@@ -177,6 +177,16 @@ export function imageUrlCandidates(raw: string): string[] {
 
   const path = u.pathname;
 
+  // Tokopedia signed CDN transforms: <hash>~tplv-<vendor>-<op>:<w>:<h>.<ext>.
+  // The same asset is available at larger widths, so try those before falling
+  // back to the small transform the page happened to render.
+  const tplv = path.match(/^(.*~tplv-[^:]+):\d+:\d+\.(webp|jpe?g|png)$/i);
+  if (tplv) {
+    for (const size of [1600, 1200, 1000, 700]) {
+      out.push(`${u.origin}${tplv[1]}:${size}:0.${tplv[2]}${stripped.search}`);
+    }
+  }
+
   // CloudFront/Nuxt image proxy: name_1791432827732_resized1024-jpeg.webp
   const resized = path.match(/^(.*)_resized\d+(-[a-z0-9]+)?\.(webp|jpe?g|png)$/i);
   if (resized) {
@@ -189,9 +199,13 @@ export function imageUrlCandidates(raw: string): string[] {
     }
   }
 
-  // Tokopedia image cache: /img/cache/<size>/
+  // Tokopedia image cache: /img/cache/<size>/. "original" often 500s while
+  // 1500/1000 are resized copies, so try both orders.
   if (/\/img\/cache\/(?:original|\d+)\//i.test(path)) {
-    for (const size of ["original", "2000", "1500", "1000", "800", "700", "500", "300"]) {
+    for (const size of ["original", "1500", "1200", "1000", "800", "700", "500", "300"]) {
+      out.push(strippedHref.replace(/\/img\/cache\/(?:original|\d+)\//i, `/img/cache/${size}/`));
+    }
+    for (const size of ["1500", "1200", "1000", "700"]) {
       out.push(strippedHref.replace(/\/img\/cache\/(?:original|\d+)\//i, `/img/cache/${size}/`));
     }
   }
@@ -213,6 +227,17 @@ export function imageUrlCandidates(raw: string): string[] {
   return uniq(out);
 }
 
+// Content hash embedded in Tokopedia/CloudFront asset paths. The same photo is
+// exposed through several hosts (p16/p19 CDNs and images.tokopedia.net) and
+// several transforms, so the asset id is the most reliable identity.
+function tokopediaAssetKey(url: string): string | null {
+  const m = url.match(/([0-9a-f]{24,40})~/i) || url.match(/\/([0-9a-f]{32})\./i);
+  if (m) return m[1].toLowerCase();
+  const cloudfront = url.match(/([0-9a-f]{16,40})_[0-9]{10,}\.(?:jpe?g|png|webp)/i);
+  if (cloudfront) return cloudfront[1].toLowerCase();
+  return null;
+}
+
 // Identity used for dedupe (ignores CDN transform suffix/query and mirror
 // hosts such as Tokopedia's p16/p19 image hosts).
 export function imageIdentity(raw: string): string {
@@ -226,6 +251,8 @@ export function imageIdentity(raw: string): string {
     // Tokopedia serves the same asset from p16-/p19- mirror hosts with
     // -sign/-common suffixes; fold those into one identity.
     host = host.replace(/^p\d+-/, "").replace(/-sign\b/g, "").replace(/-common\b/g, "");
+    const assetKey = tokopediaAssetKey(first);
+    if (assetKey) return `tokopedia:${assetKey}`;
     return `${host}${path}`.toLowerCase();
   } catch {
     return String(first).split("?")[0].toLowerCase();
@@ -235,6 +262,16 @@ export function imageIdentity(raw: string): string {
 // Rough quality score from the URL itself (larger width = better). Used to
 // keep the best variant when several CDN transforms share one base image.
 export function imageQualityScore(raw: string): number {
+  const candidates = imageUrlCandidates(raw);
+  if (candidates.length > 1) {
+    // Score the best URL this asset could be fetched from, so an upgradeable
+    // mirror is not judged by its original (possibly 150px) URL.
+    return Math.max(...candidates.map((c) => scoreOneUrl(c)), scoreOneUrl(raw));
+  }
+  return scoreOneUrl(String(raw || ""));
+}
+
+function scoreOneUrl(raw: string): number {
   const u = String(raw || "");
   const tplv = u.match(/~tplv-[^:]+:([0-9]+)(?::([0-9]+))?\./);
   if (tplv) return Math.max(Number(tplv[1]) || 0, Number(tplv[2]) || 0);
@@ -244,6 +281,8 @@ export function imageQualityScore(raw: string): number {
   if (resized) return Number(resized[1]) || 0;
   const dim = u.match(/[_-](\d{3,4})x(\d{3,4})\./);
   if (dim) return Number(dim[1]) || 0;
+  const cache = u.match(/\/img\/cache\/(\d+)\//i);
+  if (cache) return Number(cache[1]) || 0;
   if (/[?&](?:w|width)=(\d+)/i.test(u)) {
     const m = u.match(/[?&](?:w|width)=(\d+)/i);
     return m ? Number(m[1]) : 0;
@@ -258,6 +297,14 @@ export function isLikelySizeChart(url: string, alt?: string): boolean {
 
 export function isLikelyAsset(url: string, alt?: string): boolean {
   const s = `${url} ${alt || ""}`.toLowerCase();
+  if (
+    /\/pdp\/icons\/|\/assets?\/(?:icon|sprite)|shopcredibility|banner|promo[-_/]|voucher|giftcard/.test(s) ||
+    /(?:^|\/)icon\d{2,4}\.png|apple-touch-icon|manifest\.json|favicon/.test(s) ||
+    /zeus_v2\/[0-9a-f]{6,}\.(?:png|jpe?g|webp|svg)$/.test(s) ||
+    /\/obj\/[a-z-]+\/zeus_v2\//.test(s)
+  ) {
+    return true;
+  }
   return /(logo|favicon|sprite|placeholder|payment|visa|mastercard|paypal|flag[-_/]|avatar|badge[-_/]|icon[-_/])/.test(
     s,
   );

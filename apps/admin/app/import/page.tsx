@@ -553,6 +553,12 @@ export default function ImportPage() {
               {activeVariants.length > 0 && (
                 <div className="field">
                   <label>Varian ({activeVariants.length - removedVariants.size} aktif)</label>
+                  {activeVariants.filter((_, i) => !removedVariants.has(i)).length > 100 && (
+                    <p className="hint" style={{ color: "#a15c00" }}>
+                      Lebih dari 100 varian — Shopify akan membuat maksimal 100. Kurangi varian atau
+                      pisahkan per warna.
+                    </p>
+                  )}
                   {activeVariants.map((v, i) => {
                     const removed = removedVariants.has(i);
                     const stock = variantStockEdits[i] ?? v.stock ?? 0;
@@ -590,6 +596,38 @@ export default function ImportPage() {
                 )}
                 {activeColors.map((c, i) => (
                   <div key={i} className="color-row">
+                    {preview.colorImages && Object.keys(preview.colorImages).length > 0 && (
+                      <select
+                        className="input"
+                        style={{ maxWidth: 130 }}
+                        aria-label={`Gambar untuk ${c.name}`}
+                        value={
+                          Object.entries(preview.colorImages).find(
+                            ([k]) => k.toLowerCase() === c.name.toLowerCase(),
+                          )?.[1] || ""
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setEdits((d) => {
+                            const map = { ...((d.colorImages as Record<string, string>) || preview.colorImages || {}) };
+                            for (const key of Object.keys(map)) {
+                              if (key.toLowerCase() === c.name.toLowerCase()) delete map[key];
+                            }
+                            if (value) map[c.name] = value;
+                            return { ...d, colorImages: map };
+                          });
+                        }}
+                      >
+                        <option value="">— gambar —</option>
+                        {activeImages
+                          .filter((_, idx) => !removedImageIdx.has(idx))
+                          .map((src, idx) => (
+                            <option key={idx} value={src}>
+                              Gambar {idx + 1}
+                            </option>
+                          ))}
+                      </select>
+                    )}
                     <input
                       className="input"
                       value={c.name}

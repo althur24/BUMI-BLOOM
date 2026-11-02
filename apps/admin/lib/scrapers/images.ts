@@ -5,9 +5,10 @@ import {
   decodeHtmlEntities,
   hasImageExtension,
   imageIdentity,
+  imageQualityScore,
+  imageUrlCandidates,
   isLikelyAsset,
   isLikelySizeChart,
-  imageQualityScore,
   parseSrcset,
 } from "../image-utils";
 import { resolveUrl } from "../urls";
@@ -15,6 +16,16 @@ import { resolveUrl } from "../urls";
 export interface ImagePlan {
   images: string[];
   sizeChartImage?: string;
+}
+
+// Upgrade a small colour-swatch URL (channel thumbnails) to the largest
+// available variant, so per-colour images are usable in the gallery.
+export function upgradeSwatchUrl(raw: string): string {
+  const value = String(raw || "");
+  if (/images\.tokopedia\.net\/img\/cache\//i.test(value)) {
+    return value.replace(/\/img\/cache\/\d+\//i, "/img/cache/1000/");
+  }
+  return value;
 }
 
 function pushUnique(out: string[], seen: Set<string>, raw: string) {
@@ -116,10 +127,16 @@ export function buildImagePlan(opts: {
   html?: string;
   pageUrl?: string;
   limit?: number;
+  // URLs that must keep their position at the front of the gallery.
+  prefer?: string[];
 }): ImagePlan {
-  const limit = opts.limit ?? 20;
+  const limit = opts.limit ?? 50;
   const candidates: string[] = [];
 
+  for (const raw of opts.prefer || []) {
+    if (!raw) continue;
+    candidates.push(raw);
+  }
   for (const raw of opts.structured || []) {
     const url = /^https?:\/\//i.test(raw)
       ? raw
@@ -142,28 +159,39 @@ export function buildImagePlan(opts: {
   }
 
   // Keep the highest-quality URL for each image identity, preserving the
-  // order in which each identity first appeared.
+  // order in which each identity first appeared. For each candidate we upgrade
+  // to the best fetchable URL so a 200px thumbnail never wins over the
+  // equivalent 700/1000px transform.
   const order: string[] = [];
   const best = new Map<string, string>();
   for (const url of candidates) {
     if (!/^https?:\/\//i.test(url) || isLikelyAsset(url)) continue;
     const key = imageIdentity(url);
+    const upgraded = imageUrlCandidates(url)[0] || url;
     if (!best.has(key)) order.push(key);
     const current = best.get(key);
-    if (!current || imageQualityScore(url) > imageQualityScore(current)) {
-      best.set(key, url);
+    if (!current || imageQualityScore(upgraded) > imageQualityScore(current)) {
+      best.set(key, upgraded);
     }
   }
 
   let urls = order.map((key) => best.get(key)!).filter(Boolean);
-  // Drop thumbnail-sized CDN transforms (e.g. 200px colour chips) when the
-  // page already exposed several high-resolution images.
+  // Drop channel thumbnails (<300px) when the page exposed real product
+  // images, but keep one representative when an image only exists as a
+  // thumbnail.
   const highRes = urls.filter((u) => imageQualityScore(u) >= 600).length;
   if (highRes >= 3) {
-    urls = urls.filter((u) => {
-      const score = imageQualityScore(u);
-      return score === 0 || score >= 600;
-    });
+    const small = urls.filter((u) => imageQualityScore(u) < 300);
+    const keptIdentities = new Set(
+      urls.filter((u) => imageQualityScore(u) >= 300).map((u) => imageIdentity(u)),
+    );
+    urls = urls.filter((u) => imageQualityScore(u) >= 300);
+    for (const u of small) {
+      if (!keptIdentities.has(imageIdentity(u))) {
+        urls.push(u);
+        keptIdentities.add(imageIdentity(u));
+      }
+    }
   }
 
   let sizeChartImage: string | undefined;

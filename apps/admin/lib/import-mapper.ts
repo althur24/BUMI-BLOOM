@@ -5,11 +5,14 @@
 import type { NormalizedProduct, ScraperVariant } from "./scrapers/base";
 import { colorsFromVariants } from "./colors";
 import { inferCategory } from "./categorize";
+import { imageIdentity } from "./image-utils";
 
 export interface ShopifyPushInput {
   handle: string;
   productPayload: Record<string, unknown>;
   metafields: { namespace: string; key: string; value: string; type: string }[];
+  // Colour name (normalised) → image src, so the push can set variant images.
+  colorImages?: Record<string, string>;
 }
 
 function slugify(s: string): string {
@@ -144,7 +147,27 @@ export function buildShopifyPushInput(
           },
         ];
 
-  const images = (np.images || []).slice(0, 20).map((src, i) => ({
+  // Per-colour images must exist in the gallery for Shopify to attach them to
+  // variants, so append any colour image that is not already present. The input
+  // product is left untouched (callers may reuse it).
+  const colorImageMap: Record<string, string> = {};
+  const galleryImages = [...(np.images || [])];
+  // If the colour's image is already in the gallery under a different CDN
+  // variant, reuse that exact src so Shopify does not store two copies.
+  const identityToSrc = new Map<string, string>();
+  for (const src of galleryImages) identityToSrc.set(imageIdentity(src), src);
+  for (const [name, src] of Object.entries(np.colorImages || {})) {
+    if (!name || !src) continue;
+    const existing = identityToSrc.get(imageIdentity(src));
+    const chosen = existing || src;
+    if (!existing) {
+      galleryImages.push(src);
+      identityToSrc.set(imageIdentity(src), src);
+    }
+    colorImageMap[name.trim().toLowerCase()] = chosen;
+  }
+
+  const images = galleryImages.slice(0, 50).map((src, i) => ({
     src,
     alt: clip(`${np.title}${np.brand ? ` — ${np.brand}` : ""}`, 512),
     position: i + 1,
@@ -181,6 +204,14 @@ export function buildShopifyPushInput(
     options.push({ name: "Color", values: colorValues.length ? colorValues : ["Default"] });
   if (sizeKey)
     options.push({ name: "Size", values: sizeValues.length ? sizeValues : ["Default"] });
+
+  if (np.variants.length > 100) {
+    // Shopify accepts more than 100 variants via GraphQL, but the REST create
+    // path does not — surface it instead of silently dropping combinations.
+    console.warn(
+      `[import] ${np.variants.length} varian melebihi batas 100 — sebagian tidak ikut terbuat.`,
+    );
+  }
 
   const productPayload: Record<string, unknown> = {
     title: clip(np.title, 255),
@@ -310,5 +341,5 @@ export function buildShopifyPushInput(
     type: "number_integer",
   });
 
-  return { handle, productPayload, metafields };
+  return { handle, productPayload, metafields, colorImages: colorImageMap };
 }

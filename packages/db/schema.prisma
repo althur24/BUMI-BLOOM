@@ -336,3 +336,88 @@ model NewsletterSubscriber {
   @@index([status])
   @@index([subscribedAt])
 }
+
+// ── Stripe checkout ─────────────────────────────────────────────────────────
+// Stripe is the payment source of truth; Shopify remains the commerce source
+// of truth (order, stock, customer, reporting). One row per checkout session.
+
+enum StripeCheckoutStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+  REFUNDED
+}
+
+model StripeCheckout {
+  id                     String               @id
+  stripeSessionId        String               @unique
+  stripePaymentIntentId  String?
+  status                 StripeCheckoutStatus @default(PENDING)
+  cartHash               String
+  subtotalAudCents       Int                  @default(0)
+  shippingAudCents       Int                  @default(0)
+  discountAudCents       Int                  @default(0)
+  taxAudCents            Int                  @default(0)
+  amountAudCents         Int
+  currency               String               @default("AUD")
+  customerEmail          String?
+  promoCode              String?
+  shopifyDiscountId      String?
+  consentMarketing       Boolean              @default(false)
+  itemsJson              Json
+  quoteJson              Json?
+  attributionJson        Json?
+  shopifyOrderId         String?
+  shopifyOrderName       String?
+  shopifyTotalAudCents   Int?
+  shopifyFinancialStatus String?
+  errorMessage           String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  @@index([status])
+  @@index([customerEmail])
+  @@index([shopifyOrderId])
+  @@index([stripePaymentIntentId])
+  @@index([cartHash, status])
+}
+
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+model PromoRedemption {
+  id             String   @id @default(cuid())
+  code           String
+  checkoutId     String?  @unique
+  shopifyOrderId String?
+  customerEmail  String?
+  amountAudCents Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([code])
+  @@index([customerEmail])
+  @@index([shopifyOrderId])
+}
+
+model Refund {
+  id                    String   @id @default(cuid())
+  checkoutId            String?
+  stripeRefundId        String?  @unique
+  stripePaymentIntentId String?
+  shopifyOrderId        String?
+  shopifyRefundId       String?
+  amountAudCents        Int
+  reason                String?
+  status                String   @default("PENDING")
+  errorMessage          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([checkoutId])
+  @@index([stripePaymentIntentId])
+  @@index([shopifyOrderId])
+}

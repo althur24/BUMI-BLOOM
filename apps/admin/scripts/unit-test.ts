@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   imageUrlCandidates,
   imageIdentity,
+  imageQualityScore,
   parseSrcset,
   isLikelySizeChart,
   isLikelyAsset,
@@ -46,12 +47,21 @@ test("CloudFront resized image is upgraded to the original", () => {
   );
 });
 
-test("Tokopedia image cache candidates prefer original", () => {
+test("Tokopedia image cache candidates prefer the largest usable size", () => {
   const candidates = imageUrlCandidates(
     "https://images.tokopedia.net/img/cache/700/product-1/abc.jpg",
   );
   assert.ok(candidates[0].includes("/img/cache/original/"));
-  assert.ok(candidates.some((u) => u.includes("/img/cache/2000/")));
+  assert.ok(candidates.some((u) => u.includes("/img/cache/1500/")));
+  assert.ok(candidates.some((u) => u.includes("/img/cache/1000/")));
+});
+
+test("Tokopedia signed CDN transform is upgraded to a larger width", () => {
+  const small =
+    "https://p16-images-sign-sg.tokopedia-static.net/tos-alisg-i-aphluv4xwc-sg/1234567890abcdef1234567890abcdef~tplv-aphluv4xwc-resize-jpeg:200:0.webp?ect=4g";
+  const best = imageUrlCandidates(small)[0];
+  assert.ok(best.includes(":1600:0."));
+  assert.ok(imageQualityScore(small) >= 1600);
 });
 
 test("Shopee image resize query is stripped", () => {
@@ -65,6 +75,24 @@ test("imageIdentity ignores CDN transform variants", () => {
   const a = imageIdentity("https://cdn.test/a_1791_resized128-jpeg.webp");
   const b = imageIdentity("https://cdn.test/a_1791.jpeg");
   assert.equal(a, b);
+});
+
+test("imageIdentity folds Tokopedia mirror hosts and transforms", () => {
+  const cdn =
+    "https://p16-images-sign-sg.tokopedia-static.net/tos-alisg-i-aphluv4xwc-sg/c38e6ad648b74ecf86b6afc12101c2ef~tplv-aphluv4xwc-resize-jpeg:700:0.webp";
+  const mirror =
+    "https://images.tokopedia.net/img/cache/1000/aphluv/1997/1/1/c38e6ad648b74ecf86b6afc12101c2ef~.jpeg.webp";
+  assert.equal(imageIdentity(cdn), imageIdentity(mirror));
+  assert.ok(imageQualityScore(mirror) > imageQualityScore(cdn));
+});
+
+test("tokopedia pwa icons and ad assets are rejected", () => {
+  assert.equal(isLikelyAsset("https://tokopedia.net/icons/icon192.png"), true);
+  assert.equal(
+    isLikelyAsset("https://images.tokopedia.net/img/pdp/icons/shopcredibility/action-star-light.jpg"),
+    true,
+  );
+  assert.equal(isLikelyAsset("https://cdn.test/product/1273-artboard.jpeg"), false);
 });
 
 test("parseSrcset chooses the widest candidate", () => {

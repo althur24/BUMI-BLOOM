@@ -139,7 +139,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
         productType
         vendor
         featuredImage { url }
-        images(first: 10) { edges { node { url } } }
+        images(first: 50) { edges { node { url } } }
         variants(first: 100) {
           edges {
             node {
@@ -147,6 +147,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
               price { amount currencyCode }
               compareAtPrice { amount }
               quantityAvailable
+              image { url }
               selectedOptions { name value }
             }
           }
@@ -207,6 +208,7 @@ function mapShopifyProduct(node) {
       size,
       price: parseFloat(v.price.amount),
       available: typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true,
+      image: (v.image && v.image.url) || '',
     };
   });
 

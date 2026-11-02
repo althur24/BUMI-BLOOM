@@ -47,7 +47,8 @@
         items: [{ id: product.id, name: product.name, price: product.price }] });
     }
 
-    const gallery = (product.gallery && product.gallery.length) ? product.gallery : [product.image];
+    const baseGallery = (product.gallery && product.gallery.length) ? product.gallery : [product.image];
+    const gallery = baseGallery;
     const productColors = product.colors || [];
     const allSoldOut = !(product.variants || []).some((v) => v.available);
 
@@ -55,6 +56,14 @@
       return (product.variants || []).find((v) =>
         v.size === size && (color ? v.color === color : true)
       ) || null;
+    }
+
+    // Colour → gallery image (from Shopify variant images) so the gallery
+    // follows the selected colour.
+    function colorImage(color) {
+      if (!color) return '';
+      const hit = (product.variants || []).find((v) => v.color === color && v.image);
+      return hit ? hit.image : '';
     }
 
     function sizeAvailable(color, size) {
@@ -151,6 +160,14 @@
         if (sw.disabled) return;
         selectedColor = sw.dataset.color;
         document.getElementById('selected-colour').textContent = selectedColor || '—';
+        const nextImage = colorImage(selectedColor);
+        if (nextImage) {
+          const mainImg = document.getElementById('pdp-main-image');
+          if (mainImg) mainImg.src = nextImage;
+          root.querySelectorAll('.pdp-gallery__thumb').forEach((t) => {
+            t.classList.toggle('is-active', t.dataset.src === nextImage);
+          });
+        }
         if (!sizeAvailable(selectedColor, selectedSize)) {
           selectedSize = firstAvailableSize(selectedColor);
         }

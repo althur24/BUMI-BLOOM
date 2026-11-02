@@ -17,7 +17,7 @@ import {
   type ScraperVariant,
   type ScrapeResult,
 } from "./base";
-import { buildImagePlan } from "./images";
+import { buildImagePlan, upgradeSwatchUrl } from "./images";
 import { dedupeColors, detectColorNames, hexForColorName, looksLikeSize, normalizeHex } from "../colors";
 import {
   buildSizeGuide,
@@ -351,6 +351,9 @@ interface DomGroup {
   name: string;
   values: string[];
   disabled?: string[];
+  // Colour name → swatch/preview image URL (Tokopedia renders these on the
+  // colour chips), used for per-variant gallery images.
+  images?: Record<string, string>;
 }
 
 function normaliseGroupName(name: string): string {
@@ -370,7 +373,7 @@ async function readDomGroups(page: import("playwright").Page): Promise<{
         document.querySelector("#pdp_comp-new_variant_options") ||
         document.querySelector("#pdp_comp-variant_options");
       if (!root) return { groups: [], selected: {} };
-      const groups: { name: string; values: string[]; disabled?: string[] }[] = [];
+      const groups: { name: string; values: string[]; disabled?: string[]; images?: Record<string, string> }[] = [];
       const selected: Record<string, string> = {};
       const titles = Array.from(
         root.querySelectorAll('[data-testid^="pdpVariantTitle"]'),
@@ -382,6 +385,7 @@ async function readDomGroups(page: import("playwright").Page): Promise<{
         if (!container) continue;
         const values: string[] = [];
         const disabled: string[] = [];
+        const images: Record<string, string> = {};
         let selectedValue = "";
         for (const chip of Array.from(
           container.querySelectorAll('[data-testid^="btnVariantChip"]'),
@@ -401,9 +405,13 @@ async function readDomGroups(page: import("playwright").Page): Promise<{
             chip.getAttribute("aria-disabled") === "true";
           if (isDisabled && !disabled.includes(text)) disabled.push(text);
           if (testid.includes("ActiveSelected")) selectedValue = text;
+          const swatchEl = chip.querySelector("i");
+          const bg = swatchEl ? getComputedStyle(swatchEl).backgroundImage : "";
+          const match = bg && bg.match(/url\(["']?(.*?)["']?\)/);
+          if (match && match[1] && !images[text]) images[text] = match[1];
         }
         if (!values.length) continue;
-        groups.push({ name, values, disabled });
+        groups.push({ name, values, disabled, images });
         if (selectedValue) selected[name] = selectedValue;
       }
       return { groups, selected };
@@ -412,6 +420,7 @@ async function readDomGroups(page: import("playwright").Page): Promise<{
       name: normaliseGroupName(g.name),
       values: g.values,
       disabled: g.disabled || [],
+      images: g.images || {},
     }));
     const selected: Record<string, string> = {};
     for (const [key, value] of Object.entries(raw.selected || {})) {
@@ -486,6 +495,7 @@ async function clickChip(
 interface DomVariantResult {
   variants: ScraperVariant[];
   colors: NormalizedColor[];
+  colorImages: Record<string, string>;
   compareAtPrice?: number;
   groups: DomGroup[];
   selected: Record<string, string>;
@@ -497,7 +507,13 @@ async function extractDomVariants(
 ): Promise<DomVariantResult> {
   const { groups: rawGroups, selected } = await readDomGroups(page);
   const groups = rawGroups.filter((g) => g.values.length);
-  const empty: DomVariantResult = { variants: [], colors: [], groups: [], selected };
+  const empty: DomVariantResult = {
+    variants: [],
+    colors: [],
+    colorImages: {},
+    groups: [],
+    selected,
+  };
   if (!groups.length) return empty;
 
   const primary =
@@ -560,7 +576,51 @@ async function extractDomVariants(
     });
   }
 
-  return { variants, colors, compareAtPrice, groups, selected };
+  const colorImages: Record<string, string> = {};
+  if (colorGroup) {
+    for (const [name, src] of Object.entries(colorGroup.images || {})) {
+      if (src) colorImages[name] = upgradeSwatchUrl(src);
+    }
+  }
+
+  // When there are few combinations, click every colour × size pair to read the
+  // real per-combination stock instead of copying the size-level stock.
+  const MAX_SWEEP = 40;
+  if (combos.length <= MAX_SWEEP && colorGroup) {
+    const sizeGroup = groups.find((g) => g.name === "Ukuran");
+    if (sizeGroup) {
+      const sizeDisabled = new Set(sizeGroup.disabled || []);
+      for (const combo of combos) {
+        const color = combo.Warna;
+        const size = combo.Ukuran;
+        if (!color || !size) continue;
+        if ((colorGroup.disabled || []).includes(color) || sizeDisabled.has(size)) {
+          const v = variants.find(
+            (x) => x.options.Warna === color && x.options.Ukuran === size,
+          );
+          if (v) v.stock = 0;
+          continue;
+        }
+        const okColor = await clickChip(page, color);
+        if (!okColor) continue;
+        const okSize = await clickChip(page, size);
+        if (!okSize) continue;
+        const num = await readSelectedNumbers(page);
+        const v = variants.find(
+          (x) => x.options.Warna === color && x.options.Ukuran === size,
+        );
+        if (v && num.stock != null) v.stock = num.stock;
+        if (num.compareAt && (!compareAtPrice || num.compareAt > compareAtPrice)) {
+          compareAtPrice = num.compareAt;
+        }
+      }
+      // Restore the original selection.
+      if (selected.Warna) await clickChip(page, selected.Warna).catch(() => false);
+      if (selected.Ukuran) await clickChip(page, selected.Ukuran).catch(() => false);
+    }
+  }
+
+  return { variants, colors, colorImages, compareAtPrice, groups, selected };
 }
 
 function cleanTokpedTitle(
@@ -591,6 +651,66 @@ function stripBrandPrefix(title: string, brand?: string): string {
 
 function escapeRegex(value: string): string {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Click each gallery thumbnail so lazy-loaded originals are fetched, then
+// return every large gallery image found in the DOM.
+async function sweepGallery(page: import("playwright").Page): Promise<string[]> {
+  const count = await page
+    .locator('[data-testid="PDPImageThumbnail"]')
+    .count()
+    .catch(() => 0);
+  const collect = () =>
+    page
+      .evaluate(() =>
+        Array.from(document.querySelectorAll("img"))
+          .map((img) => ({
+            src: img.currentSrc || img.src,
+            alt: img.getAttribute("alt") || "",
+            w: img.naturalWidth,
+            h: img.naturalHeight,
+          }))
+          .filter(
+            (x) =>
+              /~tplv|images\.tokopedia\.net/i.test(x.src) &&
+              x.w >= 300 &&
+              x.h >= 300,
+          )
+          .map((x) => x.src),
+      )
+      .catch(() => [] as string[]);
+
+  const found = new Set<string>(await collect());
+  const limit = Math.min(count, 30);
+  for (let i = 0; i < limit; i++) {
+    try {
+      await page
+        .locator('[data-testid="PDPImageThumbnail"]')
+        .nth(i)
+        .click({ timeout: 1500 });
+      await page.waitForTimeout(250);
+    } catch {
+      // thumbnail may have re-rendered; keep the images we already have
+    }
+    for (const src of await collect()) found.add(src);
+  }
+  return [...found];
+}
+
+// Images embedded in the seller description / detail tab.
+async function detailImages(page: import("playwright").Page): Promise<string[]> {
+  return page
+    .evaluate(() => {
+      const nodes = Array.from(
+        document.querySelectorAll(
+          '[data-testid="lblPDPDescriptionProduk"] img, #pdp_comp-product_detail img, [data-testid="product_detail"] img',
+        ),
+      );
+      return nodes
+        .map((n) => (n as HTMLImageElement).currentSrc || (n as HTMLImageElement).src)
+        .filter(Boolean);
+    })
+    .catch(() => [] as string[]);
 }
 
 // ── Main adapter ───────────────────────────────────────────────────────────
@@ -776,6 +896,9 @@ ${htmlAfter}`,
           compareAtPrice,
           currency,
           images: plan.images,
+          colorImages: Object.keys(domResult.colorImages).length
+            ? domResult.colorImages
+            : undefined,
           sizeChartImage,
           variants,
           colors: colors.length ? dedupeColors(colors) : undefined,

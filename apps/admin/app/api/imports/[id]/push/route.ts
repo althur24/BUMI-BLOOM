@@ -90,13 +90,35 @@ export async function POST(
       }
     }
 
-    // Re-host the size-chart image too (it is not part of the gallery list).
-    if (np.sizeChartImage && supabaseHost && !np.sizeChartImage.includes(supabaseHost)) {
+    // Re-host images that are not on our storage yet, including the size chart
+    // and the per-colour images (needed for Shopify variant images).
+    const colorSrcs = Object.values(np.colorImages || {}).filter(Boolean);
+    const extras = [
+      ...(np.sizeChartImage ? [np.sizeChartImage] : []),
+      ...colorSrcs,
+    ].filter((u) => supabaseHost && !u.includes(supabaseHost));
+    if (extras.length) {
       try {
-        const chart = await rehostImages([np.sizeChartImage], { referer: np.sourceUrl });
-        if (chart.urls[0]) np.sizeChartImage = chart.urls[0];
+        const rehostedExtras = await rehostImages([...new Set(extras)], {
+          referer: np.sourceUrl,
+        });
+        const remap = (u?: string) => (u ? rehostedExtras.map.get(u) || u : u);
+        if (np.sizeChartImage) np.sizeChartImage = remap(np.sizeChartImage);
+        if (np.colorImages) {
+          np.colorImages = Object.fromEntries(
+            Object.entries(np.colorImages).map(([k, v]) => [k, remap(v) as string]),
+          );
+        }
+        // Colour images must be present in the product gallery to be usable.
+        const gallerySet = new Set(np.images);
+        for (const src of Object.values(np.colorImages || {})) {
+          if (src && !gallerySet.has(src)) {
+            np.images = [...np.images, src];
+            gallerySet.add(src);
+          }
+        }
       } catch {
-        // keep the original chart URL
+        // keep the original URLs
       }
     }
 

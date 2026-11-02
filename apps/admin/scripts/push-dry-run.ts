@@ -22,6 +22,7 @@ async function main() {
         handle: input.handle,
         product: input.productPayload,
         metafields: input.metafields,
+        colorImages: input.colorImages,
       },
       null,
       2,

@@ -12,12 +12,12 @@ import { safeFetchBytes } from "./safe-fetch";
 import { supabaseAdmin } from "./supabase-server";
 
 const BUCKET = "products";
-const MAX_IMAGES = 20;
-const MAX_CANDIDATES = 4;
-const MIN_BYTES = 20 * 1024;
+const MAX_IMAGES = 50;
+const MAX_CANDIDATES = 5;
+const MIN_BYTES = 4 * 1024;
 const MAX_BYTES = 20 * 1024 * 1024;
 const MIN_LONG_EDGE = 200;
-const LOW_RES_EDGE = 800;
+const LOW_RES_EDGE = 600;
 const CONCURRENCY = 4;
 
 export interface RehostOptions {
@@ -27,6 +27,9 @@ export interface RehostOptions {
 export interface RehostResult {
   urls: string[];
   report: ImageReport;
+  // Maps every input source URL to its re-hosted public URL. Used to remap
+  // per-colour images and variant images after upload.
+  map: Map<string, string>;
 }
 
 function refererFor(url: string, sourceReferer?: string): string | undefined {
@@ -124,13 +127,28 @@ async function uploadOne(
   rawUrl: string,
   sourceReferer: string | undefined,
   seenHashes: Set<string>,
+  hashToPublic: Map<string, string>,
 ): Promise<DownloadedImage | null> {
   const supabase = supabaseAdmin();
   const img = await downloadBest(rawUrl, sourceReferer);
   const hash = createHash("sha1").update(img.bytes).digest("hex");
 
-  if (seenHashes.has(hash)) return null;
-  seenHashes.add(hash);
+  const cached = hashToPublic.get(hash);
+  if (cached) {
+    return {
+      hash,
+      publicUrl: cached,
+      report: {
+        sourceUrl: img.sourceUrl,
+        publicUrl: cached,
+        width: img.width,
+        height: img.height,
+        bytes: img.bytes.byteLength,
+        mime: img.mime,
+        lowRes: longEdge(img.width, img.height) > 0 && longEdge(img.width, img.height) < LOW_RES_EDGE,
+      },
+    };
+  }
 
   const key = `imports/${hash}.${img.ext}`;
   const { error } = await supabase.storage.from(BUCKET).upload(key, img.bytes, {
@@ -141,6 +159,7 @@ async function uploadOne(
   if (error) throw new Error(`Upload gagal: ${error.message}`);
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(key);
+  hashToPublic.set(hash, data.publicUrl);
   return {
     hash,
     publicUrl: data.publicUrl,
@@ -162,17 +181,19 @@ export async function rehostImages(
   urls: string[],
   opts: RehostOptions = {},
 ): Promise<RehostResult> {
+  const map = new Map<string, string>();
   const input = (urls || []).filter(Boolean).slice(0, MAX_IMAGES);
   const report: ImageReport = { total: input.length, used: 0, items: [], rejected: [] };
-  if (!input.length) return { urls: [], report };
+  if (!input.length) return { urls: [], report, map };
 
   // Fail fast when storage is not configured.
   supabaseAdmin();
 
   const seenHashes = new Set<string>();
+  const hashToPublic = new Map<string, string>();
   const results = await pool(input, CONCURRENCY, async (url) => {
     try {
-      return await uploadOne(url, opts.referer, seenHashes);
+      return await uploadOne(url, opts.referer, seenHashes, hashToPublic);
     } catch (e: any) {
       report.rejected.push({ url, reason: e?.message || String(e) });
       return null;
@@ -180,11 +201,15 @@ export async function rehostImages(
   });
 
   const out: string[] = [];
-  for (const r of results) {
-    if (!r) continue;
+  const seenPublic = new Set<string>();
+  results.forEach((r, i) => {
+    if (!r) return;
+    map.set(input[i], r.publicUrl);
+    if (seenPublic.has(r.publicUrl)) return;
+    seenPublic.add(r.publicUrl);
     out.push(r.publicUrl);
     report.items.push(r.report);
-  }
+  });
   report.used = out.length;
-  return { urls: out, report };
+  return { urls: out, report, map };
 }

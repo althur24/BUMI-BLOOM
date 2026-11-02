@@ -510,12 +510,69 @@ async function addMissingImages(
   }
 }
 
+// Map a src URL → Shopify image id (for variant images / featured image).
+function imageIdForSrc(
+  images: any[],
+  src: string | undefined,
+): number | undefined {
+  if (!src) return undefined;
+  const target = String(src).split("?")[0];
+  const found = (images || []).find(
+    (img) => String(img?.src || "").split("?")[0] === target,
+  );
+  return found ? found.id : undefined;
+}
+
+// Attach the per-colour image to each variant (Shopify uses this as the
+// variant image and the storefront swaps the gallery when the colour changes).
+async function applyVariantImages(
+  productId: number | string,
+  payloadVariants: Record<string, any>[],
+  payloadOptions: { name: string }[] | undefined,
+  colorImages: Record<string, string> | undefined,
+  warnings: string[],
+): Promise<void> {
+  if (!colorImages || !Object.keys(colorImages).length) return;
+  const product = await getProductById(productId);
+  if (!product) return;
+  const index = indexVariants(product.variants || [], product.options);
+  const list = payloadOptions || [];
+  const colorIdx = list.findIndex((o) => /^color$/i.test(String(o?.name || "")));
+
+  const updates: Record<string, any>[] = [];
+  for (const incoming of payloadVariants) {
+    const color =
+      colorIdx >= 0 ? String(incoming[`option${colorIdx + 1}`] || "") : "";
+    const src = colorImages[color.trim().toLowerCase()];
+    if (!src) continue;
+    const imageId = imageIdForSrc(product.images || [], src);
+    if (!imageId) continue;
+    const key = incoming.sku
+      ? `sku:${normaliseSig(incoming.sku)}`
+      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const match = index.get(key);
+    if (!match) continue;
+    if (match.image_id === imageId) continue;
+    updates.push({ id: match.id, image_id: imageId });
+  }
+  if (!updates.length) return;
+
+  try {
+    await adminRest("PUT", `/products/${productId}.json`, {
+      product: { id: productId, variants: updates },
+    });
+  } catch (e: any) {
+    warnings.push(`Gambar varian gagal diset: ${e?.message || e}`);
+  }
+}
+
 async function createProductPush(
   input: {
     handle: string;
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
     publicationId?: string;
+    colorImages?: Record<string, string>;
   },
   publicationId: string,
   warnings: string[],
@@ -529,12 +586,9 @@ async function createProductPush(
   await publishToHeadless(created.id, publicationId);
 
   const payloadVariants = (input.productPayload.variants as Record<string, any>[]) || [];
-  await applyInventory(
-    created.id,
-    payloadVariants,
-    input.productPayload.options as { name: string }[] | undefined,
-    warnings,
-  );
+  const payloadOptions = input.productPayload.options as { name: string }[] | undefined;
+  await applyVariantImages(created.id, payloadVariants, payloadOptions, input.colorImages, warnings);
+  await applyInventory(created.id, payloadVariants, payloadOptions, warnings);
 
   return { productId: created.id, shopifyAdminUrl: productAdminUrl(created.id), warnings };
 }
@@ -546,6 +600,7 @@ async function updateProductPush(
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
     publicationId?: string;
+    colorImages?: Record<string, string>;
   },
   publicationId: string,
   warnings: string[],
@@ -640,10 +695,13 @@ async function updateProductPush(
     await setMetafields(`gid://shopify/Product/${productId}`, metafields);
   }
 
-  await publishToHeadless(productId, publicationId);
+  // 4) Variant images (colour → image) after the new images exist.
+  await applyVariantImages(productId, payloadVariants, payloadOptions, input.colorImages, warnings);
 
-  // 4) Inventory — verify/enforce the requested quantities.
+  // 5) Inventory — verify/enforce the requested quantities.
   await applyInventory(productId, payloadVariants, payloadOptions, warnings);
+
+  await publishToHeadless(productId, publicationId);
 
   return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
 }
@@ -656,6 +714,7 @@ export async function pushProductToShopify(
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
     publicationId?: string;
+    colorImages?: Record<string, string>;
   },
   options: PushOptions = {},
 ): Promise<PushResult> {
