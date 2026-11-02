@@ -2,6 +2,8 @@
 // Ported from backend/scripts/migrate-to-shopify.mjs (client credentials grant,
 // token caching, leaky-bucket rate-limit respect). Server-only — secrets in env.
 
+import { canonicalizeUrl } from "./urls";
+
 const SHOP = () => process.env.SHOPIFY_SHOP!;
 const CLIENT_ID = () => process.env.SHOPIFY_CLIENT_ID!;
 const CLIENT_SECRET = () => process.env.SHOPIFY_CLIENT_SECRET!;
@@ -226,7 +228,15 @@ export async function setMetafields(
           }
         : m,
     )
-    .filter((m) => !(m.type === "single_line_text_field" && !m.value));
+    .filter(
+      (m) =>
+        !(
+          (m.type === "single_line_text_field" ||
+            m.type === "multi_line_text_field" ||
+            m.type === "url") &&
+          !String(m.value || "").trim()
+        ),
+    );
   if (!cleaned.length) return;
   const data = await adminGraphQL<{
     metafieldsSet: {
@@ -257,37 +267,423 @@ export async function setMetafields(
   }
 }
 
-// Full import push: create (+ idempotent replace by handle) → metafields → publish.
-export async function pushProductToShopify(input: {
-  handle: string;
-  productPayload: Record<string, unknown>;
-  metafields?: { namespace: string; key: string; value: string; type: string }[];
-  publicationId?: string;
-}): Promise<{ productId: number; shopifyAdminUrl: string }> {
-  const publicationId = input.publicationId ?? (await findHeadlessPublicationId());
+// ── Product update-in-place helpers ────────────────────────────────────────
 
-  // Idempotency: replace existing product with same handle.
-  const existing = await findProductByHandle(input.handle);
-  if (existing) {
-    await deleteProduct(existing.id);
+type MetafieldInput = { namespace: string; key: string; value: string; type: string };
+
+export interface PushOptions {
+  // Existing Shopify product id (stored on the import job) or discovered by handle.
+  existingId?: number | string | null;
+  // Canonical source URL — guards against overwriting a different product that
+  // happens to share the same handle.
+  sourceUrl?: string;
+}
+
+export interface PushResult {
+  productId: number;
+  shopifyAdminUrl: string;
+  warnings: string[];
+}
+
+function productAdminUrl(id: number | string): string {
+  return `https://${SHOP()}.myshopify.com/admin/products/${id}`;
+}
+
+function normaliseSig(value: unknown): string {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+async function getProductById(id: number | string): Promise<any | null> {
+  try {
+    const res = await adminRest<any>("GET", `/products/${id}.json`);
+    return res?.product || null;
+  } catch {
+    return null;
   }
+}
 
-  const created = await createProduct(input.productPayload);
-  const ownerId = `gid://shopify/Product/${created.id}`;
-
-  // Blank single-line text fields are rejected by Shopify; drop them so one
-  // empty optional value cannot fail the whole metafields batch.
-  const metafields = (input.metafields || []).filter(
-    (m) => !(m.type === "single_line_text_field" && !String(m.value || "").trim()),
+async function findProductByHandleFull(handle: string): Promise<any | null> {
+  const res = await adminRest<any>(
+    "GET",
+    `/products.json?handle=${encodeURIComponent(handle)}&limit=1`,
   );
-  if (metafields.length) {
-    await setMetafields(ownerId, metafields);
+  return res?.products?.[0] || null;
+}
+
+async function getProductMetafield(
+  productId: number | string,
+  namespace: string,
+  key: string,
+): Promise<{ id: number; value: string; type: string } | null> {
+  try {
+    const res = await adminRest<any>(
+      "GET",
+      `/products/${productId}/metafields.json?namespace=${encodeURIComponent(namespace)}&key=${encodeURIComponent(key)}`,
+    );
+    const mf = (res?.metafields || [])[0];
+    return mf ? { id: mf.id, value: mf.value, type: mf.type } : null;
+  } catch {
+    return null;
+  }
+}
+
+// Shopify rejects a metafieldsSet batch when an existing key has a different
+// type (e.g. size_guide moved from single_line to multi_line). Delete the old
+// definition first so the new one can be written.
+async function ensureMetafieldTypes(
+  productId: number | string,
+  metafields: MetafieldInput[],
+): Promise<void> {
+  let existing: any[] = [];
+  try {
+    const res = await adminRest<any>("GET", `/products/${productId}/metafields.json`);
+    existing = res?.metafields || [];
+  } catch {
+    return;
+  }
+  for (const incoming of metafields) {
+    const match = existing.find(
+      (m) => m.namespace === incoming.namespace && m.key === incoming.key,
+    );
+    if (match && match.type !== incoming.type) {
+      await adminRest("DELETE", `/metafields/${match.id}.json`).catch(() => {});
+    }
+  }
+}
+
+function optionPosition(options: any[] | undefined, names: RegExp): number {
+  const list = options || [];
+  for (let i = 0; i < list.length; i++) {
+    if (names.test(String(list[i]?.name || ""))) return i + 1;
+  }
+  return 0;
+}
+
+function existingVariantSignature(variant: any, options: any[] | undefined): string {
+  const colorPos = optionPosition(options, /^(colou?r|warna)$/i);
+  const sizePos = optionPosition(options, /^(size|ukuran)$/i);
+  const color = colorPos ? variant[`option${colorPos}`] : "";
+  const size = sizePos ? variant[`option${sizePos}`] : "";
+  return `${normaliseSig(color)}|${normaliseSig(size)}`;
+}
+
+function payloadVariantSignature(
+  variant: Record<string, any>,
+  payloadOptions: { name: string }[] | undefined,
+): string {
+  const list = payloadOptions || [];
+  const colorIdx = list.findIndex((o) => /^color$/i.test(String(o?.name || "")));
+  const sizeIdx = list.findIndex((o) => /^size$/i.test(String(o?.name || "")));
+  const color = colorIdx >= 0 ? variant[`option${colorIdx + 1}`] : "";
+  const size = sizeIdx >= 0 ? variant[`option${sizeIdx + 1}`] : "";
+  return `${normaliseSig(color)}|${normaliseSig(size)}`;
+}
+
+function indexVariants(variants: any[], options: any[] | undefined): Map<string, any> {
+  const map = new Map<string, any>();
+  for (const v of variants || []) {
+    if (v?.sku) map.set(`sku:${normaliseSig(v.sku)}`, v);
+    map.set(`sig:${existingVariantSignature(v, options)}`, v);
+  }
+  return map;
+}
+
+let _primaryLocationId: number | string | null | undefined;
+
+async function getPrimaryLocationId(): Promise<number | string | null> {
+  if (_primaryLocationId !== undefined) return _primaryLocationId;
+  try {
+    const res = await adminRest<any>("GET", "/locations.json");
+    const list = res?.locations || [];
+    const active = list.find((l: any) => l.active) || list[0];
+    _primaryLocationId = active?.id ?? null;
+  } catch {
+    _primaryLocationId = null;
+  }
+  return _primaryLocationId;
+}
+
+async function applyInventory(
+  productId: number | string,
+  payloadVariants: Record<string, any>[],
+  payloadOptions: { name: string }[] | undefined,
+  warnings: string[],
+): Promise<void> {
+  const product = await getProductById(productId);
+  if (!product) return;
+  const index = indexVariants(product.variants || [], product.options);
+  const locationId = await getPrimaryLocationId();
+  if (!locationId) {
+    warnings.push("Lokasi inventory tidak ditemukan — stok tidak disinkronkan.");
+    return;
   }
 
+  const changes: { inventoryItemId: string; locationId: string; delta: number }[] = [];
+  const restTargets: { inventoryItemId: number | string; qty: number; label: string }[] = [];
+  for (const incoming of payloadVariants) {
+    const key = incoming.sku
+      ? `sku:${normaliseSig(incoming.sku)}`
+      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const existing = index.get(key);
+    if (!existing?.inventory_item_id) continue;
+    const qty = Math.max(0, Math.round(Number(incoming.inventory_quantity) || 0));
+    const current =
+      typeof existing.inventory_quantity === "number" ? existing.inventory_quantity : null;
+    const delta = current == null ? qty : qty - current;
+    if (delta === 0) continue;
+    changes.push({
+      inventoryItemId: `gid://shopify/InventoryItem/${existing.inventory_item_id}`,
+      locationId: `gid://shopify/Location/${locationId}`,
+      delta,
+    });
+    restTargets.push({
+      inventoryItemId: existing.inventory_item_id,
+      qty,
+      label: incoming.sku || existing.sku || String(existing.id),
+    });
+  }
+  if (!changes.length) return;
+
+  // One bulk mutation instead of one request per variant (important for
+  // products with dozens of colour × size combinations).
+  try {
+    const data = await adminGraphQL<{
+      inventoryAdjustQuantities: {
+        userErrors: { field?: string[] | null; message: string }[];
+      };
+    }>(
+      `mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!) {
+        inventoryAdjustQuantities(input: $input) {
+          userErrors { field message }
+        }
+      }`,
+      {
+        input: {
+          name: "available",
+          reason: "correction",
+          changes,
+        },
+      },
+    );
+    const errors = data?.inventoryAdjustQuantities?.userErrors || [];
+    if (!errors.length) return;
+    warnings.push(`Bulk inventory gagal: ${errors.map((e) => e.message).join("; ")}`);
+  } catch (e: any) {
+    warnings.push(`Bulk inventory gagal: ${e?.message || e}`);
+  }
+
+  // Fallback: set each level individually (slower, but reliable).
+  for (const target of restTargets) {
+    try {
+      await adminRest("POST", "/inventory_levels/set.json", {
+        location_id: Number(locationId),
+        inventory_item_id: target.inventoryItemId,
+        available: target.qty,
+      });
+    } catch (e: any) {
+      warnings.push(`Stok varian ${target.label} gagal diset: ${e?.message || e}`);
+    }
+  }
+}
+
+async function addMissingImages(
+  productId: number | string,
+  existingImages: any[],
+  payloadImages: Record<string, any>[],
+  warnings: string[],
+): Promise<void> {
+  const existing = new Set(
+    (existingImages || []).map((img: any) => String(img?.src || "").split("?")[0]),
+  );
+  let position = (existingImages || []).length + 1;
+  for (const img of payloadImages) {
+    const src = String(img.src || "");
+    if (!src || existing.has(src.split("?")[0])) continue;
+    try {
+      await adminRest("POST", `/products/${productId}/images.json`, {
+        image: { src, alt: img.alt, position: position++ },
+      });
+      existing.add(src.split("?")[0]);
+    } catch (e: any) {
+      warnings.push(`Gambar gagal ditambahkan: ${e?.message || e}`);
+    }
+  }
+}
+
+async function createProductPush(
+  input: {
+    handle: string;
+    productPayload: Record<string, unknown>;
+    metafields?: MetafieldInput[];
+    publicationId?: string;
+  },
+  publicationId: string,
+  warnings: string[],
+): Promise<PushResult> {
+  const created = await createProduct(input.productPayload);
+  const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+  if (metafields.length) {
+    await ensureMetafieldTypes(created.id, metafields);
+    await setMetafields(`gid://shopify/Product/${created.id}`, metafields);
+  }
   await publishToHeadless(created.id, publicationId);
 
-  return {
-    productId: created.id,
-    shopifyAdminUrl: `https://${SHOP()}.myshopify.com/admin/products/${created.id}`,
-  };
+  const payloadVariants = (input.productPayload.variants as Record<string, any>[]) || [];
+  await applyInventory(
+    created.id,
+    payloadVariants,
+    input.productPayload.options as { name: string }[] | undefined,
+    warnings,
+  );
+
+  return { productId: created.id, shopifyAdminUrl: productAdminUrl(created.id), warnings };
+}
+
+async function updateProductPush(
+  existing: any,
+  input: {
+    handle: string;
+    productPayload: Record<string, unknown>;
+    metafields?: MetafieldInput[];
+    publicationId?: string;
+  },
+  publicationId: string,
+  warnings: string[],
+): Promise<PushResult> {
+  const productId = existing.id;
+  const payload = input.productPayload;
+
+  // 1) Basic fields (options are intentionally not sent: variant option values
+  //    are reconciled individually below to avoid Shopify recreating variants).
+  await adminRest("PUT", `/products/${productId}.json`, {
+    product: {
+      id: productId,
+      title: payload.title,
+      handle: input.handle,
+      body_html: payload.body_html,
+      vendor: payload.vendor,
+      product_type: payload.product_type,
+      tags: payload.tags,
+      status: payload.status || existing.status || "active",
+    },
+  });
+
+  const payloadVariants = (payload.variants as Record<string, any>[]) || [];
+  const payloadOptions = payload.options as { name: string }[] | undefined;
+  const index = indexVariants(existing.variants || [], existing.options);
+
+  // Batch updates for variants that already exist (one request instead of N),
+  // then create genuinely new variants individually.
+  const matchedUpdates: Record<string, any>[] = [];
+  const newVariants: Record<string, any>[] = [];
+  for (const incoming of payloadVariants) {
+    const key = incoming.sku
+      ? `sku:${normaliseSig(incoming.sku)}`
+      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const match = index.get(key);
+    const body: Record<string, any> = {
+      price: incoming.price,
+      sku: incoming.sku || match?.sku || "",
+      compare_at_price:
+        incoming.compare_at_price != null && incoming.compare_at_price !== ""
+          ? incoming.compare_at_price
+          : null,
+    };
+    if (incoming.grams) body.grams = incoming.grams;
+    if (match) {
+      matchedUpdates.push({ id: match.id, ...body });
+    } else {
+      // New variants need their option values, otherwise Shopify creates a
+      // duplicate "Default" variant.
+      for (const i of [1, 2, 3]) {
+        if (incoming[`option${i}`] != null) body[`option${i}`] = incoming[`option${i}`];
+      }
+      newVariants.push(body);
+    }
+  }
+
+  if (matchedUpdates.length) {
+    try {
+      await adminRest("PUT", `/products/${productId}.json`, {
+        product: { id: productId, variants: matchedUpdates },
+      });
+    } catch (e: any) {
+      warnings.push(`Update varian batch gagal: ${e?.message || e}`);
+    }
+  }
+
+  for (const body of newVariants) {
+    try {
+      const created = await adminRest<any>("POST", `/products/${productId}/variants.json`, {
+        variant: body,
+      });
+      if (created?.variant) {
+        index.set(`sig:${payloadVariantSignature(body, payloadOptions)}`, created.variant);
+      }
+    } catch (e: any) {
+      warnings.push(`Varian baru gagal dibuat (${body.sku || "-"}): ${e?.message || e}`);
+    }
+  }
+
+  // 2) Images — add new ones, never delete the merchant's existing gallery.
+  await addMissingImages(
+    productId,
+    existing.images || [],
+    (payload.images as Record<string, any>[]) || [],
+    warnings,
+  );
+
+  // 3) Metafields (upsert by namespace+key).
+  const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+  if (metafields.length) {
+    await ensureMetafieldTypes(productId, metafields);
+    await setMetafields(`gid://shopify/Product/${productId}`, metafields);
+  }
+
+  await publishToHeadless(productId, publicationId);
+
+  // 4) Inventory — verify/enforce the requested quantities.
+  await applyInventory(productId, payloadVariants, payloadOptions, warnings);
+
+  return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
+}
+
+// Full import push: update the existing product when it belongs to the same
+// source URL, otherwise create a new one. Product IDs/reviews are preserved.
+export async function pushProductToShopify(
+  input: {
+    handle: string;
+    productPayload: Record<string, unknown>;
+    metafields?: MetafieldInput[];
+    publicationId?: string;
+  },
+  options: PushOptions = {},
+): Promise<PushResult> {
+  const publicationId = input.publicationId ?? (await findHeadlessPublicationId());
+  const warnings: string[] = [];
+
+  let existing: any = null;
+  if (options.existingId) existing = await getProductById(options.existingId);
+  if (!existing && input.handle) existing = await findProductByHandleFull(input.handle);
+
+  if (existing) {
+    if (options.sourceUrl) {
+      const sourceMf = await getProductMetafield(existing.id, "bumi", "source_url");
+      if (sourceMf?.value && canonicalizeUrl(sourceMf.value) !== options.sourceUrl) {
+        throw new Error(
+          `Handle "${input.handle}" sudah dipakai produk lain (${sourceMf.value}). ` +
+            "Ubah judul produk atau hapus produk lama sebelum push.",
+        );
+      }
+      if (!sourceMf) {
+        throw new Error(
+          `Handle "${input.handle}" sudah ada di Shopify tetapi bukan hasil import. ` +
+            "Ubah judul produk atau hapus produk lama sebelum push.",
+        );
+      }
+    }
+    return updateProductPush(existing, input, publicationId, warnings);
+  }
+
+  return createProductPush(input, publicationId, warnings);
 }

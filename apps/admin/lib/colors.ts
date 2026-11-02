@@ -97,6 +97,56 @@ const COLOR_HEX: Record<string, string> = {
   multicolor: "#CCCCCC",
   "multi color": "#CCCCCC",
   rainbow: "#CCCCCC",
+  // fashion / seasonal names common on Indonesian brand stores
+  butter: "#F3E3A3",
+  buttercream: "#F6E7B8",
+  lemon: "#F7E36B",
+  mango: "#F2B24C",
+  papaya: "#F2A65A",
+  apricot: "#F4BE9A",
+  blush: "#F2C9C2",
+  "dusty pink": "#D9A6A6",
+  "rose gold": "#D9A0A0",
+  terracotta: "#C96F4A",
+  rust: "#A9552F",
+  brick: "#9C4A3C",
+  mahogany: "#6F2B26",
+  wine: "#6D1A36",
+  clay: "#B07A5E",
+  cocoa: "#5A3A2A",
+  espresso: "#4A2C20",
+  chestnut: "#7A4A2B",
+  caramel: "#B57B45",
+  camel: "#C19A6B",
+  honey: "#D9A441",
+  wheat: "#E3CFA3",
+  oat: "#E6D8BF",
+  oatmeal: "#E8DCC8",
+  stone: "#CFC7B8",
+  taupe: "#B3A394",
+  mauve: "#B784A7",
+  "dusty rose": "#C9A0A0",
+  "forest green": "#2F4F3A",
+  emerald: "#2E7D5B",
+  pistachio: "#C7D8A8",
+  avocado: "#9BAE5C",
+  ocean: "#3A6B8A",
+  "baby blue": "#BFD8E8",
+  "powder blue": "#C9DDE8",
+  "sky blue": "#9FC8E8",
+  cobalt: "#2B4C9B",
+  "royal blue": "#2A4B9B",
+  indigo: "#3F4C8A",
+  grape: "#6F4A8E",
+  // additional neutrals
+  graphite: "#4A4A4A",
+  "dark grey": "#4F4F4F",
+  "light grey": "#D3D3D3",
+  "light gray": "#D3D3D3",
+  "dark gray": "#4F4F4F",
+  natural: "#E8DDC8",
+  nude: "#E3C4B4",
+  "dusty blue": "#9DB4C0",
 };
 
 const NEUTRAL_FALLBACK = "#CCCCCC";
@@ -325,4 +375,51 @@ export function looksLikeSize(value: string): boolean {
   return /^(xxs|xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl|\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?)\s*(?:\(|$|y|yo|t\b|m\b|cm\b|months?\b|yrs?\b|years?\b)/.test(
     s,
   );
+}
+
+// Detect known color names inside free text (title/description/variant data).
+// Whole-token matching avoids false positives (e.g. "sage" inside "message").
+// Longest matches win, and matches fully contained in a longer one are dropped.
+export function detectColorNames(...texts: (string | undefined | null)[]): string[] {
+  const text = normalizeColorName(texts.filter(Boolean).join(" "));
+  if (!text) return [];
+  const keys = Object.keys(COLOR_HEX)
+    .filter((k) => k.length >= 3)
+    .sort((a, b) => b.length - a.length);
+
+  const matches: { key: string; start: number; end: number }[] = [];
+  for (const key of keys) {
+    const re = new RegExp(`(?:^| )${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: |$)`);
+    const m = re.exec(text);
+    if (!m) continue;
+    const start = m.index + (m[0].startsWith(" ") ? 1 : 0);
+    matches.push({ key, start, end: start + key.length });
+  }
+
+  const kept = matches.filter(
+    (m) =>
+      !matches.some(
+        (other) =>
+          other !== m &&
+          other.start <= m.start &&
+          other.end >= m.end &&
+          other.end - other.start > m.end - m.start,
+      ),
+  );
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of kept.sort((a, b) => a.start - b.start)) {
+    if (seen.has(m.key)) continue;
+    seen.add(m.key);
+    out.push(toTitleCase(m.key));
+  }
+  return out;
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
 }

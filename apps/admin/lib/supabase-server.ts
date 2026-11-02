@@ -14,6 +14,12 @@ export function supabaseAdmin(): SupabaseClient {
       "Supabase admin env missing: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY",
     );
   }
+  if (/^(TODO_FILL|your[-_]|changeme)/i.test(key.trim())) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY masih placeholder. Isi dengan service role key asli " +
+        "(Supabase Dashboard → Project Settings → API) atau tarik dari Vercel.",
+    );
+  }
   if (!_admin) {
     _admin = createClient(url, key, { auth: { persistSession: false } });
   }

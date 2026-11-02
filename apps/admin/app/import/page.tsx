@@ -73,7 +73,7 @@ export default function ImportPage() {
   const [active, setActive] = useState<ImportJob | null>(null);
   const [edits, setEdits] = useState<Partial<NormalizedProduct>>({});
   const [history, setHistory] = useState<ImportJob[]>([]);
-  const [pushResult, setPushResult] = useState<{ shopifyAdminUrl?: string } | null>(null);
+  const [pushResult, setPushResult] = useState<{ shopifyAdminUrl?: string; warnings?: string[] } | null>(null);
   const [error, setError] = useState("");
   const [confirmPush, setConfirmPush] = useState(false);
   const [removedImageIdx, setRemovedImageIdx] = useState<Set<number>>(new Set());
@@ -151,6 +151,20 @@ export default function ImportPage() {
     setConfirmPush(false); setBusy(true);
     try {
       const r = await api("/api/imports", "POST", { url });
+      if (r.duplicate) {
+        setActive({
+          id: r.jobId, sourceUrl: url, sourceType: r.platform, status: r.status,
+          extractedJson: null, shopifyAdminUrl: r.shopifyAdminUrl || null,
+          shopifyHandle: null, errorMessage: null, createdAt: new Date().toISOString(),
+        });
+        if (r.status === "PUSHED") {
+          setPushResult({ shopifyAdminUrl: r.shopifyAdminUrl });
+          setError(r.message || "Produk ini sudah pernah diimpor.");
+        } else {
+          pollJob(r.jobId);
+        }
+        return;
+      }
       setActive({
         id: r.jobId, sourceUrl: url, sourceType: r.platform, status: "PENDING",
         extractedJson: null, shopifyAdminUrl: null, shopifyHandle: null,
@@ -210,7 +224,7 @@ export default function ImportPage() {
     try {
       const pushBody = buildPushBody();
       const r = await api(`/api/imports/${active.id}/push`, "POST", pushBody);
-      setPushResult(r);
+      setPushResult({ shopifyAdminUrl: r.shopifyAdminUrl, warnings: r.warnings });
       setActive((j) => j ? { ...j, status: "PUSHED", shopifyAdminUrl: r.shopifyAdminUrl, shopifyHandle: r.shopifyHandle } : j);
       refreshHistory();
       // Reset form for next import
@@ -349,14 +363,14 @@ export default function ImportPage() {
       <div className="admin-header">
         <div>
           <h1>Import Produk</h1>
-          <p className="muted">Tempel link Tokopedia / Shopee → ekstrak → push ke Shopify</p>
+          <p className="muted">Tempel link Tokopedia, Shopee, atau website brand (JSON-LD) → ekstrak → push ke Shopify</p>
         </div>
       </div>
 
       <form className="import-bar" onSubmit={onExtract}>
         <input
           className="input"
-          placeholder="https://www.tokopedia.com/... atau https://shopee.co.id/..."
+          placeholder="https://www.tokopedia.com/... · https://shopee.co.id/... · https://brand.com/products/..."
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
           disabled={busy}
@@ -423,10 +437,50 @@ export default function ImportPage() {
                   )}
                 </div>
               </div>
-              <div className="field">
-                <label>Merek</label>
-                <input className="input" value={preview.brand || ""}
-                  onChange={(e) => setEdits((d) => ({ ...d, brand: e.target.value }))} />
+              <div className="row">
+                <div className="field" style={{ flex: 2, minWidth: 200 }}>
+                  <label>Merek</label>
+                  <input className="input" value={preview.brand || ""}
+                    onChange={(e) => setEdits((d) => ({ ...d, brand: e.target.value }))} />
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: 100 }}>
+                  <label>Harga coret (AUD)</label>
+                  <input className="input" type="number" step="0.01" value={preview.compareAtPrice ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEdits((d) => ({ ...d, compareAtPrice: v === "" ? undefined : Number(v) || undefined }));
+                    }} />
+                </div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flex: 1, minWidth: 120 }}>
+                  <label>Kategori</label>
+                  <select className="input" value={preview.specs?.category || ""}
+                    onChange={(e) => setEdits((d) => ({ ...d, specs: { ...(d.specs || preview.specs || {}), category: e.target.value } }))}>
+                    <option value="">—</option>
+                    <option value="tshirts">T-Shirts &amp; Tops</option>
+                    <option value="shorts">Shorts &amp; Bottoms</option>
+                    <option value="dresses">Dresses</option>
+                    <option value="outerwear">Outerwear</option>
+                    <option value="accessories">Accessories</option>
+                    <option value="baby">Baby</option>
+                  </select>
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: 120 }}>
+                  <label>Audience</label>
+                  <select className="input" value={preview.specs?.audience || "unisex"}
+                    onChange={(e) => setEdits((d) => ({ ...d, specs: { ...(d.specs || preview.specs || {}), audience: e.target.value } }))}>
+                    <option value="unisex">Unisex</option>
+                    <option value="girls">Girls</option>
+                    <option value="boys">Boys</option>
+                    <option value="baby">Baby</option>
+                  </select>
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: 120 }}>
+                  <label>Fibre</label>
+                  <input className="input" value={preview.fibre || ""}
+                    onChange={(e) => setEdits((d) => ({ ...d, fibre: e.target.value }))} />
+                </div>
               </div>
               <div className="field">
                 <label>Deskripsi</label>
@@ -442,6 +496,11 @@ export default function ImportPage() {
                 <label>Size Guide</label>
                 <textarea className="input" rows={4} value={preview.sizeGuide || ""}
                   onChange={(e) => setEdits((d) => ({ ...d, sizeGuide: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>URL gambar size chart</label>
+                <input className="input" value={preview.sizeChartImage || ""}
+                  onChange={(e) => setEdits((d) => ({ ...d, sizeChartImage: e.target.value }))} />
               </div>
               <div className="field">
                 <label>Shipping & Returns</label>
@@ -477,7 +536,16 @@ export default function ImportPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="hint">Klik gambar untuk set utama · × untuk hapus</p>
+                  <p className="hint">
+                    Klik gambar untuk set utama · × untuk hapus
+                    {preview.imageReport ? ` · ${preview.imageReport.used}/${preview.imageReport.total} gambar lolos validasi` : ""}
+                    {preview.imageReport && preview.imageReport.rejected.length
+                      ? ` · ${preview.imageReport.rejected.length} ditolak`
+                      : ""}
+                  </p>
+                  {preview.imageReport && preview.imageReport.items.some((it) => it.lowRes) && (
+                    <p className="hint" style={{ color: "#a15c00" }}>Ada gambar resolusi rendah — pertimbangkan hapus/ganti.</p>
+                  )}
                 </div>
               )}
 
@@ -599,6 +667,11 @@ export default function ImportPage() {
               Buka produk di Shopify Admin ↗
             </a>
           </p>
+          {pushResult.warnings && pushResult.warnings.length > 0 && (
+            <p className="hint" style={{ color: "#a15c00" }}>
+              Catatan: {pushResult.warnings.join(" · ")}
+            </p>
+          )}
           <button className="btn btn--ghost btn--sm" onClick={() => { setPushResult(null); setActive(null); }}>
             Import produk lain →
           </button>

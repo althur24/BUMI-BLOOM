@@ -42,16 +42,28 @@ async function processJob(jobId: string): Promise<void> {
     // Re-host images to Supabase Storage (fallback to originals if not configured).
     await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "rehosting" } as any } });
     let images = np.images;
+    let imageReport = np.imageReport;
+    let sizeChartImage = np.sizeChartImage;
     try {
-      const rehosted = await rehostImages(np.images);
-      if (rehosted.length) images = rehosted;
+      const rehosted = await rehostImages(np.images, { referer: np.sourceUrl });
+      if (rehosted.urls.length) images = rehosted.urls;
+      imageReport = rehosted.report;
+      if (sizeChartImage) {
+        const chart = await rehostImages([sizeChartImage], { referer: np.sourceUrl });
+        if (chart.urls[0]) sizeChartImage = chart.urls[0];
+      }
     } catch {
-      // keep original URLs
+      // keep original URLs (Supabase not configured / network failure)
     }
 
     // Enrich: rule-based cleaning (always) + AI layer if GEMINI_API_KEY is set.
     await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "enriching" } as any } });
-    const { enriched, aiUsed, aiMeta } = await enrichProduct({ ...np, images });
+    const { enriched, aiUsed, aiMeta } = await enrichProduct({
+      ...np,
+      images,
+      imageReport,
+      sizeChartImage,
+    });
 
     // Convert IDR → AUD (Shopify store currency). Uses live exchange rate.
     await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "converting" } as any } });
@@ -61,7 +73,11 @@ async function processJob(jobId: string): Promise<void> {
       where: { id: jobId },
       data: {
         status: "EXTRACTED" as ImportStatus,
-        rawJson: (result.raw ?? null) as any,
+        rawJson: {
+          scrape: result.raw ?? null,
+          extractionPath: enriched.extractionPath ?? null,
+          imageReport: enriched.imageReport ?? null,
+        } as any,
         extractedJson: enriched as any,
         aiJson: { aiUsed, ...(aiMeta || {}) } as any,
       },
@@ -222,6 +238,9 @@ async function convertCurrency(np: NormalizedProduct): Promise<void> {
     originalCurrency: "IDR",
     audRateUsed: String(rate),
   };
+  if (np.compareAtPrice != null) {
+    np.compareAtPrice = Math.round((np.compareAtPrice / rate) * 100) / 100;
+  }
   np.price = Math.round((originalIDR / rate) * 100) / 100;
   np.currency = "AUD";
   for (const v of np.variants) {
@@ -229,6 +248,9 @@ async function convertCurrency(np: NormalizedProduct): Promise<void> {
       v.price = Math.round((v.price / rate) * 100) / 100;
     } else {
       v.price = np.price;
+    }
+    if (v.compareAtPrice != null) {
+      v.compareAtPrice = Math.round((v.compareAtPrice / rate) * 100) / 100;
     }
   }
 }

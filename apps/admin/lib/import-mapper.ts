@@ -1,10 +1,10 @@
 // Maps a (possibly admin-edited) NormalizedProduct → a Shopify REST product
 // payload + `bumi` metafields. Adapted from backend/scripts/migrate-to-shopify.mjs
-// buildShopifyProduct, but driven by the scraper's normalized shape instead of
-// the old Supabase Product rows.
+// buildShopifyProduct, but driven by the scraper's normalized shape.
 
 import type { NormalizedProduct, ScraperVariant } from "./scrapers/base";
 import { colorsFromVariants } from "./colors";
+import { inferCategory } from "./categorize";
 
 export interface ShopifyPushInput {
   handle: string;
@@ -28,9 +28,14 @@ function escHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function clip(value: string, max = 255): string {
+  const s = String(value || "").trim();
+  return s.length > max ? s.slice(0, max) : s;
+}
+
 function opt(v: ScraperVariant, ...keys: string[]): string | undefined {
   for (const k of keys) {
-    for (const key of Object.keys(v.options)) {
+    for (const key of Object.keys(v.options || {})) {
       if (key.toLowerCase() === k.toLowerCase()) return v.options[key];
     }
   }
@@ -38,88 +43,138 @@ function opt(v: ScraperVariant, ...keys: string[]): string | undefined {
 }
 
 function priceStr(cents: number | undefined): string {
-  // Price is in major units (e.g. 499000). Shopify wants a decimal string.
-  // NOTE: store currency may differ from source currency (IDR vs AUD) — the
-  // admin is expected to set the correct price in the editable preview.
   if (cents == null || !Number.isFinite(cents)) return "0";
   return cents.toFixed(2);
 }
 
-export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
-  const handle = slugify(np.title) || `import-${Date.now()}`;
+// Plain-text description → safe Shopify body_html, preserving paragraphs and
+// bullet lines instead of flattening everything into one paragraph.
+function textToHtml(text: string | undefined): string {
+  const raw = String(text || "").replace(/\r/g, "").trim();
+  if (!raw) return "";
+  const blocks = raw.split(/\n{2,}/);
+  const html = blocks
+    .map((block) => {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (!lines.length) return "";
+      if (lines.every((l) => /^[-*•]\s+/.test(l))) {
+        return `<ul>${lines.map((l) => `<li>${escHtml(l.replace(/^[-*•]\s+/, ""))}</li>`).join("")}</ul>`;
+      }
+      return `<p>${lines.map((l) => escHtml(l)).join("<br>")}</p>`;
+    })
+    .filter(Boolean);
+  return html.join("");
+}
 
-  const colorOf = (v: ScraperVariant): string | undefined =>
-    opt(v, "Warna", "Color", "Colour");
-  const sizeOf = (v: ScraperVariant): string | undefined =>
-    opt(v, "Ukuran", "Size");
+function normaliseCategory(value: string | undefined): string {
+  const v = String(value || "").toLowerCase().trim();
+  if (["tshirts", "shorts", "dresses", "outerwear", "accessories", "baby"].includes(v)) {
+    return v;
+  }
+  return inferCategory(v);
+}
+
+export function buildShopifyPushInput(
+  np: NormalizedProduct,
+  opts: { handle?: string } = {},
+): ShopifyPushInput {
+  const category = normaliseCategory(np.specs?.category);
+  const handle = clip(
+    opts.handle || slugify(`${np.brand ? np.brand + " " : ""}${np.title}`) || `import-${Date.now()}`,
+    80,
+  );
+
+  const colorOf = (v: ScraperVariant) => opt(v, "Warna", "Color", "Colour");
+  const sizeOf = (v: ScraperVariant) => opt(v, "Ukuran", "Size");
 
   const colorKey = np.variants.some((v) => colorOf(v)) ? "Color" : null;
   const sizeKey = np.variants.some((v) => sizeOf(v)) ? "Size" : null;
 
-  // Values assigned to the REST payload. If a dimension exists but a given
-  // variant lacks it, Shopify needs a concrete value; "Default" is used and
-  // included in the option values below so the payload stays consistent.
-  const variantColor = (v: ScraperVariant): string | undefined =>
-    colorOf(v) || (colorKey ? "Default" : undefined);
-  const variantSize = (v: ScraperVariant): string | undefined =>
-    sizeOf(v) || (sizeKey ? "Default" : undefined);
+  // If one dimension exists but a variant is missing a value, fill it with the
+  // first known value (a real colorway) rather than creating a fake "Default".
+  const firstColor = np.variants.map(colorOf).find(Boolean);
+  const firstSize = np.variants.map(sizeOf).find(Boolean);
+  const variantColor = (v: ScraperVariant) =>
+    colorOf(v) || (colorKey ? firstColor : undefined);
+  const variantSize = (v: ScraperVariant) =>
+    sizeOf(v) || (sizeKey ? firstSize : undefined);
 
+  const productCompareAt = np.compareAtPrice;
+  const baseVariants = np.variants.slice(0, 100);
   const variants =
-    np.variants.length > 0
-      ? np.variants.map((v) => {
+    baseVariants.length > 0
+      ? baseVariants.map((v) => {
+          const price = v.price ?? np.price;
+          const compareAt =
+            v.compareAtPrice && price != null && v.compareAtPrice > price
+              ? v.compareAtPrice
+              : productCompareAt && price != null && productCompareAt > price
+                ? productCompareAt
+                : undefined;
           const variant: Record<string, unknown> = {
-            price: priceStr(v.price ?? np.price),
+            price: priceStr(price),
             inventory_management: "shopify",
-            inventory_quantity: v.stock ?? 0,
+            inventory_quantity: Math.max(0, Math.round(v.stock ?? 0)),
+            requires_shipping: true,
           };
-          // Assign options in order: option1 FIRST (Shopify requires option1
-          // before option2). If only size (no color), size goes to option1.
+          if (compareAt != null) variant.compare_at_price = priceStr(compareAt);
+          if (v.sku) variant.sku = clip(v.sku, 100);
+          if (v.grams != null) variant.grams = Math.round(v.grams);
           let optIdx = 1;
           if (colorKey) {
-            variant[`option${optIdx}`] = variantColor(v);
+            variant[`option${optIdx}`] = clip(variantColor(v) || "Default", 255);
             optIdx++;
           }
           if (sizeKey) {
-            variant[`option${optIdx}`] = variantSize(v);
+            variant[`option${optIdx}`] = clip(variantSize(v) || "Default", 255);
             optIdx++;
           }
-          if (v.sku) variant.sku = v.sku;
           return variant;
         })
       : [
           {
             price: priceStr(np.price),
+            compare_at_price:
+              productCompareAt && np.price != null && productCompareAt > np.price
+                ? priceStr(productCompareAt)
+                : undefined,
             inventory_management: "shopify",
             inventory_quantity: 0,
+            requires_shipping: true,
           },
         ];
 
-  const images = np.images.slice(0, 20).map((src) => ({ src }));
+  const images = (np.images || []).slice(0, 20).map((src, i) => ({
+    src,
+    alt: clip(`${np.title}${np.brand ? ` — ${np.brand}` : ""}`, 512),
+    position: i + 1,
+  }));
 
+  const audience = (np.specs?.audience || "unisex").toLowerCase();
   const tags = [
     np.platform.toLowerCase(),
     np.brand,
-    np.location ? `loc:${np.location}` : null,
+    category || null,
+    audience,
+    ...(np.colors || []).map((c) => c.name),
   ]
     .filter(Boolean)
     .join(", ");
 
-  // Derive option values from the exact same functions used for variants, so
-  // a "Default" placeholder is never missing from the options array.
-  const colorValues = [
-    ...new Set(
-      np.variants
-        .map((v) => variantColor(v))
-        .filter((v): v is string => Boolean(v)),
-    ),
-  ];
-  const sizeValues = [
-    ...new Set(
-      np.variants
-        .map((v) => variantSize(v))
-        .filter((v): v is string => Boolean(v)),
-    ),
-  ];
+  const uniqueValues = (values: (string | undefined)[]): string[] => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const value of values) {
+      if (!value) continue;
+      const key = value.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(value);
+    }
+    return out;
+  };
+  const colorValues = uniqueValues(np.variants.map((v) => variantColor(v)));
+  const sizeValues = uniqueValues(np.variants.map((v) => variantSize(v)));
 
   const options = [];
   if (colorKey)
@@ -127,14 +182,12 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
   if (sizeKey)
     options.push({ name: "Size", values: sizeValues.length ? sizeValues : ["Default"] });
 
-  const body_html = `<p>${escHtml(np.description || "")}</p>`;
-
   const productPayload: Record<string, unknown> = {
-    title: np.title,
+    title: clip(np.title, 255),
     handle,
-    body_html,
-    vendor: np.brand || "",
-    product_type: (np.specs?.category || "").toLowerCase(),
+    body_html: textToHtml(np.description),
+    vendor: clip(np.brand || "", 255),
+    product_type: category,
     tags,
     status: "active",
     variants,
@@ -160,7 +213,7 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
     metafields.push({
       namespace: "bumi",
       key: "brand",
-      value: np.brand,
+      value: clip(np.brand),
       type: "single_line_text_field",
     });
   if (np.currency)
@@ -177,17 +230,21 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
       value: String(np.rating),
       type: "number_decimal",
     });
+  if (np.reviewsCount != null)
+    metafields.push({
+      namespace: "bumi",
+      key: "reviews_count",
+      value: String(Math.round(np.reviewsCount)),
+      type: "number_integer",
+    });
   if (np.soldCount != null)
     metafields.push({
       namespace: "bumi",
       key: "sold_count",
-      value: String(np.soldCount),
+      value: String(Math.round(np.soldCount)),
       type: "number_integer",
     });
 
-  // Colors metafield — JSON array of {name, hex} for storefront swatches.
-  // Variants are the source of truth (so every swatch can be checked out);
-  // explicit colors only supply hex, falling back to the name→hex dictionary.
   const colorsJson = colorsFromVariants(np.variants, np.colors || []);
   if (colorsJson.length)
     metafields.push({
@@ -197,27 +254,61 @@ export function buildShopifyPushInput(np: NormalizedProduct): ShopifyPushInput {
       type: "json",
     });
 
-  // AI-generated fields — key "material" matches storefront data.js query.
   if (np.materialCare)
-    metafields.push({ namespace: "bumi", key: "material", value: np.materialCare, type: "single_line_text_field" });
+    metafields.push({
+      namespace: "bumi",
+      key: "material",
+      value: np.materialCare,
+      type: "multi_line_text_field",
+    });
   if (np.sizeGuide)
-    metafields.push({ namespace: "bumi", key: "size_guide", value: np.sizeGuide, type: "single_line_text_field" });
+    metafields.push({
+      namespace: "bumi",
+      key: "size_guide",
+      value: np.sizeGuide,
+      type: "multi_line_text_field",
+    });
+  if (np.sizeChartImage)
+    metafields.push({
+      namespace: "bumi",
+      key: "size_chart_image",
+      value: np.sizeChartImage,
+      type: "url",
+    });
   if (np.shippingReturns)
-    metafields.push({ namespace: "bumi", key: "shipping_returns", value: np.shippingReturns, type: "single_line_text_field" });
+    metafields.push({
+      namespace: "bumi",
+      key: "shipping_returns",
+      value: np.shippingReturns,
+      type: "multi_line_text_field",
+    });
   if (np.fibre)
-    metafields.push({ namespace: "bumi", key: "fibre", value: np.fibre, type: "single_line_text_field" });
+    metafields.push({
+      namespace: "bumi",
+      key: "fibre",
+      value: clip(np.fibre),
+      type: "single_line_text_field",
+    });
 
-  // Audience — for Girls/Boys/Baby storefront filters.
-  const audience = np.specs?.audience || "unisex";
-  metafields.push({ namespace: "bumi", key: "audience", value: audience, type: "single_line_text_field" });
-
-  // New product defaults.
+  metafields.push({
+    namespace: "bumi",
+    key: "audience",
+    value: audience,
+    type: "single_line_text_field",
+  });
   metafields.push({ namespace: "bumi", key: "is_new", value: "true", type: "boolean" });
-  metafields.push({ namespace: "bumi", key: "badge", value: "new", type: "single_line_text_field" });
-  metafields.push({ namespace: "bumi", key: "reviews_count", value: "0", type: "number_integer" });
-
-  // Sort rank — newest first on homepage.
-  metafields.push({ namespace: "bumi", key: "added_at_rank", value: String(Date.now()), type: "number_integer" });
+  metafields.push({
+    namespace: "bumi",
+    key: "badge",
+    value: "new",
+    type: "single_line_text_field",
+  });
+  metafields.push({
+    namespace: "bumi",
+    key: "added_at_rank",
+    value: String(Date.now()),
+    type: "number_integer",
+  });
 
   return { handle, productPayload, metafields };
 }

@@ -4,6 +4,8 @@ import type { ImportSource } from "@prisma/client";
 import { requireAdmin, jsonError } from "@/lib/auth";
 import { enqueue } from "@/lib/queue";
 import { detectPlatform } from "@/lib/platform";
+import { canonicalizeUrl } from "@/lib/urls";
+import { assertHttpUrl, assertPublicHost } from "@/lib/safe-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -24,20 +26,62 @@ export async function POST(request: Request) {
   }
 
   const url = typeof body?.url === "string" ? body.url.trim() : "";
-  if (!url || !/^https?:\/\//i.test(url)) {
+  if (!url) {
     return jsonError(400, "Field `url` wajib dan harus berupa URL http(s).");
+  }
+  try {
+    const parsed = assertHttpUrl(url);
+    await assertPublicHost(parsed);
+  } catch (e: any) {
+    return jsonError(400, e?.message || "URL tidak valid.");
   }
 
   const platform = detectPlatform(url);
   if (platform === "OTHER") {
-    return jsonError(400, "Hanya link Shopee atau Tokopedia yang didukung.");
+    return jsonError(400, "URL tidak didukung.");
   }
+
+  const sourceKey = canonicalizeUrl(url);
+  const duplicate = await prisma.importJob.findFirst({
+    where: {
+      sourceKey,
+      status: { in: ["PENDING", "EXTRACTING", "EXTRACTED"] },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (duplicate) {
+    return NextResponse.json(
+      {
+        jobId: duplicate.id,
+        status: duplicate.status,
+        platform: duplicate.sourceType,
+        duplicate: true,
+        shopifyAdminUrl: duplicate.shopifyAdminUrl,
+        message:
+          duplicate.status === "PUSHED"
+            ? "Produk ini sudah pernah diimpor dan sudah ada di Shopify."
+            : "Produk ini sedang/dalam antrean import.",
+      },
+      { status: 200 },
+    );
+  }
+
+  // Re-importing a product that already exists in Shopify updates it in place.
+  // Carry the previous Shopify id/handle so the push can find it even if the
+  // title (and therefore the slug) changed.
+  const previous = await prisma.importJob.findFirst({
+    where: { sourceKey, status: "PUSHED", shopifyProductId: { not: null } },
+    orderBy: { createdAt: "desc" },
+  });
 
   const job = await prisma.importJob.create({
     data: {
       sourceUrl: url,
+      sourceKey,
       sourceType: platform as ImportSource,
       status: "PENDING",
+      shopifyProductId: previous?.shopifyProductId ?? null,
+      shopifyHandle: previous?.shopifyHandle ?? null,
       createdBy: ctx.email,
     },
   });

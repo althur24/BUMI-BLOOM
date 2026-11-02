@@ -124,6 +124,60 @@ const PRICE_BANDS = {
   above45: { min: 45, max: Infinity }
 };
 
+// Filter chips are generated from the catalogue so imported sizes/colours
+// (e.g. "S (1-2 YO)", "9-10Y", "Butter") appear without code changes.
+function bbSizeSortKey(value) {
+  const s = String(value || '').trim();
+  const range = s.match(/(\d+)\s*[-–]\s*(\d+)/);
+  const months = s.match(/(\d+)\s*[-–]\s*(\d+)\s*M/i);
+  if (months) return -1000 + Number(months[1]);
+  if (range) return Number(range[1]) * 100 + Number(range[2]);
+  const single = s.match(/(\d+)/);
+  if (single) return Number(single[1]) * 100;
+  const letters = { XXS: 1, XS: 2, S: 3, M: 4, L: 5, XL: 6, XXL: 7, XXXL: 8 };
+  return letters[s.toUpperCase()] ? letters[s.toUpperCase()] * 10 : 9999;
+}
+
+function renderDynamicFilters() {
+  const sizes = new Set();
+  const colorsByName = new Map();
+  const brands = new Set();
+
+  (BumiData.PRODUCTS || []).forEach((product) => {
+    (product.sizes || []).forEach((size) => sizes.add(String(size)));
+    if (product.brand) brands.add(String(product.brand));
+    (product.colors || []).forEach((color) => {
+      if (!color || !color.name) return;
+      const hex = bbSafeHex(color.hex).toLowerCase();
+      if (!colorsByName.has(hex)) colorsByName.set(hex, color.name);
+    });
+  });
+
+  const sizeWrap = document.getElementById('plp-size-chips');
+  if (sizeWrap) {
+    sizeWrap.innerHTML = [...sizes]
+      .sort((a, b) => bbSizeSortKey(a) - bbSizeSortKey(b) || a.localeCompare(b))
+      .map((size) => `<button class="pdp-size plp-size-btn" type="button" data-size="${bbEscapeHtml(size)}">${bbEscapeHtml(size)}</button>`)
+      .join('');
+  }
+
+  const colorWrap = document.getElementById('plp-color-swatches');
+  if (colorWrap) {
+    colorWrap.innerHTML = [...colorsByName.entries()]
+      .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+      .map(([hex, name]) => `<button class="pdp-color-swatch plp-color-swatch" style="background:${hex}" data-hex="${hex}" title="${bbEscapeHtml(name)}" aria-label="${bbEscapeHtml(name)}" type="button"></button>`)
+      .join('');
+  }
+
+  const brandWrap = document.getElementById('plp-brand-options');
+  if (brandWrap) {
+    brandWrap.innerHTML = [...brands]
+      .sort((a, b) => a.localeCompare(b))
+      .map((brand) => `<label><input type="checkbox" name="brand" value="${bbEscapeHtml(brand)}"> ${bbEscapeHtml(brand)}</label>`)
+      .join('');
+  }
+}
+
 function initPLP() {
   const grid = document.getElementById('product-grid');
   const countEl = document.querySelector('.plp-count');
@@ -145,6 +199,8 @@ function initPLP() {
     sort: 'newest',
     visible: PAGE_SIZE
   };
+
+  renderDynamicFilters();
 
   // Heading reflects the route
   if (state.search) {

@@ -277,6 +277,7 @@ model AuditLog {
 enum ImportSource {
   SHOPEE
   TOKPED
+  WEB
   OTHER
 }
 
@@ -292,6 +293,7 @@ enum ImportStatus {
 model ImportJob {
   id               String        @id @default(cuid())
   sourceUrl        String
+  sourceKey        String?       // canonical URL (tracking params stripped)
   sourceType       ImportSource  @default(OTHER)
   status           ImportStatus  @default(PENDING)
   rawJson          Json?         // hasil mentah scraper (pre-normalisasi)
@@ -307,6 +309,7 @@ model ImportJob {
 
   @@index([status])
   @@index([createdAt])
+  @@index([sourceKey])
 }
 
 // ── Newsletter subscribers ──────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { pushProductToShopify, fetchExistingVendors, resolveVendorSimple } from 
 import { buildShopifyPushInput } from "@/lib/import-mapper";
 import { rehostImages } from "@/lib/storage";
 import { aiMatchVendor } from "@/lib/ai/enrich";
+import { canonicalizeUrl } from "@/lib/urls";
 import type { NormalizedProduct } from "@/lib/scrapers/base";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,12 @@ export async function POST(
   const base = (job.extractedJson ?? {}) as unknown as NormalizedProduct;
   const np: NormalizedProduct = { ...base, ...overrides } as NormalizedProduct;
   if (!np.title) return jsonError(400, "Title kosong — tidak bisa push.");
+  if (np.price == null || !(np.price > 0)) {
+    return jsonError(400, "Harga produk kosong/0 — set harga AUD sebelum push.");
+  }
+  if (np.variants.some((v) => v.price != null && !(v.price > 0))) {
+    return jsonError(400, "Ada varian dengan harga 0 — perbaiki harga sebelum push.");
+  }
 
   // If the user edited the product price, propagate it to ALL variants so the
   // edited price is what Shopify receives (not the auto-converted AUD price).
@@ -75,10 +82,21 @@ export async function POST(
       : np.images.length > 0;
     if (needsRehost && np.images.length) {
       try {
-        const rehosted = await rehostImages(np.images);
-        if (rehosted.length) np.images = rehosted;
+        const rehosted = await rehostImages(np.images, { referer: np.sourceUrl });
+        if (rehosted.urls.length) np.images = rehosted.urls;
+        np.imageReport = rehosted.report;
       } catch {
         // Supabase not configured — keep originals (Shopify may fail to fetch).
+      }
+    }
+
+    // Re-host the size-chart image too (it is not part of the gallery list).
+    if (np.sizeChartImage && supabaseHost && !np.sizeChartImage.includes(supabaseHost)) {
+      try {
+        const chart = await rehostImages([np.sizeChartImage], { referer: np.sourceUrl });
+        if (chart.urls[0]) np.sizeChartImage = chart.urls[0];
+      } catch {
+        // keep the original chart URL
       }
     }
 
@@ -101,8 +119,11 @@ export async function POST(
       }
     }
 
-    const input = buildShopifyPushInput(np);
-    const res = await pushProductToShopify(input);
+    const input = buildShopifyPushInput(np, { handle: job.shopifyHandle || undefined });
+    const res = await pushProductToShopify(input, {
+      existingId: job.shopifyProductId,
+      sourceUrl: job.sourceKey || canonicalizeUrl(job.sourceUrl),
+    });
     await prisma.importJob.update({
       where: { id: job.id },
       data: {
@@ -117,6 +138,7 @@ export async function POST(
       shopifyProductId: res.productId,
       shopifyHandle: input.handle,
       shopifyAdminUrl: res.shopifyAdminUrl,
+      warnings: res.warnings,
     });
   } catch (e: any) {
     // Push failed — revert to EXTRACTED (retryable) and keep the error message.

@@ -10,5 +10,8 @@ export function detectPlatform(url: string): Platform {
   const u = url.toLowerCase();
   if (/shopee\.(co\.id|com|sg|my|th|ph|vn|br)/.test(u)) return "SHOPEE";
   if (/tokopedia\.(com|care)/.test(u)) return "TOKPED";
+  // Everything else is treated as a generic website (JSON-LD). Validation of
+  // whether the page actually exposes product data happens in the adapter/job.
+  if (/^https?:\/\//i.test(url)) return "WEB";
   return "OTHER";
 }

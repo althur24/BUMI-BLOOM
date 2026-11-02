@@ -7,6 +7,7 @@
 // the Shopee Affiliate API (Fase 5) which is the stable path.
 
 import { withPage, readJsonLd } from "./browser";
+import { buildImagePlan } from "./images";
 import {
   extractProductFromJsonLd,
   toNum,
@@ -31,6 +32,7 @@ export async function scrapeShopee(url: string): Promise<ScrapeResult> {
         const state = await page.evaluate(
           () => (window as any).__PRELOADED_STATE__ ?? null,
         );
+        const html = await page.content();
 
         const pageTitle = await page.title().catch(() => "");
         const title = partial?.title || (pageTitle && pageTitle !== "Shopee" ? pageTitle : undefined);
@@ -44,6 +46,12 @@ export async function scrapeShopee(url: string): Promise<ScrapeResult> {
           };
         }
 
+        const plan = buildImagePlan({
+          structured: partial?.images || [],
+          html,
+          pageUrl: url,
+        });
+
         const normalized: NormalizedProduct = {
           platform: "SHOPEE",
           sourceUrl: url,
@@ -51,10 +59,13 @@ export async function scrapeShopee(url: string): Promise<ScrapeResult> {
           description: partial?.description,
           price: partial?.price,
           currency: partial?.currency || "IDR",
-          images: partial?.images || [],
+          images: plan.images,
+          sizeChartImage: plan.sizeChartImage,
           variants: [],
           brand: partial?.brand,
           rating: partial?.rating,
+          reviewsCount: partial?.reviewsCount,
+          extractionPath: "jsonld+state",
         };
 
         // Fill gaps from preloaded state, keyed by itemid when available.
@@ -68,7 +79,11 @@ export async function scrapeShopee(url: string): Promise<ScrapeResult> {
           }
         }
 
-        return { ok: true, raw: { jsonLdCount: jsonLd.length, ids }, normalized };
+        return {
+          ok: true,
+          raw: { jsonLdCount: jsonLd.length, ids, extractionPath: normalized.extractionPath },
+          normalized,
+        };
       },
       { url },
     );

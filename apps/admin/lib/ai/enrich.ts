@@ -13,6 +13,7 @@ import {
   colorsFromVariants,
   normalizeColorName,
   normalizeHex,
+  sizeOptionOf,
 } from "../colors";
 
 export interface EnrichResult {
@@ -89,15 +90,30 @@ async function geminiEnrich(
   key: string,
 ): Promise<{ product: NormalizedProduct; raw: unknown }> {
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const sizeValues = [
+    ...new Set(
+      np.variants
+        .map((v) => sizeOptionOf(v.options)?.value)
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
+  const colorValues = [
+    ...new Set(
+      np.variants
+        .map((v) => colorOptionOf(v.options)?.value)
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
   const prompt = `You clean and translate marketplace product data for a kids' fashion store (BUMI/BLOOM, English storefront). Return STRICT JSON only.
 
 Product data:
 Title: ${np.title}
 Brand: ${np.brand || ""}
-Description: ${(np.description || "").slice(0, 1000)}
-Sizes: ${np.variants.map(v => Object.values(v.options).join(", ")).join(" | ")}
+Description: ${(np.description || "").slice(0, 2000)}
+Sizes: ${sizeValues.join(", ") || "-"}
+Colors: ${colorValues.join(", ") || "-"}
 
-Return JSON: {"title_en": concise clean English title (no fluff), "description_en": clean English SEO description (1-2 sentences, no marketing spam), "category": one of ["TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "", "material_care": "Material: ... Care: ... (infer from description, standard kids clothing care)", "size_guide": "Size chart with height/weight measurements per size", "shipping_returns": "Short shipping + returns policy text", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","baby","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys, "bayi"=baby), "fibre": "short material tag (e.g. 100% Cotton, 95% Cotton 5% Elastane — extract from description, empty string if unknown)"}`;
+Return JSON: {"title_en": clean English title (keep the colourway, no marketing fluff), "description_en": detailed English product description (translate, keep ALL real details from the source: design, material, features, fit, size notes; use short paragraphs or dash bullets separated by newlines; 3-8 sentences; never invent facts), "category": one of ["TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "", "material_care": "Material: ... Care: ... (use the material stated in the source; care instructions may be standard kids clothing care)", "size_guide": "ONLY format the size/age/height data that is present in the source (one line per size, e.g. 'S — 1–2 yrs'). NEVER invent measurements. Use an empty string if no size data exists.", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data or title to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","baby","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys, "bayi"=baby), "fibre": "short material tag from the source (e.g. 100% Cotton, Ribbed cotton), empty string if unknown"}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -109,7 +125,7 @@ Return JSON: {"title_en": concise clean English title (no fluff), "description_e
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.3,
-          maxOutputTokens: 1600,
+          maxOutputTokens: 2400,
           // Gemini 2.5 Flash is a "thinking" model — disable thinking so the
           // token budget goes to the JSON output (otherwise it gets truncated).
           thinkingConfig: { thinkingBudget: 0 },
@@ -132,8 +148,15 @@ Return JSON: {"title_en": concise clean English title (no fluff), "description_e
     product.specs = { ...(product.specs || {}), category: String(parsed.category) };
   }
   if (parsed.material_care) product.materialCare = String(parsed.material_care);
-  if (parsed.size_guide) product.sizeGuide = String(parsed.size_guide);
-  if (parsed.shipping_returns) product.shippingReturns = String(parsed.shipping_returns);
+  if (parsed.size_guide) {
+    const guide = String(parsed.size_guide).trim();
+    // Guard against invented charts: accept only if it references at least one
+    // real size label from the source.
+    const mentionsRealSize =
+      !sizeValues.length ||
+      sizeValues.some((size) => guide.toLowerCase().includes(size.toLowerCase()));
+    if (guide && mentionsRealSize) product.sizeGuide = guide;
+  }
   if (parsed.fibre) product.fibre = String(parsed.fibre);
   if (parsed.audience) {
     product.specs = { ...(product.specs || {}), audience: String(parsed.audience).toLowerCase() };

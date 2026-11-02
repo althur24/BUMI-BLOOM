@@ -1,70 +1,190 @@
-// Re-host marketplace images into Supabase Storage so Shopify can fetch them.
-// Shopify's CDN cannot pull images from Shopee/Tokopedia (anti-hotlink /
-// redirects), so every image must be copied to our own bucket first.
+// Re-host product images into Supabase Storage so Shopify can fetch them.
+//
+// Images are downloaded once, validated (magic bytes + dimensions), deduped by
+// content hash, stored content-addressed and never re-encoded — this keeps the
+// best available quality. The returned report is surfaced in the admin preview
+// and stored on the import job for auditing.
 
+import { createHash } from "node:crypto";
+import type { ImageReport, ImageReportItem } from "./scrapers/base";
+import { sniffImage, imageUrlCandidates, longEdge, isSvg } from "./image-utils";
+import { safeFetchBytes } from "./safe-fetch";
 import { supabaseAdmin } from "./supabase-server";
 
 const BUCKET = "products";
-const FETCH_UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const MAX_IMAGES = 20;
+const MAX_CANDIDATES = 4;
+const MIN_BYTES = 20 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
+const MIN_LONG_EDGE = 200;
+const LOW_RES_EDGE = 800;
+const CONCURRENCY = 4;
 
-function mimeToExt(ct: string): string {
-  if (ct.includes("png")) return "png";
-  if (ct.includes("webp")) return "webp";
-  if (ct.includes("gif")) return "gif";
-  return "jpg";
+export interface RehostOptions {
+  referer?: string;
 }
 
-// Marketplace-aware Referer: CDN images need the MARKETPLACE origin as Referer,
-// not the CDN's own origin. Without this, Tokopedia/Shopee CDNs return 403.
-function marketplaceReferer(url: string): string | undefined {
+export interface RehostResult {
+  urls: string[];
+  report: ImageReport;
+}
+
+function refererFor(url: string, sourceReferer?: string): string | undefined {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
-    if (host.includes("tokopedia"))
-      return "https://www.tokopedia.com/";
-    if (host.includes("shopee") || host.includes("susercontent"))
-      return "https://shopee.co.id/";
+    if (host.includes("tokopedia")) return "https://www.tokopedia.com/";
+    if (host.includes("shopee") || host.includes("susercontent")) return "https://shopee.co.id/";
+    if (sourceReferer) return sourceReferer;
     return u.origin + "/";
   } catch {
-    return undefined;
+    return sourceReferer;
   }
 }
 
-// Returns the public URLs of successfully re-hosted images (in order).
-// Throws if Supabase is not configured (caller falls back to original URLs).
-export async function rehostImages(urls: string[]): Promise<string[]> {
-  const supabase = supabaseAdmin(); // throws if env missing
-  const out: string[] = [];
+async function pool<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await worker(items[i], i);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
 
-  for (const url of urls.slice(0, MAX_IMAGES)) {
-    if (!url) continue;
+interface DownloadedImage {
+  publicUrl: string;
+  report: ImageReportItem;
+  hash: string;
+}
+
+async function downloadBest(
+  rawUrl: string,
+  sourceReferer?: string,
+): Promise<{ bytes: Uint8Array; mime: string; ext: string; width?: number; height?: number; sourceUrl: string }> {
+  const candidates = imageUrlCandidates(rawUrl).slice(0, MAX_CANDIDATES);
+  let lastError = "Tidak ada kandidat URL";
+  for (const candidate of candidates) {
     try {
-      const referer = marketplaceReferer(url);
-      const res = await fetch(url, {
-        redirect: "follow",
+      const referer = refererFor(candidate, sourceReferer);
+      const res = await safeFetchBytes(candidate, {
+        timeoutMs: 30_000,
+        maxBytes: MAX_BYTES,
         headers: {
-          "User-Agent": FETCH_UA,
-          Accept: "image/*,*/*",
+          Accept: "image/avif,image/webp,image/*,*/*;q=0.8",
           ...(referer ? { Referer: referer } : {}),
         },
       });
-      if (!res.ok) continue;
-      const contentType = res.headers.get("content-type") || "image/jpeg";
-      if (!contentType.startsWith("image")) continue;
-      const buf = new Uint8Array(await res.arrayBuffer());
-      const ext = mimeToExt(contentType);
-      const key = `imports/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(key, buf, { contentType, upsert: false });
-      if (error) continue;
-      const { data } = supabase.storage.from(BUCKET).getPublicUrl(key);
-      out.push(data.publicUrl);
-    } catch {
-      // skip a single bad image, keep going
+      if (!res.ok) {
+        lastError = `HTTP ${res.status}`;
+        continue;
+      }
+      if (res.bytes.byteLength < MIN_BYTES) {
+        lastError = `Terlalu kecil (${res.bytes.byteLength} byte)`;
+        continue;
+      }
+      if (isSvg(new TextDecoder().decode(res.bytes.slice(0, 4096)))) {
+        lastError = "SVG tidak didukung";
+        continue;
+      }
+      const info = sniffImage(res.bytes);
+      if (!info) {
+        lastError = "Bukan gambar yang valid";
+        continue;
+      }
+      const edge = longEdge(info.width, info.height);
+      if (edge && edge < MIN_LONG_EDGE) {
+        lastError = `Resolusi terlalu kecil (${info.width}×${info.height})`;
+        continue;
+      }
+      return {
+        bytes: res.bytes,
+        mime: info.mime,
+        ext: info.ext === "jpg" ? "jpg" : info.ext,
+        width: info.width,
+        height: info.height,
+        sourceUrl: candidate,
+      };
+    } catch (e: any) {
+      lastError = e?.message || String(e);
     }
   }
-  return out;
+  throw new Error(lastError);
+}
+
+async function uploadOne(
+  rawUrl: string,
+  sourceReferer: string | undefined,
+  seenHashes: Set<string>,
+): Promise<DownloadedImage | null> {
+  const supabase = supabaseAdmin();
+  const img = await downloadBest(rawUrl, sourceReferer);
+  const hash = createHash("sha1").update(img.bytes).digest("hex");
+
+  if (seenHashes.has(hash)) return null;
+  seenHashes.add(hash);
+
+  const key = `imports/${hash}.${img.ext}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(key, img.bytes, {
+    contentType: img.mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) throw new Error(`Upload gagal: ${error.message}`);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(key);
+  return {
+    hash,
+    publicUrl: data.publicUrl,
+    report: {
+      sourceUrl: img.sourceUrl,
+      publicUrl: data.publicUrl,
+      width: img.width,
+      height: img.height,
+      bytes: img.bytes.byteLength,
+      mime: img.mime,
+      lowRes: longEdge(img.width, img.height) > 0 && longEdge(img.width, img.height) < LOW_RES_EDGE,
+    },
+  };
+}
+
+// Returns public URLs of successfully re-hosted images (in order) plus a report.
+// Throws if Supabase is not configured (caller falls back to original URLs).
+export async function rehostImages(
+  urls: string[],
+  opts: RehostOptions = {},
+): Promise<RehostResult> {
+  const input = (urls || []).filter(Boolean).slice(0, MAX_IMAGES);
+  const report: ImageReport = { total: input.length, used: 0, items: [], rejected: [] };
+  if (!input.length) return { urls: [], report };
+
+  // Fail fast when storage is not configured.
+  supabaseAdmin();
+
+  const seenHashes = new Set<string>();
+  const results = await pool(input, CONCURRENCY, async (url) => {
+    try {
+      return await uploadOne(url, opts.referer, seenHashes);
+    } catch (e: any) {
+      report.rejected.push({ url, reason: e?.message || String(e) });
+      return null;
+    }
+  });
+
+  const out: string[] = [];
+  for (const r of results) {
+    if (!r) continue;
+    out.push(r.publicUrl);
+    report.items.push(r.report);
+  }
+  report.used = out.length;
+  return { urls: out, report };
 }

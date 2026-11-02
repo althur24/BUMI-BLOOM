@@ -1,42 +1,52 @@
-// TEMP smoke test — verifies Tokopedia scraper + AUD conversion.
-// Run: npx tsx apps/admin/scripts/scrape-test.ts
+// Smoke test: verifies the scraper pipeline for marketplace + generic websites.
+// Run: npx tsx apps/admin/scripts/scrape-test.ts [url ...]
 import { closeBrowser } from "../lib/scrapers/browser";
 import { scrape } from "../lib/scrapers/index";
-import { getAudToIdrRate } from "../lib/currency";
+
+const DEFAULT_URLS = [
+  "https://sabineandheem.com/products/920684/sabine-and-heem-__-bim-ribbed-shirt-__-butter-__-kids-longsleeved-tops",
+  "https://www.tokopedia.com/anakmuofficial/anakmu-piccolo-jacket-anak-1-5-tahun-premium-polyester-windbreaker-new-color-1731067019955046293",
+];
 
 async function main() {
-  // 1) Test live exchange rate
-  console.log("=== 1) Live AUD→IDR rate ===");
-  const rate = await getAudToIdrRate();
-  console.log("1 AUD =", rate, "IDR");
+  const urls = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_URLS;
 
-  // 2) Scrape Tokopedia
-  const url =
-    "https://www.tokopedia.com/sabineandheem/sabine-and-heem-bim-ribbed-shirt-mahogany-atasan-lengan-panjang-anak-1737870014618502495-1737870015238341983";
-  console.log("\n=== 2) Scrape Tokopedia ===");
-  const r = await scrape(url);
-  console.log("ok:", r.ok, "| error:", r.error);
-
-  if (r.normalized) {
+  for (const url of urls) {
+    console.log(`\n=== ${url} ===`);
+    const r = await scrape(url);
+    console.log("ok:", r.ok, "| error:", r.error);
+    if (!r.ok || !r.normalized) {
+      console.log("raw:", JSON.stringify(r.raw).slice(0, 500));
+      continue;
+    }
     const n = r.normalized;
-    console.log("\n=== RESULT (before AUD conversion) ===");
+    console.log("path:        ", n.extractionPath);
     console.log("title:       ", n.title);
     console.log("brand:       ", n.brand);
-    console.log("price:       ", n.price, n.currency);
-    console.log("description: ", (n.description || "").slice(0, 120));
-    console.log("images:      ", n.images.length);
+    console.log("price:       ", n.price, n.currency, "| compareAt:", n.compareAtPrice);
+    console.log("description: ", (n.description || "").slice(0, 140).replace(/\n/g, " "));
+    console.log("images:      ", n.images.length, "| size chart:", n.sizeChartImage || "-");
+    n.images.slice(0, 6).forEach((img, i) => console.log(`  img[${i}]`, img));
+    console.log("colors:      ", JSON.stringify(n.colors || []));
+    console.log("fibre:       ", n.fibre);
+    console.log("material:    ", (n.materialCare || "").replace(/\n/g, " ").slice(0, 120));
+    console.log("size guide:  ", (n.sizeGuide || "").replace(/\n/g, " | ").slice(0, 200));
+    console.log("rating/sold: ", n.rating, "/", n.soldCount, "| location:", n.location);
     console.log("variants:    ", n.variants.length);
     n.variants.forEach((v, i) =>
-      console.log(`  [${i}]`, JSON.stringify(v.options), "| stock:", v.stock, "| hex:", v.hex || "-"),
+      console.log(
+        `  [${i}]`,
+        JSON.stringify(v.options),
+        "| price:",
+        v.price,
+        "| stock:",
+        v.stock,
+        "| sku:",
+        v.sku || "-",
+        "| hex:",
+        v.hex || "-",
+      ),
     );
-
-    // 3) Simulate AUD conversion
-    console.log("\n=== 3) After AUD conversion (simulated) ===");
-    if (n.currency === "IDR" && n.price) {
-      const audPrice = Math.round((n.price / rate) * 100) / 100;
-      console.log(`Rp${n.price} IDR ÷ ${rate} = $${audPrice} AUD`);
-      console.log("(was $%s AUD with fixed 10000)", (n.price / 10000).toFixed(2));
-    }
   }
 
   await closeBrowser();

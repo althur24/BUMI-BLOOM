@@ -161,6 +161,9 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
           {namespace:"bumi",key:"is_bestseller"},
           {namespace:"bumi",key:"rating"},
           {namespace:"bumi",key:"reviews_count"},
+          {namespace:"bumi",key:"sold_count"},
+          {namespace:"bumi",key:"size_guide"},
+          {namespace:"bumi",key:"size_chart_image"},
           {namespace:"bumi",key:"added_at_rank"}
         ]) { key value }
       }
@@ -247,6 +250,9 @@ function mapShopifyProduct(node) {
     addedAt: meta.added_at_rank ? parseInt(meta.added_at_rank, 10) : 0,
     description: node.description || '',
     material: meta.material || '',
+    sizeGuide: meta.size_guide || '',
+    sizeChartImage: meta.size_chart_image || '',
+    soldCount: meta.sold_count ? parseInt(meta.sold_count, 10) : 0,
   };
 }
 

@@ -123,7 +123,7 @@
           '<p class="pdp-availability" id="pdp-availability" style="display:none;"></p>' +
           '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
-          '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews</span></div>' +
+          '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews' + (product.soldCount ? ' · ' + product.soldCount + ' sold' : '') + '</span></div>' +
           colorOptionHTML +
           sizeOptionHTML +
           '<div class="pdp-actions">' +
@@ -290,7 +290,7 @@
       return '<div class="accordion" style="margin-top:var(--space-6);">' +
         item('Description', '<p>' + product.description + '</p>', true) +
         item('Material &amp; Care', '<p>' + product.material + '</p>') +
-        item('Size Guide', sizeGuideTable(product.sizes)) +
+        item('Size Guide', sizeGuideHTML(product)) +
         item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
       '</div>';
     }
@@ -299,13 +299,46 @@
         '<button class="accordion__trigger" type="button">' + title + '<span class="accordion__icon">+</span></button>' +
         '<div class="accordion__content">' + body + '</div></div>';
     }
-    function sizeGuideTable(sizes) {
-      const ageMap = { '2T': '2–3 yrs / 92cm', '3T': '3–4 yrs / 98cm', '4T': '4–5 yrs / 104cm', '5': '5–6 yrs / 110cm', '6': '6–7 yrs / 116cm', '7': '7–8 yrs / 122cm', '8': '8–9 yrs / 128cm' };
-      const babyMap = { '0-3M': '0–3 months', '3-6M': '3–6 months', '6-12M': '6–12 months', '12-18M': '12–18 months', '18-24M': '18–24 months', 'One Size': 'One Size' };
-      const rows = sizes.map(s => {
-        const guide = ageMap[s] || babyMap[s] || '—';
-        return '<tr><td style="padding:var(--space-2) var(--space-3);font-weight:var(--fw-bold);">' + s + '</td><td style="padding:var(--space-2) var(--space-3);">' + guide + '</td></tr>';
-      }).join('');
-      return '<table style="border-collapse:collapse;font-size:var(--text-sm);"><thead><tr style="border-bottom:1px solid var(--border-color);"><th style="text-align:left;padding:var(--space-2) var(--space-3);">Size</th><th style="text-align:left;padding:var(--space-2) var(--space-3);">Fit guide</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    function sizeFitLabel(size) {
+      const s = String(size || '').trim();
+      const range = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
+      if (range) return range[1] + '–' + range[2] + ' yrs';
+      const singleYear = s.match(/(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
+      if (singleYear) return singleYear[1] + ' yrs';
+      const months = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:M(?:O|ONTHS?)?|BLN|BULAN)\b/i);
+      if (months) return months[1] + '–' + months[2] + ' months';
+      const toddler = s.match(/^(\d+)T$/i);
+      if (toddler) return toddler[1] + '–' + (Number(toddler[1]) + 1) + ' yrs';
+      const ageMap = { '5': '5–6 yrs', '6': '6–7 yrs', '7': '7–8 yrs', '8': '8–9 yrs' };
+      const babyMap = { '0-3M': '0–3 months', '3-6M': '3–6 months', '6-12M': '6–12 months', '12-18M': '12–18 months', '18-24M': '18–24 months' };
+      return ageMap[s] || babyMap[s] || '—';
     }
+
+    function sizeGuideHTML(product) {
+      const guide = String(product.sizeGuide || '').trim();
+      const chartUrl = /^https?:\/\//i.test(String(product.sizeChartImage || '').trim())
+        ? String(product.sizeChartImage).trim()
+        : '';
+      const rows = [];
+      if (guide) {
+        guide.split(/\r?\n|\|/).map((line) => line.trim()).filter(Boolean).forEach((line) => {
+          if (/^size chart:/i.test(line)) return;
+          const parts = line.split(/\s+[—–-]\s+/);
+          rows.push({ size: parts[0], fit: parts.slice(1).join(' — ') || '—' });
+        });
+      }
+      if (!rows.length) {
+        (product.sizes || []).forEach((size) => rows.push({ size, fit: sizeFitLabel(size) }));
+      }
+      const table = rows.length
+        ? '<table style="border-collapse:collapse;font-size:var(--text-sm);"><thead><tr style="border-bottom:1px solid var(--border-color);"><th style="text-align:left;padding:var(--space-2) var(--space-3);">Size</th><th style="text-align:left;padding:var(--space-2) var(--space-3);">Fit guide</th></tr></thead><tbody>' +
+          rows.map((row) => '<tr><td style="padding:var(--space-2) var(--space-3);font-weight:var(--fw-bold);">' + escapeHtml(row.size) + '</td><td style="padding:var(--space-2) var(--space-3);">' + escapeHtml(row.fit) + '</td></tr>').join('') +
+          '</tbody></table>'
+        : '';
+      const chart = chartUrl
+        ? '<img src="' + escapeHtml(chartUrl) + '" alt="Size chart" loading="lazy" style="max-width:100%;margin-top:var(--space-3);border-radius:var(--radius-md);">'
+        : '';
+      return table + chart || '<p>Size guide coming soon.</p>';
+    }
+
   })();
