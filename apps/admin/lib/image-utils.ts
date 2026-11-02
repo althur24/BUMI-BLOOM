@@ -180,11 +180,16 @@ export function imageUrlCandidates(raw: string): string[] {
   // Tokopedia signed CDN transforms: <hash>~tplv-<vendor>-<op>:<w>:<h>.<ext>.
   // The same asset is available at larger widths, so try those before falling
   // back to the small transform the page happened to render.
-  const tplv = path.match(/^(.*~tplv-[^:]+):\d+:\d+\.(webp|jpe?g|png)$/i);
+  const tplv = path.match(/^(.*~tplv-[^:]+):(\d+):(\d+)\.(webp|jpe?g|png)$/i);
   if (tplv) {
-    for (const size of [1600, 1200, 1000, 700]) {
-      out.push(`${u.origin}${tplv[1]}:${size}:0.${tplv[2]}${stripped.search}`);
+    const origSize = Number(tplv[2]) || 0;
+    // Try larger sizes first, but include sizes that are >= the original so a
+    // rejected (403) upscale falls back to a transform the CDN accepts.
+    const sizes = [1600, 1200, 1000, 700].filter((n) => n !== origSize);
+    for (const size of sizes) {
+      out.push(`${u.origin}${tplv[1]}:${size}:0.${tplv[4]}${stripped.search}`);
     }
+    out.push(`${u.origin}${tplv[1]}:${origSize}:${tplv[3]}.${tplv[4]}${stripped.search}`);
   }
 
   // CloudFront/Nuxt image proxy: name_1791432827732_resized1024-jpeg.webp
@@ -230,6 +235,13 @@ export function imageUrlCandidates(raw: string): string[] {
 // Content hash embedded in Tokopedia/CloudFront asset paths. The same photo is
 // exposed through several hosts (p16/p19 CDNs and images.tokopedia.net) and
 // several transforms, so the asset id is the most reliable identity.
+// Supabase storage objects are content addressed (imports/<sha1>.<ext>), so the
+// hash identifies the image regardless of query string.
+function contentHashKey(url: string): string | null {
+  const m = url.match(/\/storage\/v1\/object\/public\/[^/]+\/imports\/([0-9a-f]{40})\./i);
+  return m ? m[1].toLowerCase() : null;
+}
+
 function tokopediaAssetKey(url: string): string | null {
   const m = url.match(/([0-9a-f]{24,40})~/i) || url.match(/\/([0-9a-f]{32})\./i);
   if (m) return m[1].toLowerCase();
@@ -251,6 +263,8 @@ export function imageIdentity(raw: string): string {
     // Tokopedia serves the same asset from p16-/p19- mirror hosts with
     // -sign/-common suffixes; fold those into one identity.
     host = host.replace(/^p\d+-/, "").replace(/-sign\b/g, "").replace(/-common\b/g, "");
+    const contentKey = contentHashKey(first);
+    if (contentKey) return `supabase:${contentKey}`;
     const assetKey = tokopediaAssetKey(first);
     if (assetKey) return `tokopedia:${assetKey}`;
     return `${host}${path}`.toLowerCase();

@@ -467,25 +467,29 @@ async function clickChip(
   value: string,
 ): Promise<boolean> {
   try {
-    const index = await page.evaluate((target) => {
+    // Click through the DOM instead of a Playwright locator: the chip list
+    // re-renders as soon as a selection changes, which made locator clicks
+    // time out and silently skipped most combinations.
+    const clicked = await page.evaluate((target) => {
       const chips = Array.from(
         document.querySelectorAll('#pdpVariantContainer [data-testid^="btnVariantChip"]'),
       );
-      return chips.findIndex((chip) => {
-        const text = (chip.textContent || "")
+      const chip = chips.find((c) => {
+        const text = (c.textContent || "")
           .replace(/Terpilih:\s*/i, "")
           .trim()
           .split("\n")[0]
+          .replace(/\s+/g, " ")
           .trim();
         return text === target;
       });
+      if (!chip) return false;
+      const button = chip.querySelector("button") || chip;
+      (button as HTMLElement).click();
+      return true;
     }, value);
-    if (index < 0) return false;
-    await page
-      .locator('#pdpVariantContainer [data-testid^="btnVariantChip"]')
-      .nth(index)
-      .click({ timeout: 2500 });
-    await page.waitForTimeout(350);
+    if (!clicked) return false;
+    await page.waitForTimeout(300);
     return true;
   } catch {
     return false;
@@ -580,6 +584,21 @@ async function extractDomVariants(
   if (colorGroup) {
     for (const [name, src] of Object.entries(colorGroup.images || {})) {
       if (src) colorImages[name] = upgradeSwatchUrl(src);
+    }
+  }
+
+  // Defensive: if option combinations failed to build (odd page state), fall
+  // back to the primary dimension so we never push a product with no variants.
+  if (!variants.length) {
+    const fallbackValues = primary.values.length ? primary.values : [];
+    for (const value of fallbackValues.slice(0, 100)) {
+      const disabled = (primary.disabled || []).includes(value);
+      variants.push({
+        options: { [primary.name]: value },
+        price,
+        stock: disabled ? 0 : 10,
+        hex: colorGroup ? hexForColorName(value) : undefined,
+      });
     }
   }
 

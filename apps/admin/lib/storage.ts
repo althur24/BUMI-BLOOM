@@ -123,6 +123,20 @@ async function downloadBest(
   throw new Error(lastError);
 }
 
+// Transient CDN 403/timeouts are common on marketplaces; retry the whole item
+// once with a short delay before giving up.
+async function downloadBestWithRetry(
+  rawUrl: string,
+  sourceReferer?: string,
+): Promise<Awaited<ReturnType<typeof downloadBest>>> {
+  try {
+    return await downloadBest(rawUrl, sourceReferer);
+  } catch (e) {
+    await new Promise((r) => setTimeout(r, 1200));
+    return downloadBest(rawUrl, sourceReferer);
+  }
+}
+
 async function uploadOne(
   rawUrl: string,
   sourceReferer: string | undefined,
@@ -130,7 +144,7 @@ async function uploadOne(
   hashToPublic: Map<string, string>,
 ): Promise<DownloadedImage | null> {
   const supabase = supabaseAdmin();
-  const img = await downloadBest(rawUrl, sourceReferer);
+  const img = await downloadBestWithRetry(rawUrl, sourceReferer);
   const hash = createHash("sha1").update(img.bytes).digest("hex");
 
   const cached = hashToPublic.get(hash);

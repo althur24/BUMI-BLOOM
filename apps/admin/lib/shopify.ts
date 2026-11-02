@@ -221,9 +221,12 @@ export async function setMetafields(
       m.type === "single_line_text_field"
         ? {
             ...m,
+            // Shopify rejects newlines in single-line fields; join lines with
+            // a separator so "S — 1-2 yrs\nM — 3-4 yrs" stays readable.
             value: String(m.value || "")
-              .replace(/[\r\n\t]+/g, " ")
-              .replace(/\s+/g, " ")
+              .replace(/\s*[\r\n]+\s*/g, " · ")
+              .replace(/\t+/g, " ")
+              .replace(/ {2,}/g, " ")
               .trim(),
           }
         : m,
@@ -382,8 +385,13 @@ function payloadVariantSignature(
 function indexVariants(variants: any[], options: any[] | undefined): Map<string, any> {
   const map = new Map<string, any>();
   for (const v of variants || []) {
-    if (v?.sku) map.set(`sku:${normaliseSig(v.sku)}`, v);
+    // Option signature first: a feed may repeat one SKU across every variant
+    // (e.g. a single product-level code), which must not collapse them.
     map.set(`sig:${existingVariantSignature(v, options)}`, v);
+    if (v?.sku) {
+      const skuKey = `sku:${normaliseSig(v.sku)}`;
+      if (!map.has(skuKey)) map.set(skuKey, v);
+    }
   }
   return map;
 }
@@ -421,10 +429,9 @@ async function applyInventory(
   const changes: { inventoryItemId: string; locationId: string; delta: number }[] = [];
   const restTargets: { inventoryItemId: number | string; qty: number; label: string }[] = [];
   for (const incoming of payloadVariants) {
-    const key = incoming.sku
-      ? `sku:${normaliseSig(incoming.sku)}`
-      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
-    const existing = index.get(key);
+    const sig = `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const skuKey = incoming.sku ? `sku:${normaliseSig(incoming.sku)}` : "";
+    const existing = index.get(sig) || (skuKey ? index.get(skuKey) : undefined);
     if (!existing?.inventory_item_id) continue;
     const qty = Math.max(0, Math.round(Number(incoming.inventory_quantity) || 0));
     const current =
@@ -461,7 +468,7 @@ async function applyInventory(
         input: {
           name: "available",
           reason: "correction",
-          changes,
+          changes: changes.map((c) => ({ ...c, changeFromQuantity: 0 })),
         },
       },
     );
@@ -492,22 +499,50 @@ async function addMissingImages(
   payloadImages: Record<string, any>[],
   warnings: string[],
 ): Promise<void> {
-  const existing = new Set(
-    (existingImages || []).map((img: any) => String(img?.src || "").split("?")[0]),
-  );
+  // Shopify rewrites src to its own CDN, so dedupe by basename as well —
+  // otherwise every re-import appends a duplicate copy of the whole gallery.
+  const seen = new Set<string>();
+  for (const img of existingImages || []) {
+    seen.add(String(img?.src || "").split("?")[0]);
+    seen.add(imageBasename(img?.src));
+  }
   let position = (existingImages || []).length + 1;
   for (const img of payloadImages) {
     const src = String(img.src || "");
-    if (!src || existing.has(src.split("?")[0])) continue;
+    if (!src) continue;
+    const key = src.split("?")[0];
+    const base = imageBasename(src);
+    if (seen.has(key) || (base && seen.has(base))) continue;
     try {
-      await adminRest("POST", `/products/${productId}/images.json`, {
-        image: { src, alt: img.alt, position: position++ },
-      });
-      existing.add(src.split("?")[0]);
+      const created = await adminRest<any>(
+        "POST",
+        `/products/${productId}/images.json`,
+        { image: { src, alt: img.alt, position: position++ } },
+      );
+      seen.add(key);
+      if (base) seen.add(base);
+      if (created?.image?.src) {
+        seen.add(String(created.image.src).split("?")[0]);
+        const createdBase = imageBasename(created.image.src);
+        if (createdBase) seen.add(createdBase);
+      }
     } catch (e: any) {
       warnings.push(`Gambar gagal ditambahkan: ${e?.message || e}`);
     }
   }
+}
+
+// Shopify copies the source image to its CDN and rewrites the URL
+// (cdn.shopify.com/s/files/.../<basename>_<uuid>.<ext>?v=...), so an exact URL
+// match never works. Compare the file basename (without extension/uuid) instead.
+function imageBasename(url: string | undefined): string {
+  if (!url) return "";
+  const withoutQuery = String(url).split("?")[0];
+  const file = withoutQuery.split("/").pop() || "";
+  return file
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "")
+    .toLowerCase();
 }
 
 // Map a src URL → Shopify image id (for variant images / featured image).
@@ -517,10 +552,14 @@ function imageIdForSrc(
 ): number | undefined {
   if (!src) return undefined;
   const target = String(src).split("?")[0];
-  const found = (images || []).find(
+  const exact = (images || []).find(
     (img) => String(img?.src || "").split("?")[0] === target,
   );
-  return found ? found.id : undefined;
+  if (exact) return exact.id;
+  const key = imageBasename(src);
+  if (!key) return undefined;
+  const fuzzy = (images || []).find((img) => imageBasename(img?.src) === key);
+  return fuzzy ? fuzzy.id : undefined;
 }
 
 // Attach the per-colour image to each variant (Shopify uses this as the
@@ -532,7 +571,8 @@ async function applyVariantImages(
   colorImages: Record<string, string> | undefined,
   warnings: string[],
 ): Promise<void> {
-  if (!colorImages || !Object.keys(colorImages).length) return;
+  const mapped = Object.values(colorImages || {}).filter(Boolean);
+  if (!mapped.length) return;
   const product = await getProductById(productId);
   if (!product) return;
   const index = indexVariants(product.variants || [], product.options);
@@ -547,10 +587,9 @@ async function applyVariantImages(
     if (!src) continue;
     const imageId = imageIdForSrc(product.images || [], src);
     if (!imageId) continue;
-    const key = incoming.sku
-      ? `sku:${normaliseSig(incoming.sku)}`
-      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
-    const match = index.get(key);
+    const sig = `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const skuKey = incoming.sku ? `sku:${normaliseSig(incoming.sku)}` : "";
+    const match = index.get(sig) || (skuKey ? index.get(skuKey) : undefined);
     if (!match) continue;
     if (match.image_id === imageId) continue;
     updates.push({ id: match.id, image_id: imageId });
@@ -632,10 +671,9 @@ async function updateProductPush(
   const matchedUpdates: Record<string, any>[] = [];
   const newVariants: Record<string, any>[] = [];
   for (const incoming of payloadVariants) {
-    const key = incoming.sku
-      ? `sku:${normaliseSig(incoming.sku)}`
-      : `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
-    const match = index.get(key);
+    const sig = `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const skuKey = incoming.sku ? `sku:${normaliseSig(incoming.sku)}` : "";
+    const match = index.get(sig) || (skuKey ? index.get(skuKey) : undefined);
     const body: Record<string, any> = {
       price: incoming.price,
       sku: incoming.sku || match?.sku || "",

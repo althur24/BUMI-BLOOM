@@ -152,6 +152,12 @@ export function buildShopifyPushInput(
   // product is left untouched (callers may reuse it).
   const colorImageMap: Record<string, string> = {};
   const galleryImages = [...(np.images || [])];
+  // Colourways the scraper detected but has no dedicated photo for inherit the
+  // primary gallery image, so Shopify still gets a variant image.
+  for (const color of np.colors || []) {
+    const name = String(color?.name || "").trim();
+    if (name) colorImageMap[name.toLowerCase()] = "";
+  }
   // If the colour's image is already in the gallery under a different CDN
   // variant, reuse that exact src so Shopify does not store two copies.
   const identityToSrc = new Map<string, string>();
@@ -165,6 +171,11 @@ export function buildShopifyPushInput(
       identityToSrc.set(imageIdentity(src), src);
     }
     colorImageMap[name.trim().toLowerCase()] = chosen;
+  }
+  // Fill colours that still have no image with the primary gallery image.
+  const primary = galleryImages[0];
+  for (const [name, src] of Object.entries(colorImageMap)) {
+    if (!src && primary) colorImageMap[name] = primary;
   }
 
   const images = galleryImages.slice(0, 50).map((src, i) => ({
@@ -290,14 +301,14 @@ export function buildShopifyPushInput(
       namespace: "bumi",
       key: "material",
       value: np.materialCare,
-      type: "multi_line_text_field",
+      type: "single_line_text_field",
     });
   if (np.sizeGuide)
     metafields.push({
       namespace: "bumi",
       key: "size_guide",
       value: np.sizeGuide,
-      type: "multi_line_text_field",
+      type: "single_line_text_field",
     });
   if (np.sizeChartImage)
     metafields.push({
@@ -311,7 +322,7 @@ export function buildShopifyPushInput(
       namespace: "bumi",
       key: "shipping_returns",
       value: np.shippingReturns,
-      type: "multi_line_text_field",
+      type: "single_line_text_field",
     });
   if (np.fibre)
     metafields.push({
