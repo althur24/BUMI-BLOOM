@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Clothing care illustration with a t-shirt on a hanger, wash basin and bubbles">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.8" fill="#0A3C77" opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <rect width="1600" height="1000" fill="url(#dots)"/>
+  <circle cx="520" cy="420" r="300" fill="#E2EAF4"/>
+  <circle cx="1300" cy="260" r="180" fill="#FDE6E1"/>
+  <path d="M0 850 Q400 800 800 842 T1600 826 L1600 1000 L0 1000 Z" fill="#F2D7D3" opacity="0.6"/>
+
+  <!-- hanger + tee -->
+  <g transform="translate(340 200)">
+    <path d="M0 96 L200 96 L120 4 Q100 -14 80 4 Z" fill="none" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M130 96 V130" stroke="#0A3C77" stroke-width="8" stroke-linecap="round"/>
+    <path d="M130 96 q0 -46 34 -46 q26 0 26 26" fill="none" stroke="#0A3C77" stroke-width="8" stroke-linecap="round"/>
+    <g transform="translate(24 120) scale(1.55)">
+      <path d="M40 18 L68 6 Q90 34 112 6 L140 18 L168 52 L146 78 L132 66 L132 206 Q90 216 48 206 L48 66 L34 78 L12 52 Z"
+            fill="#F9B8AF" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M68 6 Q90 34 112 6" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+      <path d="M58 92 Q90 106 122 92" fill="none" stroke="#F7F3EE" stroke-width="7" stroke-linecap="round"/>
+      <path d="M56 114 Q90 128 124 114" fill="none" stroke="#F7F3EE" stroke-width="7" stroke-linecap="round"/>
+      <path d="M90 150 l8 16 l17 2 l-12 12 l3 17 l-16 -8 l-16 8 l3 -17 l-12 -12 l17 -2 Z" fill="#F7F3EE"/>
+    </g>
+  </g>
+
+  <!-- basin -->
+  <g transform="translate(930 620)">
+    <path d="M0 40 Q0 0 60 0 H380 Q440 0 440 40 L410 220 Q400 280 340 280 H100 Q40 280 30 220 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M30 40 Q220 70 410 40" fill="none" stroke="#E2EAF4" stroke-width="12" stroke-linecap="round"/>
+    <path d="M92 96 q60 -14 120 0 t120 0" fill="none" stroke="#E2EAF4" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+    <path d="M120 150 q50 -12 100 0" fill="none" stroke="#E2EAF4" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+  </g>
+
+  <!-- bubbles -->
+  <g fill="#FFFFFF" stroke="#6E8AC0" stroke-width="3" opacity="0.9">
+    <circle cx="1030" cy="580" r="34"/>
+    <circle cx="1110" cy="540" r="22"/>
+    <circle cx="1170" cy="596" r="28"/>
+    <circle cx="1250" cy="556" r="18"/>
+    <circle cx="1310" cy="606" r="24"/>
+    <path d="M1180 470 q-20 -26 4 -44 q24 18 4 44 q-4 6 -8 0 z" fill="#FFFFFF" opacity="0.9"/>
+  </g>
+
+  <!-- soap -->
+  <g transform="translate(1380 760) rotate(12)">
+    <rect x="0" y="0" width="150" height="86" rx="30" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M34 44 q20 -16 40 0 t40 0" fill="none" stroke="#E89A8F" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- heart doodle -->
+  <path d="M900 300 c0 0 -34 -22 -34 -46 c0 -12 8 -20 18 -20 c8 0 14 4 16 12 c2 -8 8 -12 16 -12 c10 0 18 8 18 20 c0 24 -34 46 -34 46 z"
+        fill="#E85234" opacity="0.9" transform="translate(0 0)"/>
+
+  <!-- water doodles -->
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M140 880 q40 -26 80 0 t80 0" opacity="0.7"/>
+    <path d="M760 930 q40 -26 80 0 t80 0" opacity="0.5"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

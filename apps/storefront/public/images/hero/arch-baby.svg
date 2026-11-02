@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-label="Illustration of a baby onesie, booties and a moon">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="900" height="1200" fill="#E2EAF4"/>
+  <path d="M180 1200 V540 Q180 280 450 280 Q720 280 720 540 V1200 Z" fill="#F7F3EE" opacity="0.8"/>
+  <circle cx="720" cy="200" r="74" fill="#F6CB6A" opacity="0.75"/>
+
+  <!-- moon -->
+  <g transform="translate(130 150)">
+    <path d="M70 0 A70 70 0 1 0 70 140 A56 56 0 1 1 70 0 Z" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <g fill="#0A3C77" opacity="0.5">
+      <circle cx="42" cy="46" r="5"/>
+      <circle cx="30" cy="86" r="4"/>
+    </g>
+  </g>
+
+  <!-- onesie -->
+  <g transform="translate(230 260)">
+    <path d="M100 20 L140 4 Q180 52 220 4 L260 20 L300 90 L258 126 L238 100 L238 360 Q180 392 122 360 L122 100 L102 126 L60 90 Z"
+          fill="#F2D7D3" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M140 4 Q180 52 220 4" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <path d="M122 100 H238" stroke="#0A3C77" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+    <path d="M180 130 V320" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <g fill="#F9B8AF" stroke="#0A3C77" stroke-width="4">
+      <circle cx="180" cy="170" r="8"/>
+      <circle cx="180" cy="216" r="8"/>
+      <circle cx="180" cy="262" r="8"/>
+    </g>
+    <path d="M150 330 q30 12 60 0" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M118 366 q30 18 62 0 q32 18 62 0" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <!-- sleeves stripes -->
+    <path d="M78 116 L116 150 M270 116 L232 150" stroke="#96ADD6" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- booties -->
+  <g transform="translate(300 800)">
+    <path d="M0 60 Q0 0 62 0 Q112 0 120 48 Q124 78 92 84 L16 84 Q0 84 0 60 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M0 56 H120" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M24 24 Q56 8 92 22" fill="none" stroke="#F7F3EE" stroke-width="7" stroke-linecap="round"/>
+    <g transform="translate(170 12)">
+      <path d="M0 60 Q0 0 62 0 Q112 0 120 48 Q124 78 92 84 L16 84 Q0 84 0 60 Z"
+            fill="#F9B8AF" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M0 56 H120" stroke="#0A3C77" stroke-width="5"/>
+      <path d="M24 24 Q56 8 92 22" fill="none" stroke="#F7F3EE" stroke-width="7" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- stars and doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M700 720 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M660 900 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z"/>
+    <path d="M120 960 q40 -28 80 0 t80 0"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="200" cy="620" r="8"/>
+    <circle cx="740" cy="500" r="6"/>
+    <circle cx="120" cy="760" r="5"/>
+  </g>
+
+  <rect width="900" height="1200" filter="url(#grain)" opacity="0.03"/>
+</svg>

@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Illustration of busy book pages with shapes, counting and animal matching activities">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <circle cx="380" cy="320" r="260" fill="#FDE6E1"/>
+  <circle cx="1270" cy="720" r="250" fill="#E2EAF4"/>
+  <path d="M0 840 Q400 792 800 828 T1600 814 L1600 1000 L0 1000 Z" fill="#F2D7D3" opacity="0.6"/>
+
+  <!-- panel 1: shapes -->
+  <g transform="translate(160 200) rotate(-4 210 300)">
+    <rect x="0" y="0" width="420" height="600" rx="30" fill="#F7F3EE" stroke="#0A3C77" stroke-width="8"/>
+    <rect x="26" y="26" width="368" height="548" rx="18" fill="none" stroke="#D9A38B" stroke-width="4" stroke-dasharray="12 10"/>
+    <circle cx="130" cy="150" r="62" fill="#F9B8AF" stroke="#0A3C77" stroke-width="6"/>
+    <rect x="230" y="92" width="118" height="118" rx="16" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M120 390 l72 -124 l72 124 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <g fill="none" stroke="#0A3C77" stroke-width="5" stroke-dasharray="9 8">
+      <circle cx="300" cy="330" r="54"/>
+      <rect x="240" y="420" width="96" height="96" rx="12"/>
+    </g>
+    <path d="M60 520 q40 -20 80 0 t80 0" fill="none" stroke="#E89A8F" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- panel 2: counting -->
+  <g transform="translate(590 170) rotate(2 210 300)">
+    <rect x="0" y="0" width="420" height="600" rx="30" fill="#FDF1D6" stroke="#0A3C77" stroke-width="8"/>
+    <rect x="26" y="26" width="368" height="548" rx="18" fill="none" stroke="#D9A38B" stroke-width="4" stroke-dasharray="12 10"/>
+    <g fill="#F7F3EE" stroke="#0A3C77" stroke-width="6">
+      <rect x="70" y="90" width="280" height="118" rx="16"/>
+      <rect x="70" y="240" width="280" height="118" rx="16"/>
+      <rect x="70" y="390" width="280" height="118" rx="16"/>
+    </g>
+    <g fill="#E85234">
+      <circle cx="140" cy="149" r="16"/>
+      <circle cx="210" cy="149" r="16"/>
+      <circle cx="280" cy="149" r="16"/>
+    </g>
+    <g fill="#96ADD6" stroke="#0A3C77" stroke-width="3">
+      <circle cx="140" cy="299" r="15"/>
+      <circle cx="210" cy="299" r="15"/>
+      <circle cx="280" cy="299" r="15"/>
+      <circle cx="140" cy="349" r="15" fill="#F9B8AF"/>
+      <circle cx="210" cy="349" r="15" fill="#F9B8AF"/>
+    </g>
+    <g fill="#F6CB6A" stroke="#0A3C77" stroke-width="3">
+      <circle cx="140" cy="449" r="14"/>
+      <circle cx="210" cy="449" r="14"/>
+      <circle cx="280" cy="449" r="14"/>
+      <circle cx="140" cy="499" r="14" fill="#A8C3A0"/>
+      <circle cx="210" cy="499" r="14" fill="#A8C3A0"/>
+      <circle cx="280" cy="499" r="14" fill="#A8C3A0"/>
+    </g>
+  </g>
+
+  <!-- panel 3: animals -->
+  <g transform="translate(1020 210) rotate(-2 210 300)">
+    <rect x="0" y="0" width="420" height="600" rx="30" fill="#F7F3EE" stroke="#0A3C77" stroke-width="8"/>
+    <rect x="26" y="26" width="368" height="548" rx="18" fill="none" stroke="#D9A38B" stroke-width="4" stroke-dasharray="12 10"/>
+    <g transform="translate(120 200)">
+      <ellipse cx="0" cy="0" rx="58" ry="52" fill="#F2D7D3" stroke="#0A3C77" stroke-width="6"/>
+      <path d="M-42 -34 q-6 -48 26 -46 q24 2 22 40" fill="#F2D7D3" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M42 -34 q6 -48 -26 -46 q-24 2 -22 40" fill="#F2D7D3" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+      <circle cx="-18" cy="-6" r="5" fill="#0A3C77"/>
+      <circle cx="18" cy="-6" r="5" fill="#0A3C77"/>
+      <path d="M-8 22 q8 8 16 0" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(290 200)">
+      <circle cx="0" cy="0" r="52" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+      <circle cx="-42" cy="-42" r="20" fill="#F6CB6A" stroke="#0A3C77" stroke-width="5"/>
+      <circle cx="42" cy="-42" r="20" fill="#F6CB6A" stroke="#0A3C77" stroke-width="5"/>
+      <circle cx="-16" cy="-6" r="4" fill="#0A3C77"/>
+      <circle cx="16" cy="-6" r="4" fill="#0A3C77"/>
+      <ellipse cx="0" cy="18" rx="10" ry="7" fill="#0A3C77"/>
+    </g>
+    <g transform="translate(200 420)">
+      <path d="M-70 0 q70 -56 140 0 q-70 56 -140 0 z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M70 0 l42 -34 l0 68 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+      <circle cx="-34" cy="-6" r="5" fill="#0A3C77"/>
+      <path d="M-14 10 q14 8 28 0" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 120 l12 25 l28 3 l-20 19 l6 28 l-26 -14 l-26 14 l6 -28 l-20 -19 l28 -3 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M700 90 q34 -22 68 0 t68 0"/>
+    <path d="M1220 900 q40 -26 80 0 t80 0"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

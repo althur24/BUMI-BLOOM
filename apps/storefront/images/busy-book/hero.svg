@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of an open busy book with shape matching and counting pages">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="paper" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.5" fill="#0A3C77" opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="900" fill="#F7F3EE"/>
+  <circle cx="250" cy="250" r="220" fill="#FDE6E1"/>
+  <circle cx="1010" cy="700" r="230" fill="#E2EAF4"/>
+  <path d="M0 790 Q300 744 600 780 T1200 766 L1200 900 L0 900 Z" fill="#F9B8AF" opacity="0.4"/>
+
+  <!-- open book -->
+  <g>
+    <rect x="120" y="180" width="960" height="560" rx="34" fill="#96ADD6" stroke="#0A3C77" stroke-width="8"/>
+    <path d="M160 220 Q160 196 190 196 H590 Q600 196 600 216 V700 Q600 712 586 712 H190 Q160 712 160 686 Z"
+          fill="#F7F3EE" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M1040 220 Q1040 196 1010 196 H610 Q600 196 600 216 V700 Q600 712 614 712 H1010 Q1040 712 1040 686 Z"
+          fill="#FDF1D6" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M600 216 V700" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <rect x="188" y="224" width="372" height="460" rx="16" fill="none" stroke="#D9A38B" stroke-width="4" stroke-dasharray="13 11"/>
+    <rect x="640" y="224" width="372" height="460" rx="16" fill="none" stroke="#D9A38B" stroke-width="4" stroke-dasharray="13 11"/>
+  </g>
+
+  <!-- left page: shape matching -->
+  <g>
+    <circle cx="286" cy="330" r="52" fill="none" stroke="#0A3C77" stroke-width="5" stroke-dasharray="10 9"/>
+    <rect x="378" y="282" width="96" height="96" rx="12" fill="none" stroke="#0A3C77" stroke-width="5" stroke-dasharray="10 9"/>
+    <path d="M486 470 L540 562 L432 562 Z" fill="none" stroke="#0A3C77" stroke-width="5" stroke-dasharray="10 9" stroke-linejoin="round"/>
+
+    <circle cx="270" cy="500" r="46" fill="#F9B8AF" stroke="#0A3C77" stroke-width="6"/>
+    <rect x="336" y="452" width="84" height="84" rx="10" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M292 600 l44 -76 l44 76 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+
+    <path d="M250 640 Q300 656 350 640" fill="none" stroke="#E89A8F" stroke-width="4" stroke-linecap="round"/>
+    <path d="M368 610 l8 16 l17 2 l-12 11 l3 17 l-16 -8 l-16 8 l3 -17 l-12 -11 l17 -2 Z" fill="#F7F3EE" opacity="0.9"/>
+  </g>
+
+  <!-- right page: counting -->
+  <g>
+    <g fill="#F7F3EE" stroke="#0A3C77" stroke-width="5">
+      <rect x="680" y="272" width="86" height="118" rx="14"/>
+      <rect x="790" y="272" width="86" height="118" rx="14"/>
+      <rect x="900" y="272" width="86" height="118" rx="14"/>
+      <rect x="735" y="418" width="86" height="118" rx="14"/>
+      <rect x="845" y="418" width="86" height="118" rx="14"/>
+    </g>
+    <g fill="#E85234">
+      <circle cx="723" cy="330" r="12"/>
+      <circle cx="723" cy="352" r="12" opacity="0.9"/>
+    </g>
+    <g fill="#F6CB6A" stroke="#0A3C77" stroke-width="3">
+      <circle cx="813" cy="318" r="10"/>
+      <circle cx="833" cy="318" r="10"/>
+      <circle cx="823" cy="344" r="10"/>
+    </g>
+    <g fill="#96ADD6" stroke="#0A3C77" stroke-width="3">
+      <circle cx="923" cy="306" r="9"/>
+      <circle cx="943" cy="306" r="9"/>
+      <circle cx="923" cy="330" r="9"/>
+      <circle cx="943" cy="330" r="9"/>
+    </g>
+    <g fill="#F9B8AF" stroke="#0A3C77" stroke-width="3">
+      <circle cx="758" cy="462" r="9"/>
+      <circle cx="778" cy="462" r="9"/>
+      <circle cx="758" cy="486" r="9"/>
+      <circle cx="778" cy="486" r="9"/>
+      <circle cx="768" cy="510" r="9"/>
+    </g>
+    <g fill="#A8C3A0" stroke="#0A3C77" stroke-width="3">
+      <circle cx="868" cy="452" r="8"/>
+      <circle cx="888" cy="452" r="8"/>
+      <circle cx="868" cy="474" r="8"/>
+      <circle cx="888" cy="474" r="8"/>
+      <circle cx="868" cy="496" r="8"/>
+      <circle cx="888" cy="496" r="8"/>
+    </g>
+    <path d="M700 600 Q760 620 820 600 T940 600" fill="none" stroke="#D9A38B" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- loose pieces -->
+  <g transform="translate(240 790)">
+    <circle cx="0" cy="0" r="34" fill="#F9B8AF" stroke="#0A3C77" stroke-width="5"/>
+    <rect x="70" y="-34" width="68" height="68" rx="8" fill="#96ADD6" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M250 34 l34 -58 l34 58 Z" fill="#F6CB6A" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M390 0 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z" fill="#E85234" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M1040 220 q30 -26 60 0 t60 0" opacity="0.6"/>
+    <path d="M120 640 q0 -40 30 -56 q30 16 30 56" stroke="#96ADD6" stroke-width="6"/>
+  </g>
+
+  <rect width="1200" height="900" filter="url(#grain)" opacity="0.03"/>
+</svg>

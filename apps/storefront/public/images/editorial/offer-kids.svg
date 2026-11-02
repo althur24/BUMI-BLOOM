@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of a clothing rail with kids outfits and hangers">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="2" fill="#FFFFFF" opacity="0.7"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="900" fill="#E2EAF4"/>
+  <circle cx="980" cy="180" r="160" fill="#F6CB6A" opacity="0.55"/>
+  <path d="M0 760 Q300 700 600 744 T1200 730 L1200 900 L0 900 Z" fill="#96ADD6" opacity="0.5"/>
+
+  <!-- rail -->
+  <g stroke="#0A3C77" stroke-width="10" stroke-linecap="round" fill="none">
+    <path d="M120 150 H1080"/>
+    <path d="M180 150 V760"/>
+    <path d="M1020 150 V760"/>
+    <path d="M140 760 H220"/>
+    <path d="M980 760 H1060"/>
+  </g>
+  <g stroke="#0A3C77" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.6">
+    <path d="M180 700 q40 -14 80 0 M1020 700 q-40 -14 -80 0"/>
+  </g>
+
+  <!-- garment 1: dress -->
+  <g transform="translate(250 190)">
+    <path d="M85 60 L60 26 L96 12 L140 46 L184 12 L220 26 L195 60" fill="none" stroke="#0A3C77" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M85 70 L110 60 L140 86 L170 60 L195 70 L208 130 L184 152 L184 178 L236 430 Q140 462 44 430 L96 178 L96 152 L72 130 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M110 60 Q140 82 170 60" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M96 178 Q140 196 184 178" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <g fill="#FFFFFF" opacity="0.85">
+      <circle cx="100" cy="260" r="7"/>
+      <circle cx="150" cy="316" r="6"/>
+      <circle cx="196" cy="370" r="8"/>
+    </g>
+  </g>
+
+  <!-- garment 2: tee -->
+  <g transform="translate(540 190)">
+    <path d="M95 64 L70 30 L106 16 L140 50 L174 16 L210 30 L185 64" fill="none" stroke="#0A3C77" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(55 62) scale(1.1)">
+      <path d="M40 18 L68 6 Q90 34 112 6 L140 18 L168 52 L146 78 L132 66 L132 206 Q90 216 48 206 L48 66 L34 78 L12 52 Z"
+            fill="#F7F3EE" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M68 6 Q90 34 112 6" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+      <path d="M56 80 Q90 94 124 80" fill="none" stroke="#96ADD6" stroke-width="8" stroke-linecap="round"/>
+      <path d="M54 104 Q90 118 126 104" fill="none" stroke="#96ADD6" stroke-width="8" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- garment 3: overalls -->
+  <g transform="translate(790 200)">
+    <path d="M82 60 L56 26 L92 12 L130 48 L168 12 L204 26 L178 60" fill="none" stroke="#0A3C77" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(0 66) scale(1)">
+      <path d="M70 20 L104 20 L104 52 L158 52 L158 20 L192 20 L198 96 L184 102 L184 380 L140 380 L140 150 Q130 138 120 150 L120 380 L76 380 L76 102 L62 96 Z"
+            fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M76 102 H184" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+      <rect x="110" y="86" width="42" height="40" rx="6" fill="#E2EAF4" stroke="#0A3C77" stroke-width="4"/>
+      <circle cx="104" cy="28" r="7" fill="#F6CB6A" stroke="#0A3C77" stroke-width="3"/>
+      <circle cx="158" cy="28" r="7" fill="#F6CB6A" stroke="#0A3C77" stroke-width="3"/>
+    </g>
+  </g>
+
+  <!-- bunting -->
+  <path d="M120 150 Q300 90 480 150" fill="none" stroke="#0A3C77" stroke-width="4" opacity="0.5"/>
+  <g fill="#F9B8AF" stroke="#0A3C77" stroke-width="3">
+    <path d="M180 128 l16 34 l-32 0 Z"/>
+    <path d="M280 112 l16 34 l-32 0 Z" fill="#96ADD6"/>
+    <path d="M380 122 l16 34 l-32 0 Z" fill="#F6CB6A"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M700 660 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+    <path d="M1040 560 q40 -28 80 0 t80 0"/>
+  </g>
+
+  <rect width="1200" height="900" filter="url(#grain)" opacity="0.03"/>
+</svg>

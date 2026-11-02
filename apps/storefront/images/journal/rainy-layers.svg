@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Illustration of a yellow raincoat, red boots and umbrella for a rainy day">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="rain" width="70" height="70" patternUnits="userSpaceOnUse">
+      <path d="M12 6 L4 26 M52 34 L44 54" stroke="#6E8AC0" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <rect width="1600" height="1000" fill="url(#rain)"/>
+  <circle cx="820" cy="520" r="330" fill="#E2EAF4"/>
+  <path d="M0 760 Q400 706 800 754 T1600 740 L1600 1000 L0 1000 Z" fill="#96ADD6" opacity="0.55"/>
+  <path d="M0 860 Q400 820 800 856 T1600 848 L1600 1000 L0 1000 Z" fill="#6E8AC0" opacity="0.35"/>
+
+  <!-- clouds -->
+  <g fill="#FFFFFF" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round">
+    <path d="M170 190 q-4 -46 42 -50 q12 -34 52 -30 q34 4 40 34 q40 -6 46 30 q4 28 -30 30 h-128 q-24 -2 -22 -14 z"/>
+    <path d="M1180 130 q-4 -40 38 -46 q12 -30 46 -26 q30 4 36 30 q36 -6 40 26 q4 26 -28 28 h-112 q-22 -2 -20 -12 z"/>
+  </g>
+
+  <!-- raincoat -->
+  <g transform="translate(250 220) scale(1.55)">
+    <path d="M60 60 L160 60 L192 92 L172 120 L158 104 L158 302 Q110 316 62 302 L62 104 L48 120 L28 92 Z"
+          fill="#F6CB6A" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M70 44 Q70 4 110 4 Q150 4 150 44 Q150 66 110 70 Q70 66 70 44 Z"
+          fill="#F6CB6A" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M80 44 Q80 20 110 20 Q140 20 140 44" fill="none" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M110 70 L110 306" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M116 82 L116 300" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+    <path d="M78 190 L76 250 Q90 256 102 250 L102 190 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M142 190 L144 250 Q130 256 118 250 L118 190 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+    <circle cx="90" cy="82" r="6" fill="#0A3C77"/>
+    <circle cx="130" cy="82" r="6" fill="#0A3C77"/>
+    <path d="M62 200 L54 240" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- umbrella -->
+  <g transform="translate(940 210)">
+    <path d="M0 96 Q22 -6 130 -6 Q238 -6 260 96 Q226 78 196 96 Q164 76 130 96 Q96 76 64 96 Q34 78 0 96 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M130 -6 L130 96" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M130 96 V286 q0 26 26 26 q24 0 24 -22" fill="none" stroke="#E85234" stroke-width="10" stroke-linecap="round"/>
+    <path d="M64 96 q10 22 34 22 q22 0 32 -22" fill="none" stroke="#0A3C77" stroke-width="4" opacity="0.5"/>
+    <path d="M196 96 q-10 22 -34 22 q-22 0 -32 -22" fill="none" stroke="#0A3C77" stroke-width="4" opacity="0.5"/>
+    <circle cx="130" cy="-6" r="8" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <!-- boots -->
+  <g transform="translate(620 700)">
+    <g>
+      <path d="M0 0 H58 L58 130 Q58 158 30 158 L-16 158 Q-30 158 -30 144 Q-30 132 -16 128 L0 118 Z"
+            fill="#E85234" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M-24 132 H56" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+      <path d="M0 30 H58" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+      <path d="M14 44 h10 M34 44 h10" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(86 0)">
+      <path d="M0 0 H58 L58 130 Q58 158 30 158 L-16 158 Q-30 158 -30 144 Q-30 132 -16 128 L0 118 Z"
+            fill="#E85234" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M-24 132 H56" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+      <path d="M0 30 H58" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+      <path d="M14 44 h10 M34 44 h10" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- puddles -->
+  <g fill="#E2EAF4" stroke="#0A3C77" stroke-width="4" stroke-linejoin="round">
+    <ellipse cx="320" cy="880" rx="120" ry="26"/>
+    <ellipse cx="1230" cy="900" rx="150" ry="30"/>
+    <ellipse cx="880" cy="940" rx="90" ry="20"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="4" stroke-linecap="round">
+    <path d="M286 880 q34 -14 68 0"/>
+    <path d="M1190 900 q40 -16 80 0"/>
+    <path d="M866 940 q14 -8 28 0"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1420 560 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M150 620 q34 -22 68 0"/>
+    <path d="M150 652 q34 -22 68 0"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

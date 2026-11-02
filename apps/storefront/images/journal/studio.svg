@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Illustrated sewing studio with fabric rolls, sewing machine and pattern paper">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0 H0 V40" fill="none" stroke="#0A3C77" stroke-width="1" opacity="0.07"/>
+    </pattern>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <circle cx="300" cy="260" r="230" fill="#FDE6E1"/>
+  <circle cx="1380" cy="790" r="210" fill="#E2EAF4"/>
+  <path d="M0 860 Q400 800 800 850 T1600 830 L1600 1000 L0 1000 Z" fill="#F9B8AF" opacity="0.35"/>
+
+  <!-- pattern paper -->
+  <g transform="rotate(-4 640 520)">
+    <rect x="250" y="230" width="620" height="520" rx="10" fill="#FFFFFF" stroke="#0A3C77" stroke-width="5"/>
+    <rect x="250" y="230" width="620" height="520" rx="10" fill="url(#grid)"/>
+    <g fill="none" stroke="#E85234" stroke-width="4" stroke-dasharray="12 10" stroke-linecap="round">
+      <path d="M360 380 L470 330 L520 400 L470 470 Z"/>
+      <path d="M560 330 L680 350 L660 470 L570 450 Z"/>
+    </g>
+    <g fill="none" stroke="#6E8AC0" stroke-width="4" stroke-linecap="round">
+      <path d="M340 560 H700"/>
+      <path d="M340 600 H620"/>
+      <path d="M340 640 H660"/>
+    </g>
+    <circle cx="760" cy="680" r="34" fill="#E2EAF4" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M744 680 h32 M760 664 v32" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- fabric rolls -->
+  <g>
+    <g transform="translate(150 640) rotate(-8)">
+      <rect x="0" y="0" width="230" height="96" rx="48" fill="#96ADD6" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="226" cy="48" rx="22" ry="48" fill="#E2EAF4" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="226" cy="48" rx="8" ry="20" fill="#F7F3EE" stroke="#0A3C77" stroke-width="3"/>
+    </g>
+    <g transform="translate(230 760) rotate(4)">
+      <rect x="0" y="0" width="250" height="104" rx="52" fill="#F9B8AF" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="244" cy="52" rx="24" ry="52" fill="#FDE6E1" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="244" cy="52" rx="9" ry="22" fill="#F7F3EE" stroke="#0A3C77" stroke-width="3"/>
+    </g>
+    <g transform="translate(120 838) rotate(-3)">
+      <rect x="0" y="0" width="210" height="88" rx="44" fill="#F2D7D3" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="206" cy="44" rx="20" ry="44" fill="#F9E9E7" stroke="#0A3C77" stroke-width="5"/>
+      <ellipse cx="206" cy="44" rx="7" ry="18" fill="#F7F3EE" stroke="#0A3C77" stroke-width="3"/>
+    </g>
+  </g>
+
+  <!-- sewing machine -->
+  <g transform="translate(930 390)">
+    <path d="M40 240 V110 Q40 60 92 60 H330 Q382 60 382 112 V182 Q382 214 348 214 H322 V160 H124 V240 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+    <rect x="0" y="232" width="470" height="46" rx="18" fill="#6E8AC0" stroke="#0A3C77" stroke-width="7"/>
+    <rect x="152" y="176" width="90" height="26" rx="8" fill="#E2EAF4" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M322 168 V226" stroke="#0A3C77" stroke-width="7" stroke-linecap="round"/>
+    <path d="M322 226 l-9 22 h18 Z" fill="#0A3C77"/>
+    <circle cx="92" cy="112" r="46" fill="#E2EAF4" stroke="#0A3C77" stroke-width="7"/>
+    <circle cx="92" cy="112" r="16" fill="#F7F3EE" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M92 66 V158 M46 112 H138" stroke="#0A3C77" stroke-width="4" opacity="0.5"/>
+    <path d="M250 60 V18 H300" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="308" cy="18" r="12" fill="#F9B8AF" stroke="#0A3C77" stroke-width="5"/>
+  </g>
+
+  <!-- scissors -->
+  <g transform="translate(1160 700) rotate(-18)">
+    <path d="M0 40 L120 96" stroke="#0A3C77" stroke-width="10" stroke-linecap="round"/>
+    <path d="M0 96 L120 40" stroke="#0A3C77" stroke-width="10" stroke-linecap="round"/>
+    <path d="M118 38 L166 26" stroke="#6E8AC0" stroke-width="12" stroke-linecap="round"/>
+    <path d="M118 98 L166 110" stroke="#6E8AC0" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="182" cy="22" r="20" fill="none" stroke="#E85234" stroke-width="9"/>
+    <circle cx="182" cy="114" r="20" fill="none" stroke="#E85234" stroke-width="9"/>
+    <circle cx="121" cy="69" r="9" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <!-- thread spools -->
+  <g transform="translate(700 810)">
+    <g>
+      <rect x="0" y="0" width="54" height="76" rx="10" fill="#F2D7D3" stroke="#0A3C77" stroke-width="5"/>
+      <rect x="-6" y="-6" width="66" height="12" rx="6" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+      <rect x="-6" y="70" width="66" height="12" rx="6" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+      <path d="M6 24 H48 M6 40 H48 M6 56 H48" stroke="#DBB4AE" stroke-width="4"/>
+    </g>
+    <g transform="translate(96 8)">
+      <rect x="0" y="0" width="54" height="76" rx="10" fill="#96ADD6" stroke="#0A3C77" stroke-width="5"/>
+      <rect x="-6" y="-6" width="66" height="12" rx="6" fill="#E2EAF4" stroke="#0A3C77" stroke-width="4"/>
+      <rect x="-6" y="70" width="66" height="12" rx="6" fill="#E2EAF4" stroke="#0A3C77" stroke-width="4"/>
+      <path d="M6 24 H48 M6 40 H48 M6 56 H48" stroke="#6E8AC0" stroke-width="4"/>
+    </g>
+    <g transform="translate(192 14)">
+      <rect x="0" y="0" width="54" height="76" rx="10" fill="#F9B8AF" stroke="#0A3C77" stroke-width="5"/>
+      <rect x="-6" y="-6" width="66" height="12" rx="6" fill="#FDE6E1" stroke="#0A3C77" stroke-width="4"/>
+      <rect x="-6" y="70" width="66" height="12" rx="6" fill="#FDE6E1" stroke="#0A3C77" stroke-width="4"/>
+      <path d="M6 24 H48 M6 40 H48 M6 56 H48" stroke="#E89A8F" stroke-width="4"/>
+    </g>
+  </g>
+
+  <!-- measuring tape -->
+  <path d="M120 180 Q300 110 420 200 T640 190" fill="none" stroke="#F6CB6A" stroke-width="30" stroke-linecap="round"/>
+  <path d="M120 180 Q300 110 420 200 T640 190" fill="none" stroke="#0A3C77" stroke-width="2" opacity="0.4"/>
+  <g stroke="#0A3C77" stroke-width="3" opacity="0.7">
+    <path d="M200 148 l-4 22 M260 132 l-2 24 M320 142 l2 24 M380 176 l4 22 M440 196 l2 22 M500 196 l-2 22 M560 192 l-4 22"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 350 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+    <path d="M1340 300 q42 -30 84 0 t84 0" stroke="#6E8AC0" stroke-width="5"/>
+    <path d="M1470 160 l-6 26 M1494 168 l-16 20 M1446 176 l14 20" stroke="#96ADD6" stroke-width="5"/>
+  </g>
+  <path d="M760 940 c0 0 -26 -17 -26 -36 c0 -9 6 -15 14 -15 c6 0 12 4 12 10 c0 -6 6 -10 12 -10 c8 0 14 6 14 15 c0 19 -26 36 -26 36 z" fill="#E85234"/>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

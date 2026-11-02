@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Bohopanna illustration with a soft sand tee and easy pull-on pants in natural tones">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="speckle" width="60" height="60" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="10" r="2.4" fill="#B9A88A" opacity="0.55"/>
+      <circle cx="38" cy="40" r="1.8" fill="#D9A38B" opacity="0.5"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <rect width="1600" height="1000" fill="url(#speckle)"/>
+  <circle cx="330" cy="480" r="330" fill="#E7D6BF"/>
+  <circle cx="1290" cy="240" r="180" fill="#FDE6E1"/>
+  <path d="M0 830 Q400 780 800 820 T1600 806 L1600 1000 L0 1000 Z" fill="#D9A38B" opacity="0.28"/>
+
+  <!-- tee -->
+  <g transform="translate(230 210) scale(1.9)">
+    <path d="M40 18 L68 6 Q90 34 112 6 L140 18 L168 52 L146 78 L132 66 L132 206 Q90 216 48 206 L48 66 L34 78 L12 52 Z"
+          fill="#E7D6BF" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M68 6 Q90 34 112 6" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M56 78 Q90 92 124 78" fill="none" stroke="#D9A38B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M54 102 Q90 116 126 102" fill="none" stroke="#D9A38B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M56 186 Q90 198 124 186" fill="none" stroke="#B9A88A" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <!-- easy pants -->
+  <g transform="translate(890 190) scale(1.85)">
+    <path d="M30 30 H190 L206 100 L184 136 L178 300 L132 300 L124 186 Q110 174 96 186 L88 300 L42 300 L36 136 L14 100 Z"
+          fill="#B9A88A" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M34 64 H186" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M96 64 Q110 84 124 64" fill="none" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round"/>
+    <path d="M42 268 H84 M136 268 H178" stroke="#0A3C77" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+    <path d="M44 120 L44 252 M176 120 L176 252" stroke="#E7D6BF" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <!-- sun and bloom doodles -->
+  <g transform="translate(1290 220)">
+    <circle cx="0" cy="0" r="56" fill="#F6CB6A" stroke="#0A3C77" stroke-width="5"/>
+    <g stroke="#D9A38B" stroke-width="6" stroke-linecap="round">
+      <path d="M0 -78 V-100 M0 78 V100 M-78 0 H-100 M78 0 H100 M-56 -56 L-72 -72 M56 56 L72 72 M56 -56 L72 -72 M-56 56 L-72 72"/>
+    </g>
+  </g>
+  <g transform="translate(240 800)">
+    <g fill="#F9B8AF" stroke="#0A3C77" stroke-width="4">
+      <circle cx="0" cy="-26" r="16"/>
+      <circle cx="26" cy="-8" r="16"/>
+      <circle cx="16" cy="22" r="16"/>
+      <circle cx="-16" cy="22" r="16"/>
+      <circle cx="-26" cy="-8" r="16"/>
+    </g>
+    <circle cx="0" cy="0" r="13" fill="#F6CB6A" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M700 800 q40 -28 80 0 t80 0"/>
+    <path d="M1270 640 l12 25 l28 3 l-20 19 l6 28 l-26 -14 l-26 14 l6 -28 l-20 -19 l28 -3 Z" stroke="#E85234" stroke-width="5"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

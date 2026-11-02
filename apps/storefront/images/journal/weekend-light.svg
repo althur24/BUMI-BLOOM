@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Sunny weekend outfit illustration with sundress, straw hat and sunglasses">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="46" height="46" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="3.4" fill="#FFFFFF" opacity="0.6"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <circle cx="1280" cy="220" r="200" fill="#FDE6E1"/>
+  <circle cx="360" cy="640" r="300" fill="#E2EAF4"/>
+  <path d="M0 840 Q400 790 800 832 T1600 818 L1600 1000 L0 1000 Z" fill="#F9B8AF" opacity="0.5"/>
+
+  <!-- sun -->
+  <g transform="translate(1240 190)">
+    <circle cx="0" cy="0" r="86" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <g stroke="#E89A8F" stroke-width="7" stroke-linecap="round">
+      <path d="M0 -118 V-148 M0 118 V148 M-118 0 H-148 M118 0 H148 M-84 -84 L-106 -106 M84 84 L106 106 M84 -84 L106 -106 M-84 84 L-106 106"/>
+    </g>
+    <path d="M-30 -10 q10 14 0 20" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M30 -10 q-10 14 0 20" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-24 36 q24 20 48 0" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- sundress -->
+  <g transform="translate(430 200) scale(1.75)">
+    <path d="M60 40 L84 30 L110 58 L136 30 L160 40 L170 92 L152 112 L152 140 L196 300 Q110 324 24 300 L68 140 L68 112 L50 92 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M84 30 Q110 44 136 30" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M68 140 Q110 156 152 140" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M110 156 V300" stroke="#E89A8F" stroke-width="3" opacity="0.6"/>
+    <path d="M160 240 L160 292" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <path d="M110 62 l7 14 l16 2 l-12 11 l3 16 l-14 -8 l-14 8 l3 -16 l-12 -11 l16 -2 Z" fill="#F7F3EE" opacity="0.85"/>
+  </g>
+
+  <!-- sun hat -->
+  <g transform="translate(150 690)">
+    <ellipse cx="120" cy="86" rx="150" ry="42" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M36 82 Q36 0 120 0 Q204 0 204 82 Z" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M40 56 Q120 74 200 56 L200 74 Q120 92 40 74 Z" fill="#E85234" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M60 30 Q120 44 180 30" fill="none" stroke="#E89A8F" stroke-width="4" opacity="0.8"/>
+    <path d="M170 70 q22 18 16 40 q-20 6 -30 -12" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <!-- sunglasses -->
+  <g transform="translate(980 660)">
+    <rect x="0" y="0" width="150" height="96" rx="40" fill="#96ADD6" stroke="#0A3C77" stroke-width="6"/>
+    <rect x="190" y="0" width="150" height="96" rx="40" fill="#96ADD6" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M150 34 q20 -16 40 0" fill="none" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M340 34 L392 20 M0 34 L-52 20" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <path d="M28 30 q30 -16 60 4" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M216 30 q30 -16 60 4" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+  </g>
+
+  <!-- sandals -->
+  <g transform="translate(760 830)">
+    <path d="M0 30 Q0 4 34 4 Q68 4 68 34 L64 52 Q34 62 4 52 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M8 30 Q34 16 60 30" fill="none" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+    <path d="M84 30 Q84 4 118 4 Q152 4 152 34 L148 52 Q118 62 88 52 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M92 30 Q118 16 144 30" fill="none" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M640 120 q34 -22 68 0"/>
+    <path d="M640 152 q34 -22 68 0"/>
+    <path d="M1440 520 q-24 -40 12 -66 q36 26 12 66 q-12 16 -24 0 z" fill="#96ADD6" opacity="0.6"/>
+  </g>
+  <g fill="#FFFFFF" opacity="0.75">
+    <circle cx="1150" cy="880" r="6"/>
+    <circle cx="1230" cy="920" r="4"/>
+    <circle cx="700" cy="940" r="5"/>
+    <circle cx="420" cy="920" r="4"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

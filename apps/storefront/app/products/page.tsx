@@ -20,7 +20,7 @@ export default function Page({ searchParams }: { searchParams: { category?: stri
   html = html.replace(`id="breadcrumb-current">Shop<`, `id="breadcrumb-current">${meta.breadcrumb}<`);
 
   const cat = (searchParams?.category || '').toLowerCase();
-  const NAV_CATS = ['new', 'girls', 'boys', 'baby', 'essentials', 'sale'];
+  const NAV_CATS = ['new', 'girls', 'boys', 'baby', 'sale'];
   if (!searchParams?.search && NAV_CATS.includes(cat)) {
     html = html.replace(`href="/products?category=${cat}" class="header__nav-link`, `href="/products?category=${cat}" class="header__nav-link is-active`);
   }

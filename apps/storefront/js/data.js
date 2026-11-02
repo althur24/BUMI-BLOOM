@@ -250,8 +250,7 @@ const BumiData = {
     if (category === 'new') return this.PRODUCTS.filter(p => p.isNew);
     if (category === 'sale') return this.PRODUCTS.filter(p => p.compareAt && p.compareAt > p.price);
     if (category === 'bestsellers') return this.PRODUCTS.filter(p => p.isBestseller);
-    if (category === 'essentials') return this.PRODUCTS.filter(p => ['tshirts', 'shorts', 'accessories'].includes(p.category));
-    if (['girls', 'boys', 'baby', 'women'].includes(category)) {
+    if (['girls', 'boys', 'baby'].includes(category)) {
       return this.PRODUCTS.filter(p => p.audience === category || p.audience === 'unisex');
     }
     // otherwise treat as a product category (tshirts, dresses, ...)
@@ -264,10 +263,8 @@ const BumiData = {
       girls:      { title: "Girls' Collection",  subtitle: 'Twirl-ready dresses, soft tees and playful layers for every adventure.' },
       boys:       { title: "Boys' Collection",   subtitle: 'Tough-but-comfy basics built for climbing, running and exploring.' },
       baby:       { title: 'Baby Collection',    subtitle: 'Gentle, soft pieces for the littlest members of the family.' },
-      women:      { title: "Women's Casual",     subtitle: 'Easy, everyday pieces — soft, breathable and made to move.' },
       new:        { title: 'New This Week',      subtitle: 'Fresh drops from our favourite Indonesian kids brands.' },
       sale:       { title: 'On Sale',            subtitle: 'Loved pieces at joyful prices — grab them before they grow out!' },
-      essentials: { title: 'Everyday Essentials',subtitle: 'The trusty basics you will reach for again and again.' },
       bestsellers:{ title: 'Bestsellers',        subtitle: 'The pieces other families cannot stop loving.' },
       kids:       { title: "Kids' Collection",   subtitle: 'Colourful, comfy and made to last — delivered Australia-wide.' },
       all:        { title: "All Kids' Clothing", subtitle: 'Colourful, comfy and made to last — delivered Australia-wide.' }

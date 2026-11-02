@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#F2EEE9">
   <title>Our Brands — BUMI / BLOOM</title>
   <link rel="icon" type="image/webp" href="images/characters/whale.webp">
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
@@ -34,9 +34,8 @@
           <li><a href="products?category=girls" class="header__nav-link">Girls</a></li>
           <li><a href="products?category=boys" class="header__nav-link">Boys</a></li>
           <li><a href="products?category=baby" class="header__nav-link">Baby</a></li>
-          <li><a href="products?category=women" class="header__nav-link">Women</a></li>
+          <li><a href="busy-book" class="header__nav-link">Busy Book</a></li>
           <li><a href="brands" class="header__nav-link is-active">Brands</a></li>
-          <li><a href="products?category=essentials" class="header__nav-link">Essentials</a></li>
           <li><a href="products?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
           <li><a href="journal" class="header__nav-link">Journal</a></li>
         </ul>
@@ -80,9 +79,8 @@
         <a href="products?category=girls" class="mobile-nav__link">Girls</a>
         <a href="products?category=boys" class="mobile-nav__link">Boys</a>
         <a href="products?category=baby" class="mobile-nav__link">Baby</a>
-        <a href="products?category=women" class="mobile-nav__link">Women</a>
+        <a href="busy-book" class="mobile-nav__link">Busy Book</a>
         <a href="brands" class="mobile-nav__link">Brands</a>
-        <a href="products?category=essentials" class="mobile-nav__link">Essentials</a>
         <a href="products?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
         <a href="journal" class="mobile-nav__link">Journal</a>
       </nav>
@@ -143,7 +141,7 @@
       <div class="container">
         <div class="bumi-edit__layout">
           <div class="bumi-edit__image-wrap">
-            <img src="images/editorial/bumi-edit.png" alt="Behind the scenes — Indonesian kids' brands at work" loading="lazy">
+            <img src="images/editorial/sell-with-us.svg" alt="Illustration of fabric bolts and a pattern sheet for independent kids brands" loading="lazy">
           </div>
           <div class="bumi-edit__content">
             <p class="bumi-edit__eyebrow">For Brands</p>
@@ -188,7 +186,7 @@
             <li><a href="products?category=girls">Girls</a></li>
             <li><a href="products?category=boys">Boys</a></li>
             <li><a href="products?category=baby">Baby</a></li>
-            <li><a href="products?category=women">Women</a></li>
+            <li><a href="busy-book">Busy Book</a></li>
             <li><a href="products?category=sale">Sale</a></li>
           </ul>
         </div>
@@ -234,22 +232,21 @@
     'use strict';
     await BumiData.ready();
     const IMAGES = {
-      'bohopanna': 'images/categories/dresses.png',
-      'sabine-heem': 'images/categories/outerwear.png',
-      'anakmu': 'images/categories/tshirts.png'
+      'bohopanna': 'images/brands/bohopanna.svg',
+      'sabine-heem': 'images/brands/sabine-heem.svg',
+      'anakmu': 'images/brands/anakmu.svg'
     };
     const grid = document.getElementById('brand-grid');
 
     function card(b) {
       const audienceLabel = { girls: 'Girls', boys: 'Boys', baby: 'Baby', unisex: 'Unisex' }[b.audience] || 'Unisex';
       return '<a href="products?category=' + b.audience + '" class="brand-card" data-category="' + b.audience + '">' +
-        '<div class="brand-card__image"><img src="' + (IMAGES[b.slug] || 'images/categories/kids.png') + '" alt="' + b.name + ' — kids wear from ' + b.city + '" loading="lazy"></div>' +
+        '<div class="brand-card__image"><img src="' + (IMAGES[b.slug] || 'images/brands/bohopanna.svg') + '" alt="' + b.name + ' — kids wear from ' + b.city + '" loading="lazy"></div>' +
         '<div class="brand-card__info">' +
           '<h2 class="brand-card__name">' + b.name + '</h2>' +
           '<p class="brand-card__desc">' + b.desc + '</p>' +
           '<div class="brand-card__meta">' +
             '<span class="badge badge--soft">' + audienceLabel + '</span>' +
-            '<span class="badge badge--soft">' + (b.website ? b.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : b.city) + '</span>' +
             '<span class="badge badge--green">Made in Indonesia</span>' +
           '</div>' +
         '</div>' +

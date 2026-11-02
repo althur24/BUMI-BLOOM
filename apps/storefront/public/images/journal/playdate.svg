@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Playdate outfit illustration with t-shirt, shorts, cap, ball and kite">
+  <defs>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="2" fill="#0A3C77" opacity="0.08"/>
+    </pattern>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <rect width="1600" height="1000" fill="url(#dots)"/>
+  <circle cx="420" cy="520" r="330" fill="#F9E9E7"/>
+  <circle cx="1240" cy="330" r="230" fill="#E2EAF4"/>
+  <path d="M0 820 Q400 770 800 812 T1600 800 L1600 1000 L0 1000 Z" fill="#F2D7D3" opacity="0.7"/>
+
+  <!-- kite -->
+  <g transform="translate(180 120)">
+    <path d="M80 0 L160 80 L80 190 L0 80 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M80 0 V190 M0 80 H160" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M80 190 q22 40 -4 70 q-22 26 6 54" fill="none" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+    <path d="M60 236 l24 -8 l-4 26 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M66 292 l24 -8 l-4 26 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <!-- tee -->
+  <g transform="translate(430 250) scale(1.85)">
+    <path d="M40 18 L68 6 Q90 34 112 6 L140 18 L168 52 L146 78 L132 66 L132 206 Q90 216 48 206 L48 66 L34 78 L12 52 Z"
+          fill="#FFFFFF" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M68 6 Q90 34 112 6" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M60 76 Q90 88 120 76" fill="none" stroke="#F9B8AF" stroke-width="8" stroke-linecap="round"/>
+    <path d="M58 96 Q90 108 122 96" fill="none" stroke="#F9B8AF" stroke-width="8" stroke-linecap="round"/>
+    <path d="M90 130 l10 20 l22 3 l-16 15 l4 22 l-20 -11 l-20 11 l4 -22 l-16 -15 l22 -3 Z" fill="#E85234"/>
+    <path d="M154 200 q0 -10 8 -10 q8 0 8 10 q0 12 -8 18 q-8 -6 -8 -18 z" fill="#E85234" opacity="0.9"/>
+  </g>
+
+  <!-- shorts -->
+  <g transform="translate(950 430) scale(1.85)">
+    <path d="M28 18 H152 L164 70 L126 124 L108 92 H72 L54 124 L16 70 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M26 44 Q90 58 154 44" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M50 56 L64 104" fill="none" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <path d="M130 56 L116 104" fill="none" stroke="#F7F3EE" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <path d="M92 44 v18" stroke="#F9B8AF" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- cap -->
+  <g transform="translate(1090 190)">
+    <path d="M22 78 Q22 12 84 12 Q146 12 146 78 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M22 78 Q-8 84 6 104 Q44 120 92 108 L92 78 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M84 12 V78" stroke="#0A3C77" stroke-width="4"/>
+    <circle cx="84" cy="10" r="8" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M40 96 Q62 86 90 92" fill="none" stroke="#0A3C77" stroke-width="3" opacity="0.5"/>
+  </g>
+
+  <!-- ball -->
+  <g transform="translate(280 760)">
+    <circle cx="70" cy="70" r="70" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <path d="M70 0 Q40 46 70 140 M70 0 Q100 46 70 140 M4 44 Q70 62 136 44" fill="none" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M14 110 Q70 92 126 110" fill="none" stroke="#E85234" stroke-width="6"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M780 700 q40 -28 80 0 t80 0"/>
+    <path d="M1400 660 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="5" stroke-linecap="round">
+    <path d="M880 150 q34 -22 68 0"/>
+    <path d="M880 182 q34 -22 68 0"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

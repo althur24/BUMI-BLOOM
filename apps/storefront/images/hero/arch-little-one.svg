@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-label="Illustration of kids overalls and sneakers">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle cx="6" cy="6" r="2.6" fill="#0A3C77" opacity="0.12"/>
+    </pattern>
+  </defs>
+
+  <rect width="900" height="1200" fill="#F9E9E7"/>
+  <circle cx="470" cy="560" r="380" fill="#96ADD6" opacity="0.55"/>
+  <rect width="900" height="1200" fill="url(#dots)"/>
+
+  <!-- overalls -->
+  <g transform="translate(200 180)">
+    <path d="M120 60 L180 60 L180 130 L270 130 L270 60 L330 60 L344 210 L318 222 L318 620 L246 620 L246 360 Q225 336 204 360 L204 620 L132 620 L132 222 L106 210 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M180 60 L180 40 M270 60 L270 40" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <path d="M180 130 H270" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M132 222 H318" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <g fill="#F6CB6A" stroke="#0A3C77" stroke-width="5">
+      <circle cx="180" cy="70" r="12"/>
+      <circle cx="270" cy="70" r="12"/>
+    </g>
+    <rect x="188" y="180" width="74" height="60" rx="10" fill="#E2EAF4" stroke="#0A3C77" stroke-width="5"/>
+    <path d="M200 200 H250" stroke="#6E8AC0" stroke-width="4" stroke-linecap="round"/>
+    <path d="M132 580 H204 M246 580 H318" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M246 360 Q225 336 204 360" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M160 260 l6 14 l16 2 l-12 11 l3 16 l-13 -8 l-13 8 l3 -16 l-12 -11 l16 -2 Z" fill="#F7F3EE" opacity="0.9"/>
+  </g>
+
+  <!-- sneakers -->
+  <g transform="translate(230 900)">
+    <g>
+      <path d="M0 70 Q0 30 40 30 L96 30 Q140 30 160 62 Q176 90 158 108 Q142 124 108 124 L18 124 Q0 124 0 106 Z"
+            fill="#F7F3EE" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M0 96 H160" stroke="#0A3C77" stroke-width="7" stroke-linecap="round"/>
+      <path d="M40 30 L70 84 M62 30 L92 84 M84 30 L114 84" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+      <path d="M18 70 Q0 74 -8 86" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(230 8)">
+      <path d="M0 70 Q0 30 40 30 L96 30 Q140 30 160 62 Q176 90 158 108 Q142 124 108 124 L18 124 Q0 124 0 106 Z"
+            fill="#F7F3EE" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M0 96 H160" stroke="#0A3C77" stroke-width="7" stroke-linecap="round"/>
+      <path d="M40 30 L70 84 M62 30 L92 84 M84 30 L114 84" stroke="#E85234" stroke-width="5" stroke-linecap="round"/>
+      <path d="M18 70 Q0 74 -8 86" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 300 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M700 520 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z"/>
+    <path d="M620 240 q40 -28 80 0 t80 0"/>
+    <path d="M640 1080 q40 -28 80 0 t80 0"/>
+  </g>
+
+  <rect width="900" height="1200" filter="url(#grain)" opacity="0.03"/>
+</svg>

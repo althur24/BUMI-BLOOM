@@ -6,10 +6,10 @@ import '../css/pages.css';
 
 export const metadata = {
   title: {
-    default: "BUMI / BLOOM — Colourful, comfy kidswear & women's casual, delivered Australia-wide",
+    default: "BUMI / BLOOM — Colourful, comfy kidswear & screen-free busy books, delivered Australia-wide",
     template: '%s — BUMI / BLOOM',
   },
-  description: "Colourful, comfy kidswear and women's casual from Indonesian designers, delivered Australia-wide. Free AU shipping over $99, 30-day returns.",
+  description: "Colourful, comfy kidswear and screen-free busy books from Indonesian designers, delivered Australia-wide. Free AU shipping over $99, 30-day returns.",
   icons: { icon: '/images/characters/whale.webp' },
 };
 

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" role="img" aria-label="Women's casual linen dress on a hanger with tote bag and sandals">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="stripe" width="34" height="34" patternUnits="userSpaceOnUse">
+      <rect width="8" height="34" fill="#96ADD6" opacity="0.45"/>
+    </pattern>
+  </defs>
+
+  <rect width="1000" height="1250" fill="#F9E9E7"/>
+  <path d="M200 1250 V580 Q200 290 500 290 Q800 290 800 580 V1250 Z" fill="#F7F3EE" opacity="0.85"/>
+  <circle cx="830" cy="200" r="86" fill="#F9B8AF" opacity="0.55"/>
+  <circle cx="150" cy="760" r="110" fill="#96ADD6" opacity="0.3"/>
+
+  <!-- hanger -->
+  <g fill="none" stroke="#0A3C77" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M500 330 q0 -46 36 -46 q28 0 28 26"/>
+    <path d="M362 404 L500 330 L638 404 Z"/>
+  </g>
+
+  <!-- dress -->
+  <path d="M400 420 L438 406 L500 444 L562 406 L600 420 L646 486 L600 526 L578 500 L578 1060 L422 1060 L422 500 L400 526 L354 486 Z"
+        fill="#F7F3EE" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M422 500 Q500 540 578 500" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+  <path d="M438 406 Q500 444 562 406" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+  <path d="M500 470 V1050" stroke="#0A3C77" stroke-width="4" opacity="0.4"/>
+  <g opacity="0.55">
+    <rect x="430" y="526" width="140" height="518" fill="url(#stripe)"/>
+  </g>
+  <path d="M422 600 H578 M422 760 H578 M422 920 H578" stroke="#E89A8F" stroke-width="3" opacity="0.35"/>
+  <path d="M470 560 l7 14 l16 2 l-12 11 l3 16 l-14 -8 l-14 8 l3 -16 l-12 -11 l16 -2 Z" fill="#F9B8AF" stroke="#0A3C77" stroke-width="3"/>
+
+  <!-- tote -->
+  <g transform="translate(140 900) rotate(-6)">
+    <path d="M0 40 Q0 0 36 0 H150 Q186 0 186 40 L200 250 Q200 286 162 286 H24 Q-14 286 -14 250 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M40 10 Q40 -46 93 -46 Q146 -46 146 10" fill="none" stroke="#0A3C77" stroke-width="7" stroke-linecap="round"/>
+    <path d="M86 150 c0 0 -22 -15 -22 -31 c0 -8 5 -13 11 -13 c5 0 9 3 11 7 c2 -4 6 -7 11 -7 c6 0 11 5 11 13 c0 16 -22 31 -22 31 z" fill="#E85234"/>
+  </g>
+
+  <!-- sandals -->
+  <g transform="translate(660 1050)">
+    <path d="M0 34 Q0 8 34 8 Q68 8 68 36 L64 56 Q34 66 4 56 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M8 34 Q34 20 60 34" fill="none" stroke="#96ADD6" stroke-width="5" stroke-linecap="round"/>
+    <path d="M96 34 Q96 8 130 8 Q164 8 164 36 L160 56 Q130 66 100 56 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M104 34 Q130 20 156 34" fill="none" stroke="#96ADD6" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M160 480 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z"/>
+    <path d="M780 700 q40 -28 80 0 t80 0"/>
+  </g>
+  <path d="M820 840 c0 0 -24 -16 -24 -34 c0 -8 6 -14 12 -14 c6 0 10 3 12 8 c2 -5 6 -8 12 -8 c6 0 12 6 12 14 c0 18 -24 34 -24 34 z" fill="#E85234" opacity="0.85"/>
+
+  <rect width="1000" height="1250" filter="url(#grain)" opacity="0.03"/>
+</svg>

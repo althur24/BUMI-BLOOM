@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="Sabine and Heem illustration with a linen shirt and shorts featuring hand-finished embroidery">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="linen" width="14" height="14" patternUnits="userSpaceOnUse">
+      <path d="M0 7 H14 M7 0 V14" stroke="#D9C7AE" stroke-width="1.4" opacity="0.55"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#F7F3EE"/>
+  <circle cx="430" cy="500" r="340" fill="#E2EAF4"/>
+  <circle cx="1320" cy="260" r="170" fill="#F2D7D3"/>
+  <path d="M0 840 Q400 792 800 830 T1600 814 L1600 1000 L0 1000 Z" fill="#96ADD6" opacity="0.28"/>
+
+  <!-- linen shirt -->
+  <g transform="translate(230 170) scale(1.75)">
+    <path d="M60 40 L100 20 L120 52 L140 20 L180 40 L214 92 L188 118 L174 100 L174 270 Q120 286 66 270 L66 100 L52 118 L26 92 Z"
+          fill="#F7F3EE" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M60 40 L100 20 L120 52 L140 20 L180 40 L214 92 L188 118 L174 100 L174 270 Q120 286 66 270 L66 100 L52 118 L26 92 Z"
+          fill="url(#linen)"/>
+    <path d="M100 20 L120 52 L140 20" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M120 52 V278" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <g fill="#0A3C77">
+      <circle cx="120" cy="92" r="4"/>
+      <circle cx="120" cy="140" r="4"/>
+      <circle cx="120" cy="188" r="4"/>
+      <circle cx="120" cy="236" r="4"/>
+    </g>
+    <rect x="78" y="120" width="30" height="30" rx="6" fill="none" stroke="#E85234" stroke-width="3" opacity="0.85"/>
+    <g fill="none" stroke="#D9A38B" stroke-width="3" stroke-linecap="round">
+      <path d="M88 132 q8 -8 12 0 q4 8 -6 10 q-10 2 -10 -6"/>
+      <path d="M166 214 q8 -8 12 0 q4 8 -6 10 q-10 2 -10 -6"/>
+    </g>
+    <path d="M66 270 Q120 286 174 270" fill="none" stroke="#0A3C77" stroke-width="5"/>
+  </g>
+
+  <!-- embroidered shorts -->
+  <g transform="translate(930 400) scale(1.85)">
+    <path d="M28 18 H152 L164 70 L126 124 L108 92 H72 L54 124 L16 70 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M26 44 Q90 58 154 44" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M54 112 L64 96 M126 112 L116 96" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <g fill="none" stroke="#F7F3EE" stroke-width="3" stroke-linecap="round">
+      <path d="M40 66 q6 -6 9 0 q3 6 -4 7 q-8 1 -8 -4"/>
+      <path d="M134 66 q6 -6 9 0 q3 6 -4 7 q-8 1 -8 -4"/>
+    </g>
+  </g>
+
+  <!-- sewing details -->
+  <g transform="translate(640 760) rotate(-8)">
+    <rect x="0" y="0" width="120" height="16" rx="8" fill="#F6CB6A" stroke="#0A3C77" stroke-width="4"/>
+    <g stroke="#0A3C77" stroke-width="2" opacity="0.5">
+      <path d="M10 0 V10 M30 0 V10 M50 0 V10 M70 0 V10 M90 0 V10 M110 0 V10"/>
+    </g>
+  </g>
+  <g transform="translate(1140 800)">
+    <circle cx="0" cy="0" r="34" fill="none" stroke="#E85234" stroke-width="7"/>
+    <path d="M24 24 L64 64" stroke="#0A3C77" stroke-width="7" stroke-linecap="round"/>
+    <path d="M64 64 L88 88" stroke="#6E8AC0" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M700 180 q40 -28 80 0 t80 0"/>
+    <path d="M1240 560 l12 25 l28 3 l-20 19 l6 28 l-26 -14 l-26 14 l6 -28 l-20 -19 l28 -3 Z" stroke="#E85234" stroke-width="5"/>
+  </g>
+
+  <rect width="1600" height="1000" filter="url(#grain)" opacity="0.03"/>
+</svg>

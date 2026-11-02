@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Flat-lay of five kids clothing essentials">
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.7" fill="#0A3C77" opacity="0.09"/>
+    </pattern>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="900" fill="#F7F3EE"/>
+  <rect width="1200" height="900" fill="url(#dots)"/>
+  <circle cx="300" cy="330" r="255" fill="#E2EAF4"/>
+  <circle cx="935" cy="235" r="150" fill="#FDE6E1"/>
+  <path d="M0 780 Q300 720 600 775 T1200 760 L1200 900 L0 900 Z" fill="#F2D7D3" opacity="0.55"/>
+
+  <!-- soft shadows -->
+  <ellipse cx="320" cy="700" rx="200" ry="26" fill="#0A3C77" opacity="0.07"/>
+  <ellipse cx="790" cy="480" rx="145" ry="22" fill="#0A3C77" opacity="0.07"/>
+  <ellipse cx="590" cy="672" rx="135" ry="20" fill="#0A3C77" opacity="0.07"/>
+  <ellipse cx="1015" cy="742" rx="165" ry="24" fill="#0A3C77" opacity="0.07"/>
+
+  <!-- Dress -->
+  <g transform="translate(150 200)">
+    <path d="M60 108 L12 258 Q100 288 188 258 L140 108 L140 62 L152 44 L138 20 Q100 46 62 20 L48 44 L60 62 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M62 20 Q100 46 138 20" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M60 108 Q100 122 140 108" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M148 190 Q166 186 168 202 Q170 218 152 216" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M118 232 c0 0 -9 -6 -9 -12 c0 -3 2 -5 5 -5 c2 0 4 1 4 3 c0 -2 2 -3 4 -3 c3 0 5 2 5 5 c0 6 -9 12 -9 12 z" fill="#E85234"/>
+    <circle cx="100" cy="86" r="6" fill="#F7F3EE" stroke="#0A3C77" stroke-width="3"/>
+  </g>
+
+  <!-- Tee -->
+  <g transform="translate(640 150) scale(1.4)">
+    <path d="M40 18 L68 6 Q90 34 112 6 L140 18 L168 52 L146 78 L132 66 L132 206 Q90 216 48 206 L48 66 L34 78 L12 52 Z"
+          fill="#F2D7D3" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M68 6 Q90 34 112 6" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M56 74 Q90 88 124 74" fill="none" stroke="#96ADD6" stroke-width="7" stroke-linecap="round"/>
+    <path d="M54 96 Q90 110 126 96" fill="none" stroke="#96ADD6" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="90" cy="140" r="14" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+    <path d="M84 140 q6 8 12 0" fill="none" stroke="#0A3C77" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Shorts -->
+  <g transform="translate(470 480) scale(1.35)">
+    <path d="M28 18 H152 L164 70 L126 124 L108 92 H72 L54 124 L16 70 Z"
+          fill="#96ADD6" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M26 44 Q90 58 154 44" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M46 60 L62 104" fill="none" stroke="#0A3C77" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+    <path d="M134 60 L118 104" fill="none" stroke="#0A3C77" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  </g>
+
+  <!-- Cardigan -->
+  <g transform="translate(880 330) scale(1.4)">
+    <path d="M60 20 L86 10 L100 42 L114 10 L140 20 L174 62 L150 88 L140 74 L140 250 Q100 264 60 250 L60 74 L50 88 L26 62 Z"
+          fill="#F7F3EE" stroke="#0A3C77" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M100 42 L100 250" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M112 70 L112 244" fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+    <path d="M128 74 L128 244" fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+    <circle cx="100" cy="100" r="5" fill="#0A3C77"/>
+    <circle cx="100" cy="140" r="5" fill="#0A3C77"/>
+    <circle cx="100" cy="180" r="5" fill="#0A3C77"/>
+    <path d="M88 22 Q100 40 112 22" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Sandals -->
+  <g transform="translate(185 610) scale(1.25)">
+    <path d="M12 42 Q12 12 46 12 Q80 12 80 44 L76 64 Q46 76 16 64 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M22 40 Q46 26 70 40" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M46 18 L46 34" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M96 42 Q96 12 130 12 Q164 12 164 44 L160 64 Q130 76 100 64 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M106 40 Q130 26 154 40" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+    <path d="M130 18 L130 34" fill="none" stroke="#0A3C77" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1005 90 l16 34 l36 4 l-27 24 l8 36 l-33 -19 l-33 19 l8 -36 l-27 -24 l36 -4 Z"/>
+    <path d="M560 96 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z" stroke="#6E8AC0" stroke-width="5"/>
+    <path d="M1060 640 q38 -26 76 0 t76 0" stroke="#6E8AC0" stroke-width="5"/>
+  </g>
+  <circle cx="120" cy="120" r="18" fill="none" stroke="#96ADD6" stroke-width="6"/>
+  <circle cx="120" cy="120" r="34" fill="none" stroke="#96ADD6" stroke-width="4" opacity="0.45"/>
+
+  <rect width="1200" height="900" filter="url(#grain)" opacity="0.03"/>
+</svg>

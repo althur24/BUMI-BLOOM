@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-label="Illustration of a twirl dress on a hanger with clouds and stars">
+  <defs>
+    <pattern id="dots" width="46" height="46" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="3.4" fill="#FFFFFF" opacity="0.85"/>
+    </pattern>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="900" height="1200" fill="#FDE6E1"/>
+  <path d="M180 1200 V520 Q180 260 450 260 Q720 260 720 520 V1200 Z" fill="#F7F3EE" opacity="0.75"/>
+  <circle cx="760" cy="180" r="90" fill="#F6CB6A" opacity="0.55"/>
+
+  <!-- hanger -->
+  <g fill="none" stroke="#0A3C77" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M450 300 q0 -46 36 -46 q28 0 28 26"/>
+    <path d="M310 372 L450 296 L590 372 Z"/>
+  </g>
+
+  <!-- dress -->
+  <g>
+    <path d="M338 380 L372 366 L450 404 L528 366 L562 380 L584 452 L552 486 L552 520 L660 1010 Q450 1062 240 1010 L348 520 L348 486 L316 452 Z"
+          fill="#F9B8AF" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M372 366 Q450 398 528 366" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <path d="M348 520 Q450 552 552 520" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+    <path d="M450 552 V1010" stroke="#E89A8F" stroke-width="4" opacity="0.55"/>
+    <g fill="#FFFFFF" opacity="0.9">
+      <circle cx="380" cy="640" r="11"/>
+      <circle cx="470" cy="700" r="9"/>
+      <circle cx="540" cy="760" r="12"/>
+      <circle cx="360" cy="800" r="9"/>
+      <circle cx="450" cy="870" r="10"/>
+      <circle cx="530" cy="930" r="8"/>
+      <circle cx="410" cy="960" r="11"/>
+    </g>
+    <path d="M470 576 l10 20 l22 3 l-16 15 l4 22 l-20 -11 l-20 11 l4 -22 l-16 -15 l22 -3 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+  </g>
+
+  <!-- shoes -->
+  <g transform="translate(330 1040)">
+    <path d="M0 34 Q0 6 36 6 Q72 6 72 38 L68 58 Q36 70 4 58 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M10 34 Q36 20 62 34" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M200 34 Q200 6 236 6 Q272 6 272 38 L268 58 Q236 70 204 58 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M210 34 Q236 20 262 34" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- clouds and stars -->
+  <g fill="#FFFFFF" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round">
+    <path d="M120 220 q-2 -34 32 -38 q10 -26 40 -22 q26 4 30 26 q30 -4 34 22 q2 20 -22 22 h-96 q-18 -2 -18 -10 z"/>
+    <path d="M660 330 q-2 -30 28 -34 q10 -24 36 -20 q24 4 28 24 q28 -4 30 20 q2 18 -20 20 h-84 q-16 -2 -18 -10 z" opacity="0.9"/>
+  </g>
+  <g fill="none" stroke="#E85234" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M730 660 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+    <path d="M160 820 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z" stroke="#6E8AC0" stroke-width="6"/>
+  </g>
+
+  <rect width="900" height="1200" filter="url(#grain)" opacity="0.03"/>
+</svg>

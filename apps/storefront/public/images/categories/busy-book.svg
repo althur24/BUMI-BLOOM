@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" role="img" aria-label="Illustration of a closed felt busy book with a rainbow cover and velcro pieces">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="48" height="48" patternUnits="userSpaceOnUse">
+      <circle cx="9" cy="9" r="3" fill="#FFFFFF" opacity="0.55"/>
+    </pattern>
+  </defs>
+
+  <rect width="1000" height="1250" fill="#FDE6E1"/>
+  <circle cx="180" cy="180" r="110" fill="#F6CB6A" opacity="0.5"/>
+  <circle cx="860" cy="1040" r="150" fill="#E2EAF4" opacity="0.8"/>
+  <rect width="1000" height="1250" fill="url(#dots)"/>
+
+  <!-- book shadow -->
+  <rect x="200" y="270" width="640" height="830" rx="44" fill="#0A3C77" opacity="0.1"/>
+
+  <!-- book cover -->
+  <rect x="180" y="240" width="640" height="830" rx="44" fill="#96ADD6" stroke="#0A3C77" stroke-width="9"/>
+  <rect x="220" y="280" width="560" height="750" rx="26" fill="none" stroke="#F7F3EE" stroke-width="5" stroke-dasharray="16 14"/>
+
+  <!-- spine -->
+  <path d="M180 284 Q180 240 224 240 H250 V1070 H224 Q180 1070 180 1026 Z" fill="#6E8AC0" stroke="#0A3C77" stroke-width="8"/>
+  <g stroke="#F7F3EE" stroke-width="4" stroke-linecap="round" opacity="0.8">
+    <path d="M214 340 V420 M214 480 V560 M214 620 V700 M214 760 V840 M214 900 V980"/>
+  </g>
+
+  <!-- rainbow -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M330 640 A170 170 0 0 1 670 640" stroke="#F9B8AF" stroke-width="34"/>
+    <path d="M366 640 A134 134 0 0 1 634 640" stroke="#F6CB6A" stroke-width="34"/>
+    <path d="M402 640 A98 98 0 0 1 598 640" stroke="#F7F3EE" stroke-width="34"/>
+  </g>
+  <g fill="#F7F3EE" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round">
+    <path d="M310 700 q-2 -40 38 -44 q12 -30 46 -26 q30 4 34 30 q34 -4 38 26 q2 24 -26 26 h-108 q-22 -2 -22 -12 z"/>
+    <path d="M610 760 q-2 -32 30 -36 q10 -24 38 -20 q24 4 28 24 q28 -2 30 22 q2 18 -20 20 h-88 q-18 -2 -18 -10 z" opacity="0.9"/>
+  </g>
+
+  <!-- sun patch -->
+  <g transform="translate(640 420)">
+    <circle cx="0" cy="0" r="52" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6"/>
+    <g stroke="#E89A8F" stroke-width="6" stroke-linecap="round">
+      <path d="M0 -72 V-92 M0 72 V92 M-72 0 H-92 M72 0 H92 M-52 -52 L-66 -66 M52 52 L66 66 M52 -52 L66 -66 M-52 52 L-66 66"/>
+    </g>
+  </g>
+
+  <!-- velcro pieces -->
+  <g transform="translate(300 860)">
+    <g fill="#F9B8AF" stroke="#0A3C77" stroke-width="6">
+      <circle cx="0" cy="0" r="44"/>
+    </g>
+    <g transform="translate(120 0)" fill="#F6CB6A" stroke="#0A3C77" stroke-width="6">
+      <path d="M0 -48 L46 30 L-46 30 Z" stroke-linejoin="round"/>
+    </g>
+    <g transform="translate(240 0)" fill="#F7F3EE" stroke="#0A3C77" stroke-width="6">
+      <rect x="-42" y="-42" width="84" height="84" rx="10"/>
+    </g>
+    <g transform="translate(360 0)" fill="#96ADD6" stroke="#0A3C77" stroke-width="6">
+      <path d="M0 -46 l13 28 l30 4 l-22 20 l6 30 l-27 -15 l-27 15 l6 -30 l-22 -20 l30 -4 Z" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- ribbon -->
+  <path d="M700 240 L700 380 L660 350 L620 380 L620 240 Z" fill="#E85234" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+
+  <rect width="1000" height="1250" filter="url(#grain)" opacity="0.03"/>
+</svg>

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" role="img" aria-label="Girls twirl dress and shoes illustration">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="dots" width="50" height="50" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="3" fill="#FFFFFF" opacity="0.8"/>
+    </pattern>
+  </defs>
+
+  <rect width="1000" height="1250" fill="#FDE6E1"/>
+  <path d="M200 1250 V600 Q200 300 500 300 Q800 300 800 600 V1250 Z" fill="#F7F3EE" opacity="0.8"/>
+  <circle cx="830" cy="170" r="80" fill="#F6CB6A" opacity="0.6"/>
+  <circle cx="140" cy="900" r="120" fill="#96ADD6" opacity="0.35"/>
+
+  <!-- hanger -->
+  <g fill="none" stroke="#0A3C77" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M500 330 q0 -46 36 -46 q28 0 28 26"/>
+    <path d="M352 408 L500 330 L648 408 Z"/>
+  </g>
+
+  <!-- dress -->
+  <path d="M382 418 L418 402 L500 442 L582 402 L618 418 L642 496 L606 532 L606 570 L730 1090 Q500 1148 270 1090 L394 570 L394 532 L358 496 Z"
+        fill="#F9B8AF" stroke="#0A3C77" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M418 402 Q500 436 582 402" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+  <path d="M394 570 Q500 606 606 570" fill="none" stroke="#0A3C77" stroke-width="6" stroke-linecap="round"/>
+  <path d="M500 606 V1090" stroke="#E89A8F" stroke-width="4" opacity="0.5"/>
+  <g fill="#FFFFFF" opacity="0.92">
+    <circle cx="420" cy="700" r="12"/>
+    <circle cx="520" cy="760" r="10"/>
+    <circle cx="600" cy="830" r="13"/>
+    <circle cx="400" cy="860" r="10"/>
+    <circle cx="500" cy="930" r="11"/>
+    <circle cx="590" cy="1000" r="9"/>
+    <circle cx="450" cy="1030" r="12"/>
+  </g>
+  <path d="M520 630 l11 22 l24 3 l-17 16 l4 24 l-22 -12 l-22 12 l4 -24 l-17 -16 l24 -3 Z" fill="#F7F3EE" stroke="#0A3C77" stroke-width="4"/>
+
+  <!-- shoes -->
+  <g transform="translate(348 1140)">
+    <path d="M0 34 Q0 6 36 6 Q72 6 72 38 L68 58 Q36 70 4 58 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M10 34 Q36 20 62 34" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M236 34 Q236 6 272 6 Q308 6 308 38 L304 58 Q272 70 240 58 Z" fill="#96ADD6" stroke="#0A3C77" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M246 34 Q272 20 298 34" fill="none" stroke="#0A3C77" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- doodles -->
+  <g fill="none" stroke="#E85234" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M790 700 l14 30 l33 4 l-24 22 l7 32 l-30 -17 l-30 17 l7 -32 l-24 -22 l33 -4 Z"/>
+  </g>
+  <g fill="none" stroke="#6E8AC0" stroke-width="6" stroke-linecap="round">
+    <path d="M180 560 l10 21 l23 3 l-17 15 l5 22 l-21 -12 l-21 12 l5 -22 l-17 -15 l23 -3 Z"/>
+    <path d="M120 1120 q42 -30 84 0 t84 0"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="200" cy="700" r="7"/>
+    <circle cx="840" cy="480" r="6"/>
+  </g>
+
+  <rect width="1000" height="1250" filter="url(#grain)" opacity="0.03"/>
+</svg>

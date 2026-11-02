@@ -79,7 +79,9 @@
 
   /* ── Typography ── */
   --font-heading:  'Outfit', sans-serif;
-  --font-body:     'Nunito', sans-serif;
+  /* Body/secondary face: rounded, light and playful to match the crayon tone.
+     Quicksand keeps paragraphs airy at 400 where Nunito read too heavy. */
+  --font-body:     'Quicksand', 'Trebuchet MS', system-ui, sans-serif;
   --font-accent:   'Caveat', cursive;
 
   --fw-regular:    400;
