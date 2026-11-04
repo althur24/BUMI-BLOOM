@@ -135,22 +135,15 @@ export async function POST(
           const aiMatch = await aiMatchVendor(np.brand, existing);
           if (aiMatch) resolved = aiMatch;
         }
-        // Safety net: the AI must never rewrite a brand into a vendor whose
-        // normalised form is drastically different (e.g. "Cocohanee" →
-        // "Sabine and Heem" because it was the only existing vendor).
+        // Safety net: the AI may only correct the FORMATTING of the same
+        // brand (case, spaces, suffixes). It must never rewrite a brand into
+        // a different vendor. Validate by running resolveVendorSimple on the
+        // AI's suggestion — if the scraped brand and the AI suggestion are
+        // not the same vendor per the same rules, reject the AI's answer.
         if (resolved !== np.brand) {
-          const normalizedNew = resolved
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "");
-          const normalizedOld = np.brand
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "");
-          const shorter = Math.min(normalizedNew.length, normalizedOld.length);
-          const longer = Math.max(normalizedNew.length, normalizedOld.length);
-          if (!normalizedNew.includes(normalizedOld) &&
-              !normalizedOld.includes(normalizedNew) &&
-              shorter / longer < 0.5) {
-            resolved = np.brand; // keep the scraped brand
+          const crossCheck = resolveVendorSimple(np.brand, [resolved]);
+          if (crossCheck !== resolved) {
+            resolved = np.brand; // not the same brand → keep the scraped brand
           }
         }
         np.brand = resolved;
