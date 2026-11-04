@@ -233,7 +233,10 @@ function mapShopifyProduct(node) {
     name: node.title || '',
     brand: node.vendor || '',
     audience: (meta.audience || '').toLowerCase(),
-    category: (node.productType || '').toLowerCase(),
+    // Shopify product types are free text ("Busy Book", "busy_book") —
+    // normalise to the storefront slug taxonomy (busy-book) so manually
+    // edited products still match the category filters.
+    category: (node.productType || '').trim().toLowerCase().replace(/[\s_]+/g, '-'),
     price: Math.round(priceAmt),
     compareAt: compareAt ? Math.round(compareAt) : undefined,
     fibre: meta.fibre || '',
