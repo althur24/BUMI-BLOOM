@@ -82,6 +82,7 @@ export default function ImportPage() {
   const [removedVariants, setRemovedVariants] = useState<Set<number>>(new Set());
   const [newColorName, setNewColorName] = useState("");
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
   const [elapsed, setElapsed] = useState(0);
@@ -233,11 +234,14 @@ export default function ImportPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       if (json.uploaded && json.uploaded.length > 0) {
+        const uploadedUrls: string[] = json.uploaded.map((u: any) => u.url);
+        setUploadedImages((prev) => [...prev, ...uploadedUrls.filter((u) => !prev.includes(u))]);
         setEdits((d) => {
-          const current = d.images ?? preview?.images ?? [];
+          // Never lose scraped images: fall back to the job's extracted images.
+          const current = d.images ?? active?.extractedJson?.images ?? preview?.images ?? [];
           const images = [...current];
-          for (const u of json.uploaded) {
-            if (!images.includes(u.url)) images.push(u.url);
+          for (const url of uploadedUrls) {
+            if (!images.includes(url)) images.push(url);
           }
           return { ...d, images };
         });
@@ -267,6 +271,7 @@ export default function ImportPage() {
       refreshHistory();
       // Reset form for next import
       setUrlInput(""); setEdits({}); setConfirmPush(false);
+      setUploadedImages([]);
       setRemovedImageIdx(new Set()); setPrimaryImageIdx(0);
       setVariantStockEdits({}); setRemovedVariants(new Set());
     } catch (e: any) {
@@ -554,8 +559,7 @@ export default function ImportPage() {
             {/* Right: images + variants */}
             <div>
               {/* Images */}
-              {activeImages.length > 0 && (
-                <div className="field">
+              <div className="field">
                   <label>Gambar ({activeImages.length - removedImageIdx.size} aktif)</label>
                   <div className="preview-images">
                     {activeImages.map((src, i) => (
@@ -563,6 +567,7 @@ export default function ImportPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={src} alt="" onClick={() => !removedImageIdx.has(i) && setPrimaryImageIdx(i)} style={{ cursor: "pointer" }} />
                         {i === primaryImageIdx && !removedImageIdx.has(i) && <div className="image-primary-tag">Utama</div>}
+                        {uploadedImages.includes(src) && <div className="image-primary-tag" style={{ top: "auto", bottom: 0, background: "#0a6b4f" }}>Upload</div>}
                         <button className="image-remove" type="button"
                           onClick={() => {
                             const n = new Set(removedImageIdx);
@@ -575,10 +580,10 @@ export default function ImportPage() {
                     ))}
                   </div>
                   <p className="hint">
-                    Klik gambar untuk set utama · × untuk hapus
-                    {preview.imageReport ? ` · ${preview.imageReport.used}/${preview.imageReport.total} gambar lolos validasi` : ""}
+                    Klik gambar untuk set utama · × untuk hapus · ↩ untuk batal hapus
+                    {uploadedImages.length > 0 ? ` · ${uploadedImages.length} gambar upload` : ""}
                     {preview.imageReport && preview.imageReport.rejected.length
-                      ? ` · ${preview.imageReport.rejected.length} ditolak`
+                      ? ` · ${preview.imageReport.rejected.length} gambar sumber ditolak`
                       : ""}
                   </p>
                   <input
@@ -605,8 +610,7 @@ export default function ImportPage() {
                   {preview.imageReport && preview.imageReport.items.some((it) => it.lowRes) && (
                     <p className="hint" style={{ color: "#a15c00" }}>Ada gambar resolusi rendah — pertimbangkan hapus/ganti.</p>
                   )}
-                </div>
-              )}
+              </div>
 
               {/* Variants */}
               {activeVariants.length > 0 && (

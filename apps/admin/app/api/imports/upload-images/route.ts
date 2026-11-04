@@ -29,6 +29,13 @@ export async function POST(request: Request) {
 
   const files = form.getAll("files").filter((f): f is File => f instanceof File);
   if (!files.length) return jsonError(400, "Field `files` wajib.");
+  const oversized = files.find((f) => f.size > MAX_BYTES);
+  if (oversized) {
+    return jsonError(
+      413,
+      `File "${oversized.name}" terlalu besar (${Math.round(oversized.size / 1024 / 1024)} MB > 20 MB).`,
+    );
+  }
   if (files.length > MAX_FILES) {
     return jsonError(400, `Maksimal ${MAX_FILES} file per upload.`);
   }
