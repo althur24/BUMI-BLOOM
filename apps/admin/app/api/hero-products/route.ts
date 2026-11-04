@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError } from "@/lib/auth";
-import { adminGraphQL } from "@/lib/shopify";
+import { adminGraphQL, findHeadlessPublicationId } from "@/lib/shopify";
 
 // Free-text Shopify product types ("Busy Book", "tshirts") → the storefront
 // slug taxonomy (busy-book). Kept in sync with mapShopifyProduct in the
@@ -33,6 +33,16 @@ export async function GET() {
   }
 
   try {
+    // Only offer products the storefront can actually render (published to
+    // the Headless channel). If the publication lookup fails, fall back to
+    // the unfiltered list rather than breaking the picker.
+    let headlessPublicationId: string | null = null;
+    try {
+      headlessPublicationId = await findHeadlessPublicationId();
+    } catch (e: any) {
+      console.error("[hero-products] Headless publication lookup failed:", e?.message || e);
+    }
+
     const data = await adminGraphQL<{
       products: {
         edges: {
@@ -43,28 +53,49 @@ export async function GET() {
             vendor: string;
             productType: string | null;
             featuredImage: { url: string } | null;
+            publishedOnPublication?: boolean | null;
           };
         }[];
       };
-    }>(`{
-      products(first: 100, sortKey: TITLE) {
-        edges {
-          node {
-            id
-            handle
-            title
-            vendor
-            productType
-            featuredImage { url }
-          }
-        }
-      }
-    }`);
+    }>(
+      headlessPublicationId
+        ? `query HeroProducts($pubId: ID!) {
+            products(first: 100, sortKey: TITLE) {
+              edges {
+                node {
+                  id
+                  handle
+                  title
+                  vendor
+                  productType
+                  featuredImage { url }
+                  publishedOnPublication(publicationId: $pubId)
+                }
+              }
+            }
+          }`
+        : `{
+            products(first: 100, sortKey: TITLE) {
+              edges {
+                node {
+                  id
+                  handle
+                  title
+                  vendor
+                  productType
+                  featuredImage { url }
+                }
+              }
+            }
+          }`,
+      headlessPublicationId ? { pubId: headlessPublicationId } : undefined,
+    );
 
     const byCategory = new Map<string, { handle: string; title: string; vendor: string; image: string | null }[]>();
     for (const edge of data.products.edges || []) {
       const n = edge.node;
       if (!n.handle) continue;
+      if (headlessPublicationId && n.publishedOnPublication === false) continue;
       const category = normalizeCategory(n.productType);
       if (!byCategory.has(category)) byCategory.set(category, []);
       byCategory.get(category)!.push({
