@@ -18,9 +18,22 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const publicEnv = {
+    checkoutMode: process.env.NEXT_PUBLIC_CHECKOUT_MODE || 'shopify',
+    checkoutApiUrl: process.env.NEXT_PUBLIC_CHECKOUT_API_URL || '',
+    stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+  };
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__BB_PUBLIC_ENV__=${JSON.stringify(publicEnv)};`,
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

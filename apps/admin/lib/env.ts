@@ -29,5 +29,10 @@ export function checkEnv() {
       process.env.SUPABASE_SERVICE_ROLE_KEY,
     ),
     database: real(process.env.DATABASE_URL),
+    stripe: real(
+      process.env.STRIPE_SECRET_KEY,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    ),
+    storefront: real(process.env.STOREFRONT_URL),
   };
 }

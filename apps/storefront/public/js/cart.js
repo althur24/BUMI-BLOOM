@@ -93,7 +93,7 @@ const BumiCart = {
     );
 
     if (existingIndex > -1) {
-      cart[existingIndex].quantity = (cart[existingIndex].quantity || 1) + 1;
+      cart[existingIndex].quantity = Math.min(10, (cart[existingIndex].quantity || 1) + 1);
     } else {
       cart.push({
         ...product,
@@ -141,6 +141,85 @@ const BumiCart = {
   getTotal() {
     const cart = this.getCart();
     return cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+  },
+
+  resolveItemVariant(item) {
+    const product = window.BumiData ? BumiData.getProduct(item.id) : null;
+    return findCartVariant(product, item.color, item.size);
+  },
+
+  /* Resolve a cart line against the live Shopify catalog.
+     Returns { variant } when buyable, otherwise { reason } explaining why
+     the line cannot be checked out. Reasons are customer-facing copy. */
+  resolveCheckoutItem(item) {
+    const product = window.BumiData ? BumiData.getProduct(item.id) : null;
+    if (!product) {
+      return { reason: 'No longer available' };
+    }
+    const variant = findCartVariant(product, item.color, item.size);
+    if (!variant) {
+      return { reason: 'This colour/size is no longer available' };
+    }
+    if (variant.available === false) {
+      return { reason: 'Sold out' };
+    }
+    return { variant };
+  },
+
+  /* Split the cart into what can be checked out and what cannot.
+     Never throws: an unavailable line must not block the rest of the bag. */
+  getCheckoutLines() {
+    const lines = [];
+    const unavailable = [];
+    const cart = this.getCart();
+
+    cart.forEach((item, index) => {
+      const resolved = this.resolveCheckoutItem(item);
+      if (resolved.variant) {
+        lines.push({
+          variantId: resolved.variant.id,
+          quantity: Math.min(10, Number(item.quantity) || 1),
+        });
+      } else {
+        unavailable.push({
+          index,
+          id: item.id,
+          name: item.name || item.id,
+          brand: item.brand || '',
+          color: item.color || '',
+          size: item.size || '',
+          reason: resolved.reason,
+        });
+      }
+    });
+
+    return { lines, unavailable, total: cart.length };
+  },
+
+  /* Remove a single cart line by its stored index. */
+  removeUnavailableItem(index) {
+    return this.removeItem(index);
+  },
+
+  /* Drop every line whose product/variant no longer exists in the catalog.
+     Used on checkout load so a stale bag cannot wedge the flow. */
+  purgeStaleCart() {
+    const cart = this.getCart();
+    if (!cart.length) return { removed: 0 };
+
+    const keep = [];
+    let removed = 0;
+    for (const item of cart) {
+      const product = window.BumiData ? BumiData.getProduct(item.id) : null;
+      if (!product || !findCartVariant(product, item.color, item.size)) {
+        removed += 1;
+        continue;
+      }
+      keep.push(item);
+    }
+
+    if (removed > 0) this.saveCart(keep);
+    return { removed };
   },
 
   getItemCount() {
@@ -379,7 +458,7 @@ const BumiCart = {
             <div class="bb-cart-drawer__total-row"><span>Subtotal</span><strong data-cart-subtotal>—</strong></div>
             <div class="bb-cart-drawer__total-row bb-cart-drawer__total-row--discount" data-cart-discount hidden><span data-cart-discount-label>Discount</span><strong data-cart-discount-value>—</strong></div>
           </div>
-          <p class="bb-cart-drawer__note">Shipping &amp; taxes finalized at Shopify checkout.</p>
+          <p class="bb-cart-drawer__note">Shipping &amp; GST finalized at checkout.</p>
           <button class="btn btn--primary btn--full" type="button" data-cart-checkout>Checkout</button>
           <a class="btn btn--ghost btn--full" data-cart-view href="${this._storeHref()}">View Bag</a>
         </footer>
@@ -678,7 +757,7 @@ const BumiCart = {
     button.textContent = 'Preparing checkout…';
     try {
       if (window.BumiData && BumiData.ready) await BumiData.ready();
-      const url = await this.createShopifyCart();
+
       if (window.BumiTrack) {
         const items = this.getCart().map((item) => ({
           id: item.id,
@@ -692,6 +771,14 @@ const BumiCart = {
           items,
         });
       }
+
+      const mode = window.__BB_PUBLIC_ENV__ && window.__BB_PUBLIC_ENV__.checkoutMode;
+      if (mode === 'stripe') {
+        window.location.href = '/checkout';
+        return;
+      }
+
+      const url = await this.createShopifyCart();
       window.location.href = url;
     } catch (err) {
       console.error('Checkout failed', err);
@@ -1200,3 +1287,27 @@ window.addEventListener('storage', (event) => {
 
 // Promo kini local config (tidak perlu fetch). Trigger initial cart badge.
 window.dispatchEvent(new CustomEvent('cart-updated'));
+
+(function persistCheckoutAttribution() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const keys = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'gclid', 'fbclid'
+    ];
+    const stored = JSON.parse(localStorage.getItem('bb-attribution') || '{}') || {};
+    let changed = false;
+    for (const key of keys) {
+      const value = params.get(key);
+      if (value) {
+        stored[key] = value;
+        changed = true;
+      }
+    }
+    if (changed) {
+      stored.eventSourceUrl = window.location.href;
+      stored.ts = Date.now();
+      localStorage.setItem('bb-attribution', JSON.stringify(stored));
+    }
+  } catch (e) {}
+})();

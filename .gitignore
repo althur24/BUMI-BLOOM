@@ -6,6 +6,9 @@ node_modules/
 .env.local
 .env.*.local
 
+# Local HTTPS certificates (mkcert)
+.certs/
+
 # Build output
 dist/
 build/

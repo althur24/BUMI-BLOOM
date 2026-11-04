@@ -1520,12 +1520,11 @@
     const el = $('tab-promotions');
     el.innerHTML =
       '<h2 class="admin-tab__title">Promotions</h2>' +
-      '<div class="admin-toolbar">' +
-        '<span class="admin-toolbar__spacer"></span>' +
-        '<button type="button" class="btn btn--primary" id="promo-new">+ New promotion</button>' +
-      '</div>' +
+      '<p style="margin-bottom:var(--space-4);padding:var(--space-4);border:2px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-surface);font-size:var(--text-sm);">' +
+        'Discount codes are created and managed in <strong>Shopify Admin → Discounts</strong>. ' +
+        'This legacy table is read-only and is not used at Stripe checkout.' +
+      '</p>' +
       '<div id="promotions-table"><p>Loading…</p></div>';
-    $('promo-new').addEventListener('click', () => openPromoModal(null));
     refreshPromotions();
   }
 
@@ -1548,7 +1547,7 @@
     if (!wrap) return;
     wrap.innerHTML =
       '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>' +
-        '<th>Code</th><th>Label</th><th>Type</th><th>Value</th><th>Starts</th><th>Ends</th><th>Used / Limit</th><th>Active</th><th>Actions</th>' +
+        '<th>Code</th><th>Label</th><th>Type</th><th>Value</th><th>Starts</th><th>Ends</th><th>Used / Limit</th>' +
       '</tr></thead><tbody>' +
       (promoState.rows.length
         ? promoState.rows.map((p) =>
@@ -1560,18 +1559,9 @@
               '<td>' + esc(fmtDateTime(p.startsAt)) + '</td>' +
               '<td>' + esc(fmtDateTime(p.endsAt)) + '</td>' +
               '<td>' + (p.usedCount || 0) + ' / ' + (p.usageLimit != null ? p.usageLimit : '∞') + '</td>' +
-              '<td><input type="checkbox" data-promo-active="' + esc(p.id) + '"' + (p.isActive ? ' checked' : '') + '></td>' +
-              '<td><div class="admin-table__actions">' +
-                '<button type="button" class="btn btn--ghost btn--sm" data-promo-edit="' + esc(p.id) + '">Edit</button>' +
-              '</div></td>' +
             '</tr>').join('')
-        : '<tr><td colspan="9" class="admin-table__empty">No promotions yet.</td></tr>') +
+        : '<tr><td colspan="7" class="admin-table__empty">No legacy promotions found.</td></tr>') +
       '</tbody></table></div>';
-
-    wrap.querySelectorAll('[data-promo-edit]').forEach((b) =>
-      b.addEventListener('click', () => openPromoModal(b.dataset.promoEdit)));
-    wrap.querySelectorAll('[data-promo-active]').forEach((cb) =>
-      cb.addEventListener('change', () => togglePromoActive(cb.dataset.promoActive, cb.checked)));
   }
 
   async function togglePromoActive(id, isActive) {

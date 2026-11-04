@@ -1,0 +1,99 @@
+<div class="announcement-bar">
+  <span>Thank you for shopping with BUMI / BLOOM</span>
+</div>
+
+<header class="header checkout-header">
+  <div class="container header__inner">
+    <a href="/" class="header__logo">BUMI / BLOOM</a>
+    <div class="checkout-header__meta">
+      <span class="checkout-header__secure">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Secure checkout
+      </span>
+      <a href="/products" class="checkout-header__back">Continue shopping</a>
+    </div>
+  </div>
+</header>
+
+<main class="checkout-page">
+  <div class="container">
+    <section class="order-success" aria-live="polite">
+      <div id="order-loading" class="checkout-state">
+        <div class="checkout-spinner" aria-hidden="true"></div>
+        <h2>Loading your order</h2>
+        <p>Just a moment while we confirm the details.</p>
+      </div>
+
+      <div id="order-confirmed" hidden>
+        <div class="order-success__icon" aria-hidden="true">✓</div>
+        <p class="checkout-eyebrow">Thank you</p>
+        <h1 class="checkout-title">Your order is confirmed</h1>
+        <p class="order-success__lead">
+          We have received your order and a confirmation email is on its way.
+        </p>
+
+        <div class="order-success__card">
+          <div class="order-success__row">
+            <span>Order number</span>
+            <strong id="order-number">—</strong>
+          </div>
+          <div class="order-success__row">
+            <span>Confirmation sent to</span>
+            <strong id="order-email">—</strong>
+          </div>
+          <div class="order-success__row">
+            <span>Estimated delivery</span>
+            <strong>5–8 business days</strong>
+          </div>
+          <div class="order-success__row">
+            <span>Shipping</span>
+            <strong>Australia-wide</strong>
+          </div>
+        </div>
+
+        <div class="order-success__actions">
+          <a href="#" class="btn btn--primary" id="order-track" hidden target="_blank" rel="noopener">
+            Track your order
+          </a>
+          <a href="/products" class="btn btn--secondary">Continue shopping</a>
+        </div>
+
+        <div class="order-success__help">
+          <p>
+            Questions about your order? Email us and we will help within one business day.
+          </p>
+          <p class="order-success__note" id="order-track-note" hidden>
+            Tracking details become available once your parcel is on its way.
+          </p>
+        </div>
+      </div>
+
+      <div id="order-pending" class="checkout-state" hidden>
+        <div class="checkout-spinner" aria-hidden="true"></div>
+        <h2>We are still confirming your order</h2>
+        <p>Please keep this page open. This usually takes a few seconds.</p>
+      </div>
+
+      <div id="order-missing" class="checkout-state checkout-state--failed" hidden>
+        <div class="checkout-state__icon" aria-hidden="true">!</div>
+        <h2>We could not find that order</h2>
+        <p>The link may have expired, or the order is still being processed.</p>
+        <div class="checkout-state__actions">
+          <a href="/cart" class="btn btn--primary">Back to bag</a>
+          <a href="/products" class="btn btn--ghost">Continue shopping</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="checkout-footer">
+  <div class="container checkout-footer__inner">
+    <span>© 2026 BUMI / BLOOM</span>
+    <div class="checkout-footer__links">
+      <a href="/products">Shop</a>
+      <a href="/cart">Bag</a>
+      <a href="/journal">Journal</a>
+    </div>
+  </div>
+</footer>

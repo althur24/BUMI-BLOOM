@@ -372,6 +372,9 @@ model StripeCheckout {
   shopifyOrderName       String?
   shopifyTotalAudCents   Int?
   shopifyFinancialStatus String?
+  statusPageUrl          String?
+  emailSendingAt         DateTime?
+  emailSentAt            DateTime?
   errorMessage           String?
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt

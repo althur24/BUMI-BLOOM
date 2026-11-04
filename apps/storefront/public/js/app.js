@@ -222,7 +222,8 @@
 
       try {
         const adminApi = (window.BumiConfig && BumiConfig.adminApiUrl)
-          || 'http://localhost:3001';
+          || (window.__BB_PUBLIC_ENV__ && window.__BB_PUBLIC_ENV__.checkoutApiUrl)
+          || 'http://localhost:4001';
         const res = await fetch(adminApi + '/api/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

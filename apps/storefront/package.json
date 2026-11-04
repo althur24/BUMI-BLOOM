@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "https": "node scripts/dev-https.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
