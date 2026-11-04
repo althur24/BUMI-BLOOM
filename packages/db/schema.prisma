@@ -337,6 +337,17 @@ model NewsletterSubscriber {
   @@index([subscribedAt])
 }
 
+// Hero homepage arch cards. Only slots 1, 3 and 5 are product slots —
+// slots 2/4 are fixed character cards, not stored here. productHandle is a
+// Shopify product handle; null → storefront falls back to the default
+// illustration baked into content/index.html.
+model HeroCard {
+  position      Int      @id
+  productHandle String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 // ── Stripe checkout ─────────────────────────────────────────────────────────
 // Stripe is the payment source of truth; Shopify remains the commerce source
 // of truth (order, stock, customer, reporting). One row per checkout session.

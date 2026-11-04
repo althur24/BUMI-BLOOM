@@ -10,6 +10,7 @@ function __bbProductsInit() {
   if (!window.BumiData) return;
   BumiData.ready().then(() => {
     if (document.getElementById('product-grid')) initPLP();
+    if (document.querySelector('.hero-arch-card[data-hero-slot]')) initHeroArchCards();
     if (document.getElementById('busy-book-grid')) {
       initBusyBookGrid();
       window.addEventListener('currency-updated', initBusyBookGrid);
@@ -116,6 +117,47 @@ function initHomeCollection() {
     BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',
       items: featured.map(p => ({ id: p.id, name: p.name, price: p.price })) });
   }
+}
+
+/* ---------- Homepage hero arch cards (admin-managed) ---------- */
+
+// Slots 1/3/5 of the hero arch fan can show a curated product instead of the
+// default illustration. The selection comes from the admin app (Supabase);
+// the product data itself is already in BumiData (single Shopify fetch), so
+// this only swaps the image and wraps it in a link to the PDP. Any failure
+// (network, missing product, empty slot) silently keeps the default
+// illustration — the hero never breaks.
+function initHeroArchCards() {
+  const adminApi = (window.BumiConfig && BumiConfig.adminApiUrl)
+    || (window.__BB_PUBLIC_ENV__ && window.__BB_PUBLIC_ENV__.checkoutApiUrl)
+    || 'http://localhost:4001';
+
+  fetch(adminApi + '/api/hero-cards')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      const cards = (data && data.cards) || [];
+      cards.forEach((card) => {
+        if (!card || !card.productHandle) return;
+        const el = document.querySelector('.hero-arch-card[data-hero-slot="' + card.position + '"]');
+        const product = BumiData.getProduct(card.productHandle);
+        if (!el || !product || !product.image) return;
+
+        const img = el.querySelector('img');
+        if (!img) return;
+        img.src = product.image;
+        img.alt = product.name;
+        img.removeAttribute('loading');
+
+        el.classList.add('hero-arch-card--product');
+        const link = document.createElement('a');
+        link.className = 'hero-arch-card__link';
+        link.href = '/products/' + product.id;
+        link.setAttribute('aria-label', product.name);
+        img.replaceWith(link);
+        link.appendChild(img);
+      });
+    })
+    .catch(() => { /* admin unreachable → default illustrations stay */ });
 }
 
 /* ---------- Busy Book page grid ---------- */
