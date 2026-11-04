@@ -200,11 +200,16 @@ export function resolveVendorSimple(
   for (const v of existingVendors) {
     if (normalizeVendor(v) === normBrand) return v;
   }
-  // partial containment (one contains the other)
+  // Partial containment is only safe when the shorter side is a substantial
+  // fraction of the longer side (>= 70%). Without this guard, "Heem" would
+  // match "Sabine and Heem" and unrelated brands get absorbed.
   for (const v of existingVendors) {
     const nv = normalizeVendor(v);
-    if (nv.length > 2 && (nv.includes(normBrand) || normBrand.includes(nv))) {
-      return v;
+    if (nv.length < 3 || normBrand.length < 3) continue;
+    if (nv.includes(normBrand) || normBrand.includes(nv)) {
+      const shorter = Math.min(nv.length, normBrand.length);
+      const longer = Math.max(nv.length, normBrand.length);
+      if (shorter / longer >= 0.7) return v;
     }
   }
   return brand; // no match → new vendor

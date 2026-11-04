@@ -220,9 +220,16 @@ export async function aiMatchVendor(
   if (!key || existingVendors.length === 0) return null;
   try {
     const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const prompt = `Match the scraped brand "${brand}" to one of these existing Shopify vendors (case-insensitive, fuzzy match — account for missing spaces, punctuation, suffixes like "official"):
+    const prompt = `A scraped marketplace shop name needs to be mapped to an existing Shopify vendor list.
 
+Scraped brand: "${brand}"
+Existing vendors:
 ${existingVendors.map((v) => "- " + v).join("\n")}
+
+Rules:
+- Only return a vendor from the list if it is CLEARLY the same brand (same name, ignoring case, spaces, punctuation, or suffixes like "official"/"shop").
+- If the scraped brand is a DIFFERENT company/store, return "NEW" — do NOT force a match.
+- When in doubt, return "NEW".
 
 Return JSON: {"vendor": "<exact vendor name from the list>" or "NEW"}`;
 
