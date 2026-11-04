@@ -268,6 +268,23 @@ export function colorsFromVariants(
       hex: hexByName.get(key) || resolveColorHex(name, v.hex, fallback),
     });
   }
+
+  // Single-colour products (e.g. "BIM Ribbed Shirt - Butter") have no Color
+  // option on their variants, so fall back to the explicitly detected colours
+  // — the colour filter on the storefront must still surface them.
+  if (!out.length) {
+    for (const c of explicit || []) {
+      const name = String(c?.name || "").trim();
+      if (!name || isPlaceholderColor(name)) continue;
+      const key = normalizeColorName(name);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        name,
+        hex: resolveColorHex(name, c.hex, fallback),
+      });
+    }
+  }
   return out;
 }
 

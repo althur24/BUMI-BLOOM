@@ -10,7 +10,7 @@ import {
   sniffImage,
 } from "../lib/image-utils";
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
-import { detectColorNames, hexForColorName } from "../lib/colors";
+import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { canonicalizeUrl } from "../lib/urls";
 
 let passed = 0;
@@ -138,6 +138,33 @@ test("color detection avoids substrings and finds fashion names", () => {
   assert.deepEqual(detectColorNames("Message from us"), []);
   assert.deepEqual(detectColorNames("BIM Ribbed Shirt - Butter - Kids Tops"), ["Butter"]);
   assert.equal(hexForColorName("Butter"), "#F3E3A3");
+});
+
+test("colorsFromVariants surfaces single-colour products without a Color option", () => {
+  // A product like "BIM Ribbed Shirt - Butter" has no Color option on its
+  // variants (Size only) but still has a detected colourway.
+  const result = colorsFromVariants(
+    [
+      { options: { Size: "S (1-2 YO)" } },
+      { options: { Size: "M (3-4 YO)" } },
+    ],
+    [{ name: "Butter", hex: "#F3E3A3" }],
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0].name, "Butter");
+  assert.equal(result[0].hex, "#F3E3A3");
+
+  // Multi-colour variants still take priority over the explicit list.
+  const multi = colorsFromVariants(
+    [
+      { options: { Color: "Blue", Size: "S" } },
+      { options: { Color: "Pink", Size: "S" } },
+    ],
+    [{ name: "Butter", hex: "#F3E3A3" }],
+  );
+  assert.equal(multi.length, 2);
+  assert.equal(multi[0].name, "Blue");
+  assert.equal(multi[1].name, "Pink");
 });
 
 test("category and audience inference", () => {
