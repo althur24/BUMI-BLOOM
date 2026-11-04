@@ -81,6 +81,8 @@ export default function ImportPage() {
   const [variantStockEdits, setVariantStockEdits] = useState<Record<number, number>>({});
   const [removedVariants, setRemovedVariants] = useState<Set<number>>(new Set());
   const [newColorName, setNewColorName] = useState("");
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
   const [elapsed, setElapsed] = useState(0);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +217,42 @@ export default function ImportPage() {
       body.colors = buildColors(preview, keptVariants);
     }
     return body;
+  }
+
+  async function uploadImages(files: FileList) {
+    if (!files.length) return;
+    setError(""); setUploadingImages(true);
+    try {
+      const form = new FormData();
+      for (const f of Array.from(files)) form.append("files", f);
+      const res = await fetch("/api/imports/upload-images", {
+        method: "POST",
+        body: form,
+      });
+      if (res.status === 401) { router.replace("/login"); return; }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (json.uploaded && json.uploaded.length > 0) {
+        setEdits((d) => {
+          const current = d.images ?? preview?.images ?? [];
+          const images = [...current];
+          for (const u of json.uploaded) {
+            if (!images.includes(u.url)) images.push(u.url);
+          }
+          return { ...d, images };
+        });
+      }
+      if (json.rejected && json.rejected.length > 0) {
+        const detail = json.rejected.map((r: any) => `${r.name}: ${r.reason}`).join("; ");
+        setError(`Beberapa gambar ditolak — ${detail}`);
+      }
+    } catch (err: any) {
+      if (err.message === "NO_SESSION") router.replace("/login");
+      else setError(err.message);
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   async function onPush() {
@@ -543,6 +581,27 @@ export default function ImportPage() {
                       ? ` · ${preview.imageReport.rejected.length} ditolak`
                       : ""}
                   </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        uploadImages(e.target.files);
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn btn--secondary btn--sm"
+                    type="button"
+                    disabled={uploadingImages}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ marginTop: 8 }}
+                  >
+                    {uploadingImages ? "Mengupload…" : "+ Upload gambar sendiri"}
+                  </button>
                   {preview.imageReport && preview.imageReport.items.some((it) => it.lowRes) && (
                     <p className="hint" style={{ color: "#a15c00" }}>Ada gambar resolusi rendah — pertimbangkan hapus/ganti.</p>
                   )}
