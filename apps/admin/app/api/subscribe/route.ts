@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   }
 
   // Validate source (optional)
-  const validSources = ["HOMEPAGE", "BRANDS", "JOURNAL"];
+  const validSources = ["HOMEPAGE", "BRANDS", "JOURNAL", "BUSY_BOOK"];
   const source =
     typeof body?.source === "string" && validSources.includes(body.source)
       ? body.source

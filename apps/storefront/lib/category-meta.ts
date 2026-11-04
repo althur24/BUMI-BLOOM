@@ -4,6 +4,7 @@ const MAP: Record<string, CategoryMeta> = {
   girls:       { title: "Girls' Collection",  subtitle: "Twirl-ready dresses, soft tees and playful layers for every adventure.", breadcrumb: "Girls' Collection" },
   boys:        { title: "Boys' Collection",   subtitle: "Tough-but-comfy basics built for climbing, running and exploring.", breadcrumb: "Boys' Collection" },
   baby:        { title: "Baby Collection",    subtitle: "Gentle, soft pieces for the littlest members of the family.", breadcrumb: "Baby Collection" },
+  "busy-book": { title: "The Busy Book",      subtitle: "Soft, reusable activity books for screen-free, quiet-time play — handmade in Indonesia.", breadcrumb: "Busy Book" },
   new:         { title: "New This Week",      subtitle: "Fresh drops from our favourite Indonesian kids brands.", breadcrumb: "New This Week" },
   sale:        { title: "On Sale",            subtitle: "Loved pieces at joyful prices — grab them before they grow out!", breadcrumb: "On Sale" },
   bestsellers: { title: "Bestsellers",        subtitle: "The pieces other families cannot stop loving.", breadcrumb: "Bestsellers" },

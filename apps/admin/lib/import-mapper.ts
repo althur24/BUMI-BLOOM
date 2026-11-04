@@ -71,9 +71,12 @@ function textToHtml(text: string | undefined): string {
 
 function normaliseCategory(value: string | undefined): string {
   const v = String(value || "").toLowerCase().trim();
-  if (["tshirts", "shorts", "dresses", "outerwear", "accessories", "baby"].includes(v)) {
+  if (["busy-book", "tshirts", "shorts", "dresses", "outerwear", "accessories", "baby"].includes(v)) {
     return v;
   }
+  // "BUSY_BOOK" (Gemini) / "busy book" → the canonical hyphenated slug.
+  const v2 = v.replace(/[\s_]+/g, "-");
+  if (v2 !== v && ["busy-book"].includes(v2)) return v2;
   return inferCategory(v);
 }
 

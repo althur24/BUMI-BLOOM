@@ -326,7 +326,7 @@ model NewsletterSubscriber {
   id             String           @id @default(cuid())
   email          String           @unique
   status         SubscriberStatus @default(ACTIVE)
-  source         String?          // "HOMEPAGE" | "BRANDS" | "JOURNAL"
+  source         String?          // "HOMEPAGE" | "BRANDS" | "JOURNAL" | "BUSY_BOOK"
   promoCodeSent  Boolean          @default(true)
   subscribedAt   DateTime         @default(now())
   unsubscribedAt DateTime?

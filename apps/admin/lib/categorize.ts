@@ -1,9 +1,10 @@
 // Rule-based product categorisation for the storefront taxonomy
-// (tshirts | shorts | dresses | outerwear | accessories | baby) and audience
-// (girls | boys | baby | unisex). AI enrichment can refine these, but imports
-// must be usable when GEMINI_API_KEY is not configured.
+// (busy-book | tshirts | shorts | dresses | outerwear | accessories | baby)
+// and audience (girls | boys | baby | unisex). AI enrichment can refine
+// these, but imports must be usable when GEMINI_API_KEY is not configured.
 
 export type StoreCategory =
+  | "busy-book"
   | "tshirts"
   | "shorts"
   | "dresses"
@@ -13,6 +14,13 @@ export type StoreCategory =
   | "";
 
 const CATEGORY_RULES: { category: Exclude<StoreCategory, "">; re: RegExp }[] = [
+  // Busy books are toys, not clothing — and their titles almost always also
+  // mention ages/babies ("...usia 0 bulan... bayi"), so this rule must run
+  // before the baby rule or every busy book would be miscategorised as baby.
+  {
+    category: "busy-book",
+    re: /\b(busy ?books?|quiet ?books?|activity ?books?|soft ?books?|cloth ?books?|fabric ?books?|felt ?books?|contrast ?books?|buku (?:mainan|maianan|edukasi|aktivitas|activity)|softbook)\b/i,
+  },
   {
     category: "baby",
     re: /\b(baby|bayi|newborn|infant|romper|bodysuit|sleepsuit|onesie|0-?24\s*m)\b/i,

@@ -207,6 +207,7 @@
       const path = window.location.pathname;
       const source = path.indexOf('/brands') === 0 ? 'BRANDS'
         : path.indexOf('/journal') === 0 ? 'JOURNAL'
+        : path.indexOf('/busy-book') === 0 ? 'BUSY_BOOK'
         : 'HOMEPAGE';
 
       let hint = newsletterForm.querySelector('.newsletter__code-hint');

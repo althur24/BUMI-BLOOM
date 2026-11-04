@@ -387,6 +387,7 @@ const BumiData = {
       girls:      { title: "Girls' Collection",  subtitle: 'Twirl-ready dresses, soft tees and playful layers for every adventure.' },
       boys:       { title: "Boys' Collection",   subtitle: 'Tough-but-comfy basics built for climbing, running and exploring.' },
       baby:       { title: 'Baby Collection',    subtitle: 'Gentle, soft pieces for the littlest members of the family.' },
+      'busy-book': { title: 'The Busy Book',    subtitle: 'Soft, reusable activity books for screen-free, quiet-time play — handmade in Indonesia.' },
       new:        { title: 'New This Week',      subtitle: 'Fresh drops from our favourite Indonesian kids brands.' },
       sale:       { title: 'On Sale',            subtitle: 'Loved pieces at joyful prices — grab them before they grow out!' },
       bestsellers:{ title: 'Bestsellers',        subtitle: 'The pieces other families cannot stop loving.' },

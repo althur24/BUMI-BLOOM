@@ -13,7 +13,7 @@ export default function Page() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: body }} />
-      <Scripts srcs={STOREFRONT_CHAIN} />
+      <Scripts srcs={[...STOREFRONT_CHAIN, '/js/products.js']} />
     </>
   );
 }

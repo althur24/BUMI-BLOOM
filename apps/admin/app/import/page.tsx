@@ -501,6 +501,7 @@ export default function ImportPage() {
                   <select className="input" value={preview.specs?.category || ""}
                     onChange={(e) => setEdits((d) => ({ ...d, specs: { ...(d.specs || preview.specs || {}), category: e.target.value } }))}>
                     <option value="">—</option>
+                    <option value="busy-book">Busy Book</option>
                     <option value="tshirts">T-Shirts &amp; Tops</option>
                     <option value="shorts">Shorts &amp; Bottoms</option>
                     <option value="dresses">Dresses</option>

@@ -10,6 +10,10 @@ function __bbProductsInit() {
   if (!window.BumiData) return;
   BumiData.ready().then(() => {
     if (document.getElementById('product-grid')) initPLP();
+    if (document.getElementById('busy-book-grid')) {
+      initBusyBookGrid();
+      window.addEventListener('currency-updated', initBusyBookGrid);
+    }
     if (document.getElementById('collection-grid')) {
       initHomeCollection();
       window.addEventListener('currency-updated', initHomeCollection);
@@ -111,6 +115,35 @@ function initHomeCollection() {
   if (window.BumiTrack) {
     BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',
       items: featured.map(p => ({ id: p.id, name: p.name, price: p.price })) });
+  }
+}
+
+/* ---------- Busy Book page grid ---------- */
+
+function initBusyBookGrid() {
+  const grid = document.getElementById('busy-book-grid');
+  if (!grid) return;
+  const section = grid.closest('section');
+
+  if (BumiData.loadError) {
+    grid.innerHTML = emptyHTML("We couldn't load our busy books just now — please check your connection and try again shortly.");
+    return;
+  }
+
+  const list = BumiData.filterByCategory('busy-book');
+
+  // No busy books pushed yet: hide the shop section entirely so the page
+  // gracefully falls back to the pure marketing layout.
+  if (!list.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  if (section) section.style.display = '';
+
+  grid.innerHTML = list.map((p, i) => productCardHTML(p, i)).join('');
+  if (window.BumiTrack) {
+    BumiTrack.event('view_item_list', { item_list_name: 'Busy Book collection',
+      items: list.map(p => ({ id: p.id, name: p.name, price: p.price })) });
   }
 }
 
