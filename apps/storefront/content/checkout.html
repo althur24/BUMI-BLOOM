@@ -83,9 +83,32 @@
         </div>
 
         <div id="checkout-processing" class="checkout-state" hidden aria-live="polite">
-          <div class="checkout-spinner" aria-hidden="true"></div>
-          <h2>Processing your order</h2>
-          <p>Please keep this page open. This usually takes a few seconds.</p>
+          <div class="checkout-processing__steps" id="checkout-processing-steps">
+            <div class="checkout-step is-active" data-step="payment">
+              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__spinner" aria-hidden="true"></span>
+              <span class="checkout-step__label">Payment received</span>
+            </div>
+            <div class="checkout-step" data-step="order">
+              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__spinner" aria-hidden="true"></span>
+              <span class="checkout-step__label">Creating your order</span>
+            </div>
+            <div class="checkout-step" data-step="email">
+              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__spinner" aria-hidden="true"></span>
+              <span class="checkout-step__label">Sending confirmation</span>
+            </div>
+          </div>
+          <div class="checkout-processing__bar">
+            <div class="checkout-processing__bar-fill" id="checkout-processing-bar"></div>
+          </div>
+          <p class="checkout-processing__note" id="checkout-processing-note">
+            Confirming your payment with Stripe…
+          </p>
+          <p class="checkout-processing__hint">
+            This usually takes 5–10 seconds. Please keep this page open.
+          </p>
         </div>
 
         <div id="checkout-failed" class="checkout-state checkout-state--failed" hidden aria-live="polite">

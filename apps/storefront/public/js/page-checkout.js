@@ -32,6 +32,8 @@
     stripeSection: $('checkout-stripe-section'),
     stripeMount: $('stripe-checkout'),
     processing: $('checkout-processing'),
+    processingNote: $('checkout-processing-note'),
+    processingSteps: $('checkout-processing-steps'),
     failed: $('checkout-failed'),
     failedMessage: $('checkout-failed-message'),
     failedActions: $('checkout-failed-actions'),
@@ -125,10 +127,29 @@
   function attachFormEvents(form) {
     if (!form || typeof form.on !== 'function') return;
     try {
-      form.on('confirm', () => showProcessing());
+      // Do NOT hide the form on 'confirm' — it only means the Pay button was
+      // clicked, not that the payment succeeded. Hiding it here would swallow
+      // any payment error that Stripe renders inside the form.
+      form.on('confirm', () => {
+        if (els.processingNote) {
+          els.processingNote.textContent = 'Processing your payment…';
+          els.processingNote.hidden = false;
+        }
+      });
       form.on('change', (event) => {
         const status = event && event.session && event.session.status;
         if (status === 'complete') showProcessing();
+        if (status === 'expired') {
+          clearStoredSession();
+          showFailed('This checkout session expired. Please try again.', true);
+        }
+      });
+      form.on('loaderror', (event) => {
+        console.error('[checkout] Stripe form load error', event);
+        destroyEmbedded();
+        setVisible('ready');
+        showError('We could not load the payment form. Please try again.');
+        showPrepayFallback();
       });
     } catch {}
   }
@@ -505,6 +526,7 @@
   function showSuccess(data) {
     stopPolling();
     hideFallbacks();
+    markAllStepsDone();
     // Hand off to the dedicated confirmation page so the order reference is
     // bookmarkable and survives a reload. The cart is cleared first.
     const checkoutId = data.checkoutId || state.checkoutId;
@@ -568,7 +590,16 @@
       );
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        // Update progress steps based on real status from the server.
+        if (paymentStarted) {
+          if (data.paymentStatus === 'paid') {
+            updateProcessingStep(data.orderName ? 'email' : 'order');
+          } else if (data.stripeStatus === 'complete') {
+            updateProcessingStep('order');
+          }
+        }
         if (data.status === 'PAID') {
+          updateProcessingStep('done');
           showSuccess(data);
           return;
         }
@@ -604,10 +635,62 @@
     );
   }
 
+  function updateProcessingStep(step, data) {
+    if (els.processingSteps) {
+      const steps = els.processingSteps.querySelectorAll('[data-step]');
+      for (const el of steps) {
+        const name = el.dataset.step;
+        const spinner = el.querySelector('.checkout-step__spinner');
+        const check = el.querySelector('.checkout-step__check');
+        if (name === step) {
+          el.classList.add('is-active');
+          if (spinner) spinner.hidden = false;
+          if (check) check.hidden = true;
+        } else if (el.classList.contains('is-active')) {
+          el.classList.remove('is-active');
+          el.classList.add('is-done');
+          if (spinner) spinner.hidden = true;
+          if (check) check.hidden = false;
+        }
+      }
+    }
+
+    const bar = document.getElementById('checkout-processing-bar');
+    if (bar) {
+      const pct = { payment: 20, order: 60, email: 88, done: 100 };
+      bar.style.width = (pct[step] || 10) + '%';
+    }
+
+    if (els.processingNote) {
+      const messages = {
+        payment: 'Confirming your payment with Stripe…',
+        order: 'Creating your order in Shopify…',
+        email: 'Sending your confirmation email…',
+        done: 'All done! Redirecting…',
+      };
+      els.processingNote.textContent = messages[step] || 'Processing…';
+    }
+  }
+
+  function markAllStepsDone() {
+    if (!els.processingSteps) return;
+    els.processingSteps.querySelectorAll('[data-step]').forEach((el) => {
+      el.classList.remove('is-active');
+      el.classList.add('is-done');
+      const spinner = el.querySelector('.checkout-step__spinner');
+      const check = el.querySelector('.checkout-step__check');
+      if (spinner) spinner.hidden = true;
+      if (check) check.hidden = false;
+    });
+    const bar = document.getElementById('checkout-processing-bar');
+    if (bar) bar.style.width = '100%';
+  }
+
   function showProcessing() {
     hideFallbacks();
     setVisible('processing');
     state.pollCount = 0;
+    updateProcessingStep('payment');
     stopPolling();
     pollStatus({ paymentStarted: true });
   }
