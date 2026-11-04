@@ -596,38 +596,47 @@ export default function ImportPage() {
                 )}
                 {activeColors.map((c, i) => (
                   <div key={i} className="color-row">
-                    {preview.colorImages && Object.keys(preview.colorImages).length > 0 && (
-                      <select
-                        className="input"
-                        style={{ maxWidth: 130 }}
-                        aria-label={`Gambar untuk ${c.name}`}
-                        value={
-                          Object.entries(preview.colorImages).find(
-                            ([k]) => k.toLowerCase() === c.name.toLowerCase(),
-                          )?.[1] || ""
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setEdits((d) => {
-                            const map = { ...((d.colorImages as Record<string, string>) || preview.colorImages || {}) };
-                            for (const key of Object.keys(map)) {
-                              if (key.toLowerCase() === c.name.toLowerCase()) delete map[key];
-                            }
-                            if (value) map[c.name] = value;
-                            return { ...d, colorImages: map };
-                          });
-                        }}
-                      >
-                        <option value="">— gambar —</option>
-                        {activeImages
-                          .filter((_, idx) => !removedImageIdx.has(idx))
-                          .map((src, idx) => (
-                            <option key={idx} value={src}>
-                              Gambar {idx + 1}
-                            </option>
-                          ))}
-                      </select>
-                    )}
+                    {preview.colorImages && Object.keys(preview.colorImages).length > 0 && (() => {
+                      const currentSrc =
+                        Object.entries(preview.colorImages).find(
+                          ([k]) => k.toLowerCase() === c.name.toLowerCase(),
+                        )?.[1] || "";
+                      const pick = (value: string) => {
+                        setEdits((d) => {
+                          const map = { ...((d.colorImages as Record<string, string>) || preview.colorImages || {}) };
+                          for (const key of Object.keys(map)) {
+                            if (key.toLowerCase() === c.name.toLowerCase()) delete map[key];
+                          }
+                          if (value) map[c.name] = value;
+                          return { ...d, colorImages: map };
+                        });
+                      };
+                      return (
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 200 }}>
+                          {activeImages
+                            .filter((_, idx) => !removedImageIdx.has(idx))
+                            .slice(0, 10)
+                            .map((src, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                title={`Gambar ${idx + 1}`}
+                                aria-label={`Pilih gambar ${idx + 1} untuk ${c.name}`}
+                                onClick={() => pick(currentSrc === src ? "" : src)}
+                                style={{
+                                  width: 34, height: 34, borderRadius: 6, padding: 0,
+                                  border: currentSrc === src ? "2px solid #1e6e34" : "1px solid #ddd",
+                                  cursor: "pointer", overflow: "hidden",
+                                  background: "#f5f5f5",
+                                }}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              </button>
+                            ))}
+                        </div>
+                      );
+                    })()}
                     <input
                       className="input"
                       value={c.name}
