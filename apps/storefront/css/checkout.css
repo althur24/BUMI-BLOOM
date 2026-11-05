@@ -303,6 +303,49 @@
   color: var(--text-muted);
 }
 
+/* Payment-in-progress banner. Lives outside the Stripe iframe so it stays
+   visible while the form owns the Pay button. */
+.checkout-payment-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--space-4);
+}
+
+.checkout-payment-banner--info {
+  background: var(--color-blue-light);
+  color: var(--color-dark);
+}
+
+.checkout-payment-banner--error {
+  background: var(--color-red-light);
+  color: var(--color-red-dark);
+}
+
+.checkout-payment-banner__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 64, 140, 0.25);
+  border-top-color: var(--color-dark);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: checkout-spin 0.7s linear infinite;
+}
+
+.checkout-payment-banner--error .checkout-payment-banner__spinner {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-payment-banner__spinner {
+    animation: none;
+  }
+}
+
 .checkout-stripe-section {
   background: var(--bg-surface);
   border: 2px solid var(--border-color);

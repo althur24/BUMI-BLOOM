@@ -12,6 +12,7 @@
     pollTimer: null,
     pollCount: 0,
     busy: false,
+    confirming: false,
     promoCode: null,
     lines: [],
     unavailable: [],
@@ -31,6 +32,8 @@
     continue: $('checkout-continue'),
     stripeSection: $('checkout-stripe-section'),
     stripeMount: $('stripe-checkout'),
+    paymentBanner: $('checkout-payment-banner'),
+    paymentBannerText: $('checkout-payment-banner-text'),
     processing: $('checkout-processing'),
     processingNote: $('checkout-processing-note'),
     processingSteps: $('checkout-processing-steps'),
@@ -124,34 +127,104 @@
     if (els.stripeMount) els.stripeMount.innerHTML = '';
   }
 
-  function attachFormEvents(form) {
+  function showPaymentBanner(message, kind) {
+    if (!els.paymentBanner) return;
+    els.paymentBanner.hidden = false;
+    els.paymentBanner.classList.toggle(
+      'checkout-payment-banner--error',
+      kind === 'error',
+    );
+    els.paymentBanner.classList.toggle(
+      'checkout-payment-banner--info',
+      kind !== 'error',
+    );
+    if (els.paymentBannerText) {
+      els.paymentBannerText.textContent = message;
+    }
+  }
+
+  function hidePaymentBanner() {
+    if (!els.paymentBanner) return;
+    els.paymentBanner.hidden = true;
+    els.paymentBanner.classList.remove(
+      'checkout-payment-banner--error',
+      'checkout-payment-banner--info',
+    );
+  }
+
+  // The Stripe Checkout form owns the Pay button. Stripe fires `confirm` when
+  // the customer clicks it, and our integration MUST call actions.confirm()
+  // to actually start the payment. Without that call Stripe simply waits and
+  // nothing happens — no loading state, no error, no redirect.
+  function attachFormEvents(form, actions) {
     if (!form || typeof form.on !== 'function') return;
-    try {
-      // Do NOT hide the form on 'confirm' — it only means the Pay button was
-      // clicked, not that the payment succeeded. Hiding it here would swallow
-      // any payment error that Stripe renders inside the form.
-      form.on('confirm', () => {
-        if (els.processingNote) {
-          els.processingNote.textContent = 'Processing your payment…';
-          els.processingNote.hidden = false;
+
+    form.on('confirm', async (event) => {
+      // Guard against double submits (double click / slow network).
+      if (state.confirming) return;
+      state.confirming = true;
+      showPaymentBanner('Processing your payment…', 'info');
+
+      try {
+        const result = await actions.confirm({
+          formConfirmEvent: event,
+          // Keep card/wallet payments on this page so the stepper can take
+          // over. Only redirect-based methods (BNPL etc.) leave the page.
+          redirect: 'if_required',
+        });
+
+        if (result && result.type === 'success') {
+          // Payment confirmed. Keep the banner up; the stepper takes over.
+          showProcessing();
+          return;
         }
-      });
-      form.on('change', (event) => {
-        const status = event && event.session && event.session.status;
-        if (status === 'complete') showProcessing();
-        if (status === 'expired') {
-          clearStoredSession();
-          showFailed('This checkout session expired. Please try again.', true);
-        }
-      });
-      form.on('loaderror', (event) => {
-        console.error('[checkout] Stripe form load error', event);
-        destroyEmbedded();
-        setVisible('ready');
-        showError('We could not load the payment form. Please try again.');
-        showPrepayFallback();
-      });
-    } catch {}
+
+        // Stripe rejected the confirmation (card declined, 3DS cancelled, …).
+        // The form keeps rendering its own inline error; show a short summary
+        // above it, then clear it so a retry starts clean.
+        const message =
+          (result && result.error && result.error.message) ||
+          'Payment could not be completed. Please check your details and try again.';
+        showPaymentBanner(message, 'error');
+      } catch (err) {
+        console.error('[checkout] confirm failed', err);
+        showPaymentBanner(
+          'Payment could not be completed. Please check your details and try again.',
+          'error',
+        );
+      } finally {
+        state.confirming = false;
+      }
+    });
+
+    form.on('change', (event) => {
+      const status = event && event.session && event.session.status;
+      // Clear a previous payment error as soon as the customer edits the form.
+      if (
+        !state.confirming &&
+        els.paymentBanner &&
+        !els.paymentBanner.hidden &&
+        els.paymentBanner.classList.contains('checkout-payment-banner--error')
+      ) {
+        hidePaymentBanner();
+      }
+      // Redirect-based methods resolve asynchronously; treat `complete` as
+      // the authoritative "payment finished" signal.
+      if (status === 'complete') showProcessing();
+      if (status === 'expired') {
+        clearStoredSession();
+        showFailed('This checkout session expired. Please try again.', true);
+      }
+    });
+
+    form.on('loaderror', (event) => {
+      console.error('[checkout] Stripe form load error', event);
+      hidePaymentBanner();
+      destroyEmbedded();
+      setVisible('ready');
+      showError('We could not load the payment form. Please try again.');
+      showPrepayFallback();
+    });
   }
 
   async function mountCheckoutForm(clientSecret, checkoutId) {
@@ -159,12 +232,26 @@
     if (typeof stripe.initCheckoutFormSdk !== 'function') {
       throw new Error('Stripe checkout form is not available.');
     }
+
     const sdk = stripe.initCheckoutFormSdk({ clientSecret, loader: 'auto' });
     const form = sdk.createForm({ layout: 'expanded' });
-    attachFormEvents(form);
+
+    // Actions are required to confirm the session when the Pay button is used.
+    const actionsResult = await sdk.loadActions();
+    if (!actionsResult || actionsResult.type !== 'success') {
+      const reason =
+        (actionsResult && actionsResult.error && actionsResult.error.message) ||
+        'Payment is not available right now.';
+      throw new Error(reason);
+    }
+
+    attachFormEvents(form, actionsResult.actions);
+
     state.checkoutId = checkoutId;
     state.embedded = form;
+    state.confirming = false;
     hideFallbacks();
+    hidePaymentBanner();
     setVisible('stripeSection');
     form.mount('#stripe-checkout');
   }
@@ -687,7 +774,12 @@
   }
 
   function showProcessing() {
+    // `confirm` success and the `change` event can both fire. Only start the
+    // stepper/polling once.
+    if (els.processing && !els.processing.hidden) return;
+
     hideFallbacks();
+    hidePaymentBanner();
     setVisible('processing');
     state.pollCount = 0;
     updateProcessingStep('payment');

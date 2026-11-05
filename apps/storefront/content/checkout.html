@@ -77,6 +77,16 @@
             <h2>Payment</h2>
             <span class="checkout-secure-note">Powered by Stripe</span>
           </div>
+          <div
+            id="checkout-payment-banner"
+            class="checkout-payment-banner"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <span class="checkout-payment-banner__spinner" aria-hidden="true"></span>
+            <span id="checkout-payment-banner-text">Processing your payment…</span>
+          </div>
           <div class="checkout-stripe-frame">
             <div id="stripe-checkout"></div>
           </div>
