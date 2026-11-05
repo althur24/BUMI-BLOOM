@@ -2,16 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@bumi/db";
-
-const ALLOWED_ORIGIN = process.env.STOREFRONT_URL || "*";
-
-function corsHeaders(): Record<string, string> {
-  return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-}
+import { corsHeaders } from "@/lib/cors";
 
 // ── Rate limiting (in-memory, per-IP) ───────────────────────────────────────
 // Max 5 subscribe attempts per IP per 60s window. Prevents spam.
@@ -33,12 +24,12 @@ function getClientIP(request: Request): string {
   return request.headers.get("x-real-ip") || "unknown";
 }
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: corsHeaders() });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request) });
 }
 
 export async function POST(request: Request) {
-  const headers = corsHeaders();
+  const headers = corsHeaders(request);
 
   // Rate limit
   const ip = getClientIP(request);

@@ -3,28 +3,21 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@bumi/db";
 import { requireAdmin, jsonError } from "@/lib/auth";
+import { corsHeaders } from "@/lib/cors";
 
 // The storefront homepage (different origin) fetches the current hero card
 // slots client-side, so GET is public and CORS-enabled — same pattern as
 // /api/subscribe. Only Shopify product handles are exposed, nothing sensitive.
-const ALLOWED_ORIGIN = process.env.STOREFRONT_URL || "*";
 
-function corsHeaders(): Record<string, string> {
-  return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-    "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-}
-
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: corsHeaders() });
+export async function OPTIONS(request: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(request) });
 }
 
 // Selectable hero slots. 2/4 are fixed character cards on the storefront.
 const HERO_POSITIONS = [1, 3, 5] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const headers = corsHeaders(request);
   try {
     const rows = await prisma.heroCard.findMany({
       select: { position: true, productHandle: true },
@@ -36,7 +29,7 @@ export async function GET() {
           productHandle: rows.find((r) => r.position === position)?.productHandle ?? null,
         })),
       },
-      { headers: corsHeaders() },
+      { headers },
     );
   } catch (err: any) {
     // Most likely the HeroCard table does not exist yet (migration not run).
@@ -44,7 +37,7 @@ export async function GET() {
     console.error("[hero-cards] GET error:", err?.message || err);
     return NextResponse.json(
       { cards: HERO_POSITIONS.map((position) => ({ position, productHandle: null })) },
-      { headers: corsHeaders() },
+      { headers },
     );
   }
 }
