@@ -154,6 +154,29 @@ export default function ImportPage() {
     setConfirmPush(false); setBusy(true);
     try {
       const r = await api("/api/imports", "POST", { url });
+
+      if (r.requiresConfirmation) {
+        const ok = window.confirm(
+          `${r.message}\n\nLanjutkan import ulang dan timpa perubahan manual?`,
+        );
+        if (!ok) {
+          setError(r.message);
+          return;
+        }
+        const confirmed = await api("/api/imports", "POST", { url, confirmOverwrite: true });
+        if (confirmed.requiresConfirmation) {
+          setError(confirmed.message || "Import ulang dibatalkan.");
+          return;
+        }
+        setError("");
+        setActive({
+          id: confirmed.jobId, sourceUrl: url, sourceType: confirmed.platform,
+          status: "PENDING", extractedJson: null, shopifyAdminUrl: null,
+          shopifyHandle: null, errorMessage: null, createdAt: new Date().toISOString(),
+        });
+        pollJob(confirmed.jobId);
+        return;
+      }
       if (r.duplicate) {
         setActive({
           id: r.jobId, sourceUrl: url, sourceType: r.platform, status: r.status,

@@ -303,6 +303,7 @@ model ImportJob {
   shopifyHandle    String?
   shopifyAdminUrl  String?
   errorMessage     String?       @db.Text
+  manuallyEditedAt DateTime?     // produk diedit manual dari halaman Produk
   createdBy        String?       // actorEmail
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

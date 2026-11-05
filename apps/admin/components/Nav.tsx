@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
+  { href: "/products", label: "Produk" },
   { href: "/import", label: "Import Produk" },
   { href: "/hero", label: "Hero Homepage" },
   { href: "/subscribers", label: "Subscribers" },
@@ -29,7 +30,11 @@ export function Nav() {
           <Link
             key={l.href}
             href={l.href}
-            className={`admin-nav__link ${pathname === l.href ? "admin-nav__link--active" : ""}`}
+            className={`admin-nav__link ${
+              pathname === l.href || (l.href !== "/" && pathname.startsWith(`${l.href}/`))
+                ? "admin-nav__link--active"
+                : ""
+            }`}
           >
             {l.label}
           </Link>

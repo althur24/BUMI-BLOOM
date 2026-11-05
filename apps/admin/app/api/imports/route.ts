@@ -26,6 +26,7 @@ export async function POST(request: Request) {
   }
 
   const url = typeof body?.url === "string" ? body.url.trim() : "";
+  const confirmOverwrite = body?.confirmOverwrite === true;
   if (!url) {
     return jsonError(400, "Field `url` wajib dan harus berupa URL http(s).");
   }
@@ -73,6 +74,21 @@ export async function POST(request: Request) {
     where: { sourceKey, status: "PUSHED", shopifyProductId: { not: null } },
     orderBy: { createdAt: "desc" },
   });
+
+  // Manual edits made from the Produk page must not be silently overwritten by
+  // a re-import — require an explicit confirmation from the admin.
+  if (previous?.manuallyEditedAt && !confirmOverwrite) {
+    return NextResponse.json(
+      {
+        requiresConfirmation: true,
+        manuallyEditedAt: previous.manuallyEditedAt,
+        shopifyAdminUrl: previous.shopifyAdminUrl,
+        message:
+          "Produk ini pernah diedit manual dari halaman Produk. Import ulang akan menimpa perubahan tersebut.",
+      },
+      { status: 409 },
+    );
+  }
 
   const job = await prisma.importJob.create({
     data: {
