@@ -711,7 +711,20 @@
           return;
         }
         if (!paymentStarted && data.stripeStatus === 'open' && data.clientSecret) {
-          await mountEmbedded(data.clientSecret, data.checkoutId);
+          try {
+            await mountEmbedded(data.clientSecret, data.checkoutId);
+          } catch (mountErr) {
+            console.error('[checkout] failed to mount resumed form', mountErr);
+            clearStoredSession();
+            hidePaymentBanner();
+            setVisible('ready');
+            state.checkoutId = null;
+            state.sessionId = null;
+            showError(
+              'We could not load the payment form. Please try again.',
+            );
+            showPrepayFallback();
+          }
           return;
         }
       }
@@ -857,6 +870,8 @@
     } catch (err) {
       setBusy(false);
       destroyEmbedded();
+      clearStoredSession();
+      hidePaymentBanner();
       setVisible('ready');
       state.checkoutId = null;
       state.sessionId = null;
