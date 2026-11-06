@@ -42,3 +42,5 @@ order-tracking.plan.md
 # Shopify Liquid email templates (edited in the Shopify admin, not app code)
 LIQUID_ORDER_CONFIRMATION
 LIQUID_ORDER_CONFIRMATION.*
+SHIPPING CONFIRMATION
+SHIPPING CONFIRMATION.*
