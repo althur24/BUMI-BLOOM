@@ -1,0 +1,337 @@
+/* ============================================
+   BUMI / BLOOM — Order tracking page
+   /order/<token>
+   ============================================ */
+
+.track-page {
+  padding: var(--space-10) 0 var(--space-16);
+}
+
+.track-shell {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.track-head {
+  margin-bottom: var(--space-8);
+}
+
+.track-eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.track-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--color-dark);
+  margin-bottom: var(--space-2);
+}
+
+.track-subtitle {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Stepper ───────────────────────────────────────────────────────────── */
+.track-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin: var(--space-6) 0 var(--space-8);
+}
+
+.track-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.track-step::before {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border-color);
+  z-index: 0;
+}
+
+.track-step:first-child::before {
+  display: none;
+}
+
+.track-step__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background: var(--bg-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  font-size: 0.8rem;
+  font-weight: var(--fw-bold);
+}
+
+.track-step__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.track-step.is-done::before,
+.track-step.is-current::before {
+  background: var(--color-dark);
+}
+
+.track-step.is-done .track-step__dot,
+.track-step.is-current .track-step__dot {
+  border-color: var(--color-dark);
+  background: var(--color-dark);
+  color: var(--color-white);
+}
+
+.track-step.is-current .track-step__label,
+.track-step.is-done .track-step__label {
+  color: var(--color-dark);
+  font-weight: var(--fw-semibold);
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+.track-card {
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.track-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.track-address {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.track-address strong {
+  color: var(--color-dark);
+  font-family: var(--font-heading);
+}
+
+/* ── Items ─────────────────────────────────────────────────────────────── */
+.track-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.track-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.track-item + .track-item {
+  border-top: 1px solid var(--border-color);
+}
+
+.track-item__media {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  background: var(--color-cream-dark);
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.track-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.track-item__title {
+  font-size: var(--text-sm);
+  color: var(--color-dark);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+.track-item__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.track-item__price {
+  flex: 0 0 auto;
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  color: var(--color-dark);
+  text-align: right;
+}
+
+/* ── Totals ────────────────────────────────────────────────────────────── */
+.track-totals {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-color);
+}
+
+.track-total-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  padding: var(--space-1) 0;
+}
+
+.track-total-row--grand {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  color: var(--color-dark);
+  padding-top: var(--space-2);
+}
+
+/* ── Delivery / tracking ───────────────────────────────────────────────── */
+.track-fulfilment {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.track-fulfilment__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  flex-wrap: wrap;
+}
+
+.track-fulfilment__row strong {
+  color: var(--color-dark);
+  font-family: var(--font-heading);
+}
+
+.track-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: var(--color-blue-light);
+  color: var(--color-dark);
+}
+
+.track-badge--refunded {
+  background: var(--color-red-light);
+  color: var(--color-red-dark);
+}
+
+.track-badge--paid {
+  background: var(--color-peach-light);
+  color: var(--color-dark);
+}
+
+/* ── Help / footer ─────────────────────────────────────────────────────── */
+.track-help {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-top: var(--space-8);
+}
+
+.track-help a {
+  color: var(--color-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.track-state {
+  text-align: center;
+  padding: var(--space-16) 0;
+}
+
+.track-state h2 {
+  font-family: var(--font-heading);
+  color: var(--color-dark);
+  margin-bottom: var(--space-3);
+}
+
+.track-state p {
+  color: var(--text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.track-state__icon {
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-blue-light);
+  color: var(--color-dark);
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: var(--fw-bold);
+  margin-bottom: var(--space-5);
+}
+
+/* "Temporarily unavailable" uses the alert palette so it never reads as a
+   definitive "order not found". */
+.track-state--error .track-state__icon {
+  background: var(--color-red-light);
+  color: var(--color-red-dark);
+}
+
+.track-state--error h2 {
+  color: var(--color-red-dark);
+}
+
+.track-state .checkout-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .track-card {
+    padding: var(--space-4);
+  }
+
+  .track-step__label {
+    font-size: 0.65rem;
+  }
+
+  .track-item__media {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}

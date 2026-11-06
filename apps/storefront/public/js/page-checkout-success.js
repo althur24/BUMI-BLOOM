@@ -43,8 +43,11 @@
     if (els.email) {
       els.email.textContent = data.email || 'Your email address';
     }
-    if (data.statusPageUrl && els.track) {
-      els.track.href = data.statusPageUrl;
+    // Prefer our own tracking page; fall back to the Shopify status page only
+    // if the token could not be produced.
+    const trackHref = data.trackingUrl || data.statusPageUrl || '';
+    if (trackHref && els.track) {
+      els.track.href = trackHref;
       els.track.hidden = false;
       if (els.trackNote) els.trackNote.hidden = true;
     } else if (els.trackNote) {

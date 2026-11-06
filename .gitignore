@@ -37,3 +37,8 @@ skills-lock.json
 # Plan/scratch files
 check_plan.md
 judul.plan.md
+order-tracking.plan.md
+
+# Shopify Liquid email templates (edited in the Shopify admin, not app code)
+LIQUID_ORDER_CONFIRMATION
+LIQUID_ORDER_CONFIRMATION.*

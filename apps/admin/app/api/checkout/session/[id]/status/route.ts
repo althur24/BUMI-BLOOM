@@ -3,6 +3,7 @@ import { corsHeaders, jsonWithCors } from "@/lib/checkout";
 import { reconcileCheckout } from "@/lib/checkout-service";
 import { getOrderStatusUrl } from "@/lib/shopify-checkout";
 import { getStripe } from "@/lib/stripe";
+import { createTrackingToken, trackingUrl } from "@/lib/tracking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +82,13 @@ export async function GET(
     }
   }
 
+  // Customer-facing tracking link on our own domain. The token is deterministic
+  // from the checkout id, so it can be produced as soon as the order exists even
+  // if the row has not been written yet.
+  const trackingToken = checkout.shopifyOrderId
+    ? checkout.trackingToken || createTrackingToken(checkout.id)
+    : null;
+
   return respond(
     {
       ok: true,
@@ -92,6 +100,9 @@ export async function GET(
       stripeStatus,
       paymentStatus,
       clientSecret,
+      trackingToken,
+      trackingUrl: trackingToken ? trackingUrl(trackingToken) : null,
+      // Internal fallback only; the storefront should prefer trackingUrl.
       statusPageUrl,
     },
     200,

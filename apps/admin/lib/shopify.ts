@@ -17,6 +17,10 @@ function requireEnv(): void {
   }
 }
 
+// Admin API calls must not hang a request forever. 10s is comfortably above
+// normal GraphQL latency while keeping the tracking page responsive.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 // ── Admin token (client credentials grant, cached + auto-refresh) ───────────
 let _adminToken: string | null = null;
 let _adminTokenExp = 0;
@@ -32,6 +36,7 @@ export async function getAdminToken(): Promise<string> {
       client_id: CLIENT_ID(),
       client_secret: CLIENT_SECRET(),
     }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Admin token gagal: HTTP ${res.status} ${await res.text()}`);
   const { access_token, expires_in } = await res.json();
@@ -90,6 +95,7 @@ export async function adminGraphQL<T = any>(
       method: "POST",
       headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     },
   );
   if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);

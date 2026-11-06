@@ -1,0 +1,18 @@
+{%- comment -%}
+  BUMI / BLOOM — order tracking link for Shopify email templates.
+
+  Replace every occurrence of {{ order_status_url }} in the "Order confirmation"
+  and "Shipping confirmation" templates with the block below.
+
+  The token is written by our checkout as the custom attribute
+  "bumi_tracking_token". In email templates the order object is NOT referenced
+  with an "order." prefix — use {{ attributes }}. We accept both forms here so
+  the snippet works regardless of context.
+{%- endcomment -%}
+
+{%- assign bumi_token = attributes.bumi_tracking_token | default: order.attributes.bumi_tracking_token -%}
+{%- if bumi_token and bumi_token != blank -%}
+  https://www.bumibloom.com/order/{{ bumi_token }}
+{%- else -%}
+  {{ order_status_url }}
+{%- endif -%}

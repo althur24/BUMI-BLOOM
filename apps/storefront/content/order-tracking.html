@@ -1,0 +1,134 @@
+<div class="announcement-bar">
+  <span>Order tracking</span>
+</div>
+
+<header class="header checkout-header">
+  <div class="container header__inner">
+    <a href="/" class="header__logo">BUMI / BLOOM</a>
+    <div class="checkout-header__meta">
+      <span class="checkout-header__secure">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Secure tracking
+      </span>
+      <a href="/products" class="checkout-header__back">Continue shopping</a>
+    </div>
+  </div>
+</header>
+
+<main class="track-page">
+  <div class="container">
+    <div class="track-shell">
+
+      <div id="track-loading" class="track-state">
+        <div class="checkout-spinner" aria-hidden="true"></div>
+        <h2>Loading your order</h2>
+        <p>Just a moment while we fetch the latest status.</p>
+      </div>
+
+      <div id="track-preparing" class="track-state" hidden aria-live="polite">
+        <div class="checkout-spinner" aria-hidden="true"></div>
+        <h2>Preparing your order…</h2>
+        <p>We are finalising your order. This page will refresh automatically.</p>
+      </div>
+
+      <div id="track-missing" class="track-state" hidden>
+        <div class="track-state__icon" aria-hidden="true">!</div>
+        <h2>We could not find that order</h2>
+        <p>The link may be incorrect or the order no longer exists.</p>
+        <div class="checkout-state__actions">
+          <a href="/" class="btn btn--primary">Back to home</a>
+          <a href="/products" class="btn btn--ghost">Continue shopping</a>
+        </div>
+      </div>
+
+      <div id="track-error" class="track-state track-state--error" hidden aria-live="polite">
+        <div class="track-state__icon" aria-hidden="true">!</div>
+        <h2>We can’t load your order right now</h2>
+        <p>Your order is safe. Please refresh this page in a moment to try again.</p>
+        <div class="checkout-state__actions">
+          <button type="button" class="btn btn--primary" id="track-retry">Try again</button>
+          <a href="mailto:hello@bumibloom.com" class="btn btn--ghost">Contact us</a>
+        </div>
+      </div>
+
+      <section id="track-order" hidden aria-live="polite">
+        <div class="track-head">
+          <p class="track-eyebrow" id="track-status-badge-row">
+            <span class="track-badge" id="track-status-badge">Paid</span>
+          </p>
+          <h1 class="track-title" id="track-order-name">Order</h1>
+          <p class="track-subtitle" id="track-placed">Placed recently</p>
+        </div>
+
+        <ol class="track-steps" aria-label="Order progress">
+          <li class="track-step" data-step="paid">
+            <span class="track-step__dot" aria-hidden="true">✓</span>
+            <span class="track-step__label">Paid</span>
+          </li>
+          <li class="track-step" data-step="packed">
+            <span class="track-step__dot" aria-hidden="true">✓</span>
+            <span class="track-step__label">Packed</span>
+          </li>
+          <li class="track-step" data-step="shipped">
+            <span class="track-step__dot" aria-hidden="true">✓</span>
+            <span class="track-step__label">Shipped</span>
+          </li>
+          <li class="track-step" data-step="delivered">
+            <span class="track-step__dot" aria-hidden="true">✓</span>
+            <span class="track-step__label">Delivered</span>
+          </li>
+        </ol>
+
+        <div class="track-card" id="track-shipping-card" hidden>
+          <p class="track-card__title">Shipping to</p>
+          <p class="track-address" id="track-address"></p>
+        </div>
+
+        <div class="track-card">
+          <p class="track-card__title">Items</p>
+          <ul class="track-items" id="track-items"></ul>
+          <div class="track-totals">
+            <div class="track-total-row">
+              <span>Subtotal</span>
+              <span id="track-subtotal">—</span>
+            </div>
+            <div class="track-total-row">
+              <span>Shipping</span>
+              <span id="track-shipping">—</span>
+            </div>
+            <!-- GST row stays hidden until the store is registered for GST. -->
+            <div class="track-total-row" id="track-gst-row" hidden>
+              <span>GST included</span>
+              <span id="track-gst">—</span>
+            </div>
+            <div class="track-total-row track-total-row--grand">
+              <span>Total</span>
+              <span id="track-total">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="track-card" id="track-fulfilment-card" hidden>
+          <p class="track-card__title">Delivery</p>
+          <div class="track-fulfilment" id="track-fulfilment"></div>
+        </div>
+
+        <p class="track-help">
+          Need help? Email <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a>
+        </p>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer class="checkout-footer">
+  <div class="container checkout-footer__inner">
+    <span>© 2026 BUMI / BLOOM</span>
+    <div class="checkout-footer__links">
+      <a href="/products">Shop</a>
+      <a href="/cart">Bag</a>
+      <a href="/journal">Journal</a>
+    </div>
+  </div>
+</footer>

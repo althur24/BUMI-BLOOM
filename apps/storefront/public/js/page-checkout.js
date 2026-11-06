@@ -13,6 +13,7 @@
     pollCount: 0,
     busy: false,
     confirming: false,
+    redirecting: false,
     promoCode: null,
     lines: [],
     unavailable: [],
@@ -611,6 +612,10 @@
   }
 
   function showSuccess(data) {
+    // `confirm` and the `change` event can both land here; only hand off once.
+    if (state.redirecting) return;
+    state.redirecting = true;
+
     stopPolling();
     hideFallbacks();
     markAllStepsDone();
@@ -627,11 +632,18 @@
     // back to the cart (which is still populated) instead of a broken
     // success page. The email confirmation remains the backstop if the
     // payment actually succeeded.
-    window.location.replace(
-      checkoutId
-        ? '/checkout/success?checkoutId=' + encodeURIComponent(checkoutId)
-        : '/cart',
-    );
+    const target = checkoutId
+      ? '/checkout/success?checkoutId=' + encodeURIComponent(checkoutId)
+      : '/cart';
+
+    // Let the progress bar finish animating to 100% and the final checkmarks
+    // land before leaving the page. Reduced-motion users skip the wait.
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 0
+      : 700;
+    window.setTimeout(() => {
+      window.location.replace(target);
+    }, delay);
   }
 
   function showPrepayFallback() {
@@ -768,7 +780,16 @@
         email: 'Sending your confirmation email…',
         done: 'All done! Redirecting…',
       };
-      els.processingNote.textContent = messages[step] || 'Processing…';
+      const next = messages[step] || 'Processing…';
+      // Swap the copy while it is faded out so the text does not snap between
+      // states. Skipped when the message is unchanged to avoid a pointless blink.
+      if (els.processingNote.textContent !== next) {
+        els.processingNote.classList.add('is-fading');
+        window.setTimeout(() => {
+          els.processingNote.textContent = next;
+          els.processingNote.classList.remove('is-fading');
+        }, 150);
+      }
     }
   }
 

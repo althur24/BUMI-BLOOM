@@ -373,6 +373,7 @@ function splitName(name: string | null | undefined): {
 function draftOrderInput(
   checkout: any,
   session: any,
+  trackingToken?: string | null,
 ): Record<string, unknown> {
   const collected = session?.collected_information?.shipping_details;
   const legacy = session?.shipping_details;
@@ -458,6 +459,9 @@ function draftOrderInput(
     customAttributes: [
       { key: "stripe_checkout_id", value: checkout.id },
       { key: "stripe_session_id", value: checkout.stripeSessionId },
+      ...(trackingToken
+        ? [{ key: "bumi_tracking_token", value: trackingToken }]
+        : []),
       ...(paymentIntent
         ? [{ key: "stripe_payment_intent", value: paymentIntent }]
         : []),
@@ -469,13 +473,14 @@ function draftOrderInput(
 export async function createShopifyOrderFromCheckout(
   checkout: any,
   session: any,
+  trackingToken?: string | null,
 ): Promise<{
   orderId: string;
   orderName: string | null;
   financialStatus: string | null;
   totalAudCents: number | null;
 }> {
-  const input = draftOrderInput(checkout, session);
+  const input = draftOrderInput(checkout, session, trackingToken);
   const created = await adminGraphQL<any>(
     `mutation CheckoutDraftOrderCreate($input: DraftOrderInput!) {
       draftOrderCreate(input: $input) {
@@ -677,44 +682,7 @@ export async function createShopifyRefund(
   return data?.refundCreate?.refund?.id || null;
 }
 
-// ── Order confirmation email ────────────────────────────────────────────────
-// draftOrderComplete has no notify argument, so orders created via the Admin
-// API never email the customer on their own. orderInvoiceSend sends the order
-// confirmation using the store's verified sender email.
-
-export async function sendOrderInvoice(
-  shopifyOrderId: string,
-  email?: string | null,
-): Promise<boolean> {
-  const data = await adminGraphQL<any>(
-    `mutation CheckoutOrderInvoiceSend($id: ID!, $email: EmailInput) {
-      orderInvoiceSend(id: $id, email: $email) {
-        order { id }
-        userErrors { field message }
-      }
-    }`,
-    {
-      id: shopifyOrderId,
-      email: email ? { to: email } : undefined,
-    },
-  );
-
-  const errors = data?.orderInvoiceSend?.userErrors || [];
-  if (errors.length) {
-    console.error(
-      "[checkout] orderInvoiceSend failed:",
-      errors
-        .map((e: any) => `${(e.field || []).join(".")} ${e.message}`.trim())
-        .join("; "),
-    );
-    return false;
-  }
-  return true;
-}
-
 // ── Customer-facing order status ────────────────────────────────────────────
-// Shopify exposes a tokenised status page the customer can open without
-// logging in. We surface it as the "Track order" link.
 
 export async function getOrderStatusUrl(
   shopifyOrderId: string,
@@ -734,3 +702,125 @@ export async function getOrderStatusUrl(
     return null;
   }
 }
+
+// ── Public order tracking ───────────────────────────────────────────────────
+// Read-only subset for the customer-facing /order/<token> page. Deliberately
+// excludes email, phone, full address, payment intent, and Stripe session id.
+
+export interface TrackedOrder {
+  orderName: string | null;
+  createdAt: string | null;
+  financialStatus: string | null;
+  fulfillmentStatus: string | null;
+  subtotalAudCents: number | null;
+  shippingAudCents: number | null;
+  totalAudCents: number | null;
+  items: {
+    title: string;
+    variant: string | null;
+    quantity: number;
+    image: string | null;
+    priceAudCents: number | null;
+  }[];
+  shipping: {
+    name: string | null;
+    city: string | null;
+    zip: string | null;
+    country: string | null;
+  } | null;
+  fulfillments: {
+    status: string | null;
+    createdAt: string | null;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+    company: string | null;
+  }[];
+}
+
+function centsFromMoney(
+  money: { amount?: string | null } | null | undefined,
+): number | null {
+  if (!money?.amount) return null;
+  const value = Number(money.amount);
+  return Number.isFinite(value) ? Math.round(value * 100) : null;
+}
+
+export async function getOrderForTracking(
+  shopifyOrderId: string,
+): Promise<TrackedOrder | null> {
+  const data = await adminGraphQL<any>(
+    `query CheckoutTrackOrder($id: ID!) {
+      order(id: $id) {
+        name
+        createdAt
+        displayFinancialStatus
+        displayFulfillmentStatus
+        subtotalPriceSet { shopMoney { amount } }
+        totalShippingPriceSet { shopMoney { amount } }
+        totalPriceSet { shopMoney { amount } }
+        shippingAddress { name city zip country }
+        lineItems(first: 100) {
+          edges {
+            node {
+              title
+              quantity
+              variantTitle
+              originalUnitPriceSet { shopMoney { amount } }
+              image { url }
+            }
+          }
+        }
+        fulfillments(first: 20) {
+          status
+          createdAt
+          trackingInfo { number url company }
+        }
+      }
+    }`,
+    { id: shopifyOrderId },
+  );
+
+  const order = data?.order;
+  if (!order) return null;
+
+  const lineItems = (order.lineItems?.edges || []).map((edge: any) => edge.node);
+  const fulfillments = (order.fulfillments || []).map((fulfillment: any) => {
+    const info = fulfillment?.trackingInfo?.[0] || null;
+    return {
+      status: fulfillment?.status || null,
+      createdAt: fulfillment?.createdAt || null,
+      trackingNumber: info?.number || null,
+      trackingUrl: info?.url || null,
+      company: info?.company || null,
+    };
+  });
+
+  const address = order.shippingAddress;
+
+  return {
+    orderName: order.name || null,
+    createdAt: order.createdAt || null,
+    financialStatus: order.displayFinancialStatus || null,
+    fulfillmentStatus: order.displayFulfillmentStatus || null,
+    subtotalAudCents: centsFromMoney(order.subtotalPriceSet?.shopMoney),
+    shippingAudCents: centsFromMoney(order.totalShippingPriceSet?.shopMoney),
+    totalAudCents: centsFromMoney(order.totalPriceSet?.shopMoney),
+    items: lineItems.map((node: any) => ({
+      title: node?.title || "",
+      variant: node?.variantTitle || null,
+      quantity: Number(node?.quantity) || 0,
+      image: node?.image?.url || null,
+      priceAudCents: centsFromMoney(node?.originalUnitPriceSet?.shopMoney),
+    })),
+    shipping: address
+      ? {
+          name: address.name || null,
+          city: address.city || null,
+          zip: address.zip || null,
+          country: address.country || null,
+        }
+      : null,
+    fulfillments,
+  };
+}
+

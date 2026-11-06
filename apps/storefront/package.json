@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "https": "node scripts/dev-https.mjs",
+    "generate:email-logo": "node scripts/generate-email-logo.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },

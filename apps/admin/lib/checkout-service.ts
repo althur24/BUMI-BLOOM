@@ -17,10 +17,10 @@ import {
   createShopifyOrderFromCheckout,
   fetchCheckoutVariants,
   fetchShopifyDiscount,
-  sendOrderInvoice,
 } from "./shopify-checkout";
 import { sendPurchaseAnalytics } from "./checkout-analytics";
 import { getStripe } from "./stripe";
+import { createTrackingToken } from "./tracking";
 
 const ATTRIBUTION_KEYS = [
   "utm_source",
@@ -157,95 +157,9 @@ function paymentIntentId(session: any): string | null {
   return intent?.id || null;
 }
 
-// Sends the Shopify order confirmation exactly once.
-// draftOrderComplete has no notify argument, so this is the only confirmation
-// the buyer receives. Safe to call repeatedly.
-//
-// Two-phase claim prevents both duplicate sends and lost retries:
-//   Phase 1: claim emailSendingAt = null → emailSendingAt = now
-//            (atomic updateMany, so concurrent callers cannot both claim)
-//   Phase 2: mark emailSentAt = now after successful delivery
-//
-// If phase 2 fails (DB down after email sent), the row keeps emailSendingAt
-// set but emailSentAt null. The email was already delivered, so on retry we
-// detect this stale claim and mark it sent rather than resending.
-async function maybeSendConfirmationEmail(checkout: any): Promise<void> {
-  if (!checkout?.id || !checkout.shopifyOrderId) return;
-  if (checkout.emailSentAt) return;
-
-  // Phase 1: atomic claim.
-  const claimed = await prisma.stripeCheckout.updateMany({
-    where: {
-      id: checkout.id,
-      emailSentAt: null,
-      emailSendingAt: null,
-    },
-    data: { emailSendingAt: new Date() },
-  });
-  if (claimed.count === 0) {
-    // Someone else is sending or already sent. Check for a stale claim
-    // (emailSendingAt set but emailSentAt null for a long time) — treat as
-    // already sent because the email most likely went out.
-    const current = await prisma.stripeCheckout.findUnique({
-      where: { id: checkout.id },
-      select: { emailSendingAt: true, emailSentAt: true },
-    });
-    if (current?.emailSendingAt && !current.emailSentAt) {
-      const claimedAt = new Date(current.emailSendingAt).getTime();
-      const stale = Date.now() - claimedAt > 5 * 60_000; // 5 minutes
-      if (stale) {
-        await prisma.stripeCheckout.updateMany({
-          where: { id: checkout.id, emailSentAt: null },
-          data: { emailSentAt: current.emailSendingAt },
-        });
-        console.warn(
-          "[checkout] stale email claim resolved",
-          checkout.id,
-        );
-      }
-    }
-    return;
-  }
-
-  // Phase 2: send.
-  try {
-    const sent = await sendOrderInvoice(
-      checkout.shopifyOrderId,
-      checkout.customerEmail,
-    );
-    if (!sent) {
-      // Email rejected. Release the claim so the next retry can attempt again.
-      await prisma.stripeCheckout.updateMany({
-        where: { id: checkout.id, emailSentAt: null },
-        data: { emailSendingAt: null },
-      });
-      console.error(
-        "[checkout] confirmation email rejected",
-        checkout.id,
-        checkout.shopifyOrderId,
-      );
-      return;
-    }
-    await prisma.stripeCheckout.updateMany({
-      where: { id: checkout.id, emailSentAt: null },
-      data: { emailSentAt: new Date() },
-    });
-  } catch (err: any) {
-    // Email threw. Release the claim so the next retry can attempt again.
-    try {
-      await prisma.stripeCheckout.updateMany({
-        where: { id: checkout.id, emailSentAt: null },
-        data: { emailSendingAt: null },
-      });
-    } catch {}
-    console.error(
-      "[checkout] confirmation email error",
-      checkout.id,
-      err?.message,
-    );
-  }
-}
-
+// Order confirmation is sent by Shopify itself: draftOrderComplete triggers
+// the store's notification automatically. We must NOT send a second email via
+// orderInvoiceSend, so no explicit confirmation step exists here.
 export async function ensureShopifyOrder(session: any): Promise<any | null> {
   if (!session?.id) return null;
   if (session.payment_status !== "paid") return null;
@@ -265,22 +179,27 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
   }
   if (!checkout) return null;
   if (checkout.shopifyOrderId) {
-    // Retry path: the order exists but a previous confirmation email may have
-    // failed. maybeSendConfirmationEmail is idempotent, so this is safe.
-    await maybeSendConfirmationEmail(checkout);
+    // Order already exists. Shopify sent its own confirmation on completion.
     return checkout;
   }
 
   if (inFlightOrders.has(checkout.id)) {
-    // Another concurrent delivery is creating this order. We cannot safely
-    // retry email yet (the Shopify order ID may not exist), so skip — the
-    // in-flight call, or a subsequent webhook/status poll, will handle it.
+    // Another concurrent delivery is creating this order. Skip — the in-flight
+    // call, or a subsequent webhook/status poll, will handle it.
     return checkout;
   }
   inFlightOrders.add(checkout.id);
 
   try {
-    const order = await createShopifyOrderFromCheckout(checkout, session);
+    // Deterministic from the checkout id, so it exists before the draft order
+    // is created and can be embedded in its custom attributes. The same value
+    // is persisted on the row below.
+    const trackingToken = checkout.trackingToken || createTrackingToken(checkout.id);
+    const order = await createShopifyOrderFromCheckout(
+      checkout,
+      session,
+      trackingToken,
+    );
     const issues: string[] = [];
     if (order.totalAudCents == null) {
       issues.push("Shopify order total is unavailable.");
@@ -312,6 +231,7 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
         shopifyOrderName: order.orderName,
         shopifyTotalAudCents: order.totalAudCents,
         shopifyFinancialStatus: order.financialStatus,
+        trackingToken,
         errorMessage,
       },
     });
@@ -340,9 +260,6 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
     }
 
     await sendPurchaseAnalytics(updated, session);
-
-    // Send the order confirmation once (idempotent, never fails the order).
-    await maybeSendConfirmationEmail(updated);
 
     return updated;
   } catch (err: any) {
@@ -373,10 +290,7 @@ export async function reconcileCheckout(checkoutId: string): Promise<any | null>
   }
   if (!checkout) return null;
   if (checkout.shopifyOrderId) {
-    // Retry email on polling, not just on webhook retry. Without this, a
-    // customer sitting on the success page would never get a failed email
-    // reattempted until Stripe retries the webhook.
-    await maybeSendConfirmationEmail(checkout);
+    // Order already exists; Shopify sent its own confirmation on completion.
     return checkout;
   }
   if (checkout.status === StripeCheckoutStatus.EXPIRED) return checkout;

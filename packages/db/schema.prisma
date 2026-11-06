@@ -385,6 +385,7 @@ model StripeCheckout {
   shopifyTotalAudCents   Int?
   shopifyFinancialStatus String?
   statusPageUrl          String?
+  trackingToken          String?              @unique
   emailSendingAt         DateTime?
   emailSentAt            DateTime?
   errorMessage           String?

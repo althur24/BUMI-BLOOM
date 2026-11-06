@@ -445,20 +445,33 @@
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
-  transition: background 0.2s ease;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    background var(--duration-normal) var(--ease-smooth),
+    opacity var(--duration-slow) var(--ease-smooth),
+    transform var(--duration-slow) var(--ease-smooth);
 }
 
 .checkout-step.is-active {
   background: var(--color-cream-light);
+  transform: translateX(2px);
 }
 
 .checkout-step.is-done {
-  opacity: 0.5;
+  opacity: 0.55;
+}
+
+/* Check and spinner occupy the same 22px box so swapping between them never
+   reflows the row. The outgoing element fades, the incoming one scales in. */
+.checkout-step__check,
+.checkout-step__spinner {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .checkout-step__check {
-  width: 22px;
-  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -467,23 +480,42 @@
   color: var(--color-dark);
   font-size: 13px;
   font-weight: 700;
-  flex-shrink: 0;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-normal) var(--ease-smooth);
+}
+
+/* [hidden] is display:none globally, which would kill the fade. Keep these two
+   in the flow and only animate their opacity/scale so the hand-off is smooth. */
+.checkout-step__check[hidden] {
+  display: inline-flex !important;
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
 }
 
 .checkout-step__spinner {
-  width: 22px;
-  height: 22px;
   border: 2px solid var(--color-blue-light);
   border-top-color: var(--color-dark);
   border-radius: 50%;
-  flex-shrink: 0;
   animation: checkout-spin 0.7s linear infinite;
+  opacity: 1;
+  transition: opacity var(--duration-normal) var(--ease-smooth);
+}
+
+.checkout-step__spinner[hidden] {
+  display: block !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .checkout-step__label {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
+  transition: color var(--duration-normal) var(--ease-smooth);
 }
 
 .checkout-step.is-active .checkout-step__label {
@@ -505,7 +537,7 @@
   width: 0%;
   background: var(--color-dark);
   border-radius: 999px;
-  transition: width 0.5s ease;
+  transition: width var(--duration-slower) var(--ease-smooth);
 }
 
 .checkout-processing__note {
@@ -513,6 +545,13 @@
   font-weight: 600;
   color: var(--color-dark);
   margin-bottom: var(--space-2);
+  transition: opacity var(--duration-fast) var(--ease-smooth);
+}
+
+/* Applied by JS while swapping the note text, so the copy fades instead of
+   snapping to the next message. */
+.checkout-processing__note.is-fading {
+  opacity: 0;
 }
 
 .checkout-processing__hint {
@@ -524,6 +563,20 @@
   .checkout-spinner,
   .checkout-step__spinner {
     animation: none;
+  }
+
+  .checkout-step,
+  .checkout-step__check,
+  .checkout-step__spinner,
+  .checkout-step__label,
+  .checkout-processing__bar-fill,
+  .checkout-processing__note {
+    transition: none;
+  }
+
+  .checkout-step,
+  .checkout-step.is-active {
+    transform: none;
   }
 }
 
