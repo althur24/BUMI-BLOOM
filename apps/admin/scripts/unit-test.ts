@@ -167,6 +167,17 @@ test("colorsFromVariants surfaces single-colour products without a Color option"
   assert.equal(multi[1].name, "Pink");
 });
 
+test("colours keep their bound image through the metafield round-trip", () => {
+  const stored = JSON.stringify([
+    { name: "Navy", hex: "#00408C", imageId: 123, image: "https://cdn/navy.jpg" },
+    { name: "Butter", hex: "#F3E3A3", imageId: null, image: null },
+  ]);
+  const parsed = JSON.parse(stored);
+  assert.equal(parsed[0].imageId, 123);
+  assert.equal(parsed[0].image, "https://cdn/navy.jpg");
+  assert.equal(parsed[1].imageId, null);
+});
+
 test("category and audience inference", () => {
   assert.equal(inferCategory("Anakmu Piccolo Jacket windbreaker"), "outerwear");
   assert.equal(inferCategory("BIM Ribbed Shirt Kids Longsleeved Tops"), "tshirts");

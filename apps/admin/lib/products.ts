@@ -21,7 +21,17 @@ export type BumiMetafieldKey =
   | "sold_count"
   | "source_url"
   | "source_platform"
-  | "brand";
+  | "brand"
+  | "no_color";
+
+export interface ProductColor {
+  name: string;
+  hex: string;
+  // Image bound to this colourway (Shopify image id + URL). Optional: the
+  // storefront filter still uses `hex`, the image only drives variant images.
+  imageId?: number | null;
+  image?: string | null;
+}
 
 export interface AdminProductSummary {
   id: number;
@@ -35,7 +45,8 @@ export interface AdminProductSummary {
   variantCount: number;
   variantsWithImage: number;
   imageCount: number;
-  colors: { name: string; hex: string }[];
+  colors: ProductColor[];
+  noColor: boolean;
   colorOptionCount: number;
   sizeGuide: boolean;
   sourceUrl: string | null;
@@ -81,7 +92,10 @@ export interface ProductPatch {
   productType?: string;
   status?: string;
   tags?: string;
-  colors?: { name: string; hex: string }[];
+  colors?: ProductColor[];
+  noColor?: boolean;
+  // Colour name → image id. Applied to every variant of that colourway.
+  colorImages?: { colorName: string; imageId: number | null }[];
   metafields?: Partial<Record<BumiMetafieldKey, string>>;
   variantPrices?: { id: number; price?: string; compareAtPrice?: string | null; sku?: string; inventoryQuantity?: number }[];
   variantImages?: { id: number; imageId: number | null }[];
@@ -104,6 +118,7 @@ const BUMI_FIELDS: BumiMetafieldKey[] = [
   "source_url",
   "source_platform",
   "brand",
+  "no_color",
 ];
 
 const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
@@ -121,6 +136,7 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   source_url: "single_line_text_field",
   source_platform: "single_line_text_field",
   brand: "single_line_text_field",
+  no_color: "boolean",
 };
 
 const STORE_CATEGORIES = new Set([
@@ -141,16 +157,22 @@ function optionPosition(options: { name: string }[] | undefined, re: RegExp): nu
   return 0;
 }
 
-function parseColors(raw: string | undefined): { name: string; hex: string }[] {
+function parseColors(raw: string | undefined): ProductColor[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((c: any) => ({
-        name: String(c?.name || "").trim(),
-        hex: normalizeHex(c?.hex) || resolveColorHex(String(c?.name || ""), c?.hex),
-      }))
+      .map((c: any) => {
+        const name = String(c?.name || "").trim();
+        const hex = normalizeHex(c?.hex) || resolveColorHex(name, c?.hex);
+        const imageId =
+          c?.imageId != null && Number.isFinite(Number(c.imageId))
+            ? Number(c.imageId)
+            : null;
+        const image = c?.image ? String(c.image) : null;
+        return { name, hex, imageId, image };
+      })
       .filter((c) => Boolean(c.name));
   } catch {
     return [];
@@ -207,10 +229,13 @@ export async function listProducts(opts: {
       }
     }
     const variantsWithImage = variants.filter((v: any) => v.image_id).length;
+    // An explicit "no colour" flag means the admin decided this product has no
+    // colourway (e.g. a single-print item) — that is not a problem to fix.
+    const noColor = metafieldValue(metafields, "no_color") === "true";
 
     const issues: string[] = [];
-    if (!colors.length) issues.push("Warna belum diisi");
-    if (colorValues.size > 0 && colors.length === 0) issues.push("Warna varian belum tersimpan");
+    if (!colors.length && !noColor) issues.push("Warna belum diisi");
+    if (colorValues.size > 0 && colors.length === 0 && !noColor) issues.push("Warna varian belum tersimpan");
     if (variants.length > 1 && variantsWithImage === 0) issues.push("Varian tanpa gambar");
     if (!metafieldValue(metafields, "size_guide")) issues.push("Size guide kosong");
     if (String(p.product_type || "").trim() && !STORE_CATEGORIES.has(String(p.product_type).toLowerCase())) {
@@ -233,6 +258,7 @@ export async function listProducts(opts: {
       variantsWithImage,
       imageCount: (p.images || []).length,
       colors,
+      noColor,
       colorOptionCount: colorValues.size,
       sizeGuide: Boolean(metafieldValue(metafields, "size_guide")),
       sourceUrl: metafieldValue(metafields, "source_url") || null,
@@ -404,25 +430,17 @@ export async function updateProduct(
   if (patch.variantImages?.length) {
     const variants = patch.variantImages
       .filter((v) => liveById.has(v.id))
-      .filter((v) => (liveById.get(v.id)?.imageId ?? null) !== (v.imageId ?? null))
-      .map((v) => ({ id: v.id, image_id: v.imageId }));
-    if (variants.length) {
-      pendingVariantUpdates.push(...variants);
-      updated.push("variantImages");
+      .filter((v) => (liveById.get(v.id)?.imageId ?? null) !== (v.imageId ?? null));
+    for (const v of variants) {
+      try {
+        await adminRest("PUT", `/variants/${v.id}.json`, {
+          variant: { id: v.id, image_id: v.imageId },
+        });
+      } catch (e: any) {
+        warnings.push(`Gambar varian ${v.id} gagal diset: ${e?.message || e}`);
+      }
     }
-  }
-
-  // Send all variant changes in one request: Shopify rejects a second batch
-  // built from a stale variant id list.
-  if (pendingVariantUpdates.length) {
-    const merged = new Map<number, Record<string, unknown>>();
-    for (const v of pendingVariantUpdates) {
-      const id = Number(v.id);
-      merged.set(id, { ...(merged.get(id) || { id }), ...v });
-    }
-    await adminRest("PUT", `/products/${productId}.json`, {
-      product: { id: productId, variants: [...merged.values()] },
-    });
+    if (variants.length) updated.push("variantImages");
   }
 
   // Inventory is a separate endpoint and must be set per location.
@@ -473,26 +491,100 @@ export async function updateProduct(
   if (patch.removeImageIds?.length) updated.push("imagesRemoved");
 
   const metaPatch: Partial<Record<BumiMetafieldKey, string>> = { ...(patch.metafields || {}) };
+
+  // A colour's image lives in bumi.colors so the editor can show it next time
+  // and the storefront can optionally use it later (it does not today).
   if (patch.colors) {
-    const cleaned = patch.colors
-      .map((c) => ({ name: String(c.name || "").trim(), hex: normalizeHex(c.hex) }))
-      .filter((c) => Boolean(c.name));
+    const imageById = new Map<number, string>();
+    for (const img of current.images) imageById.set(img.id, img.src);
+
     const seen = new Set<string>();
-    const deduped = cleaned.filter((c) => {
-      const key = c.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    metaPatch.colors = JSON.stringify(
-      deduped.map((c) => ({
-        name: c.name,
-        hex: c.hex || resolveColorHex(c.name),
-      })),
-    );
+    const deduped = patch.colors
+      .map((c) => {
+        const name = String(c.name || "").trim();
+        const hex = normalizeHex(c.hex) || resolveColorHex(name, c.hex);
+        const imageId = c.imageId != null ? Number(c.imageId) : null;
+        const image = imageId != null ? imageById.get(imageId) || c.image || null : c.image || null;
+        return { name, hex, imageId, image };
+      })
+      .filter((c) => {
+        if (!c.name) return false;
+        const key = c.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+    metaPatch.colors = JSON.stringify(deduped);
   }
+
+  if (patch.noColor !== undefined) {
+    metaPatch.no_color = patch.noColor ? "true" : "false";
+  }
+
   if (Object.keys(metaPatch).length) {
     updated.push(...(await upsertMetafields(productId, metaPatch)));
+  }
+
+  // Bind a colourway image to every variant of that colour in one request.
+  if (patch.colorImages?.length) {
+    const colorPos = optionPosition(current.options, /^(colou?r|colour|warna)$/i);
+    if (!colorPos) {
+      warnings.push("Produk tidak punya opsi warna — gambar per warna dilewati.");
+    } else {
+      const wanted = new Map<string, number | null>();
+      for (const entry of patch.colorImages) {
+        const key = String(entry.colorName || "").trim().toLowerCase();
+        if (key) wanted.set(key, entry.imageId ?? null);
+      }
+      const variants = current.variants
+        .filter((v) => {
+          const value = String((v as any)[`option${colorPos}`] || "").trim().toLowerCase();
+          return wanted.has(value);
+        })
+        .map((v) => ({
+          id: v.id,
+          image_id: wanted.get(
+            String((v as any)[`option${colorPos}`] || "").trim().toLowerCase(),
+          ) ?? null,
+        }))
+        .filter((v) => (current.variants.find((x) => x.id === v.id)?.imageId ?? null) !== v.image_id);
+
+      if (variants.length) {
+        // IMPORTANT: update each variant through /variants/{id}.json. A
+        // product-level PUT with a subset of variants makes Shopify treat the
+        // rest as removed — which collapsed Piccolo from 95 variants to 5.
+        for (const v of variants) {
+          try {
+            await adminRest("PUT", `/variants/${v.id}.json`, {
+              variant: { id: v.id, image_id: v.image_id },
+            });
+          } catch (e: any) {
+            warnings.push(`Gambar varian ${v.id} gagal diset: ${e?.message || e}`);
+          }
+        }
+        updated.push("colorImages");
+      }
+    }
+  }
+
+  // Flush price/SKU changes one variant at a time. A product-level PUT with a
+  // subset of variants deletes the omitted ones, so this is the only safe path
+  // when the product has more variants than the ones being edited.
+  if (pendingVariantUpdates.length) {
+    for (const v of pendingVariantUpdates) {
+      const id = Number(v.id);
+      const body: Record<string, unknown> = { id };
+      for (const [k, val] of Object.entries(v)) {
+        if (k !== "id") body[k] = val;
+      }
+      if (Object.keys(body).length <= 1) continue;
+      try {
+        await adminRest("PUT", `/variants/${id}.json`, { variant: body });
+      } catch (e: any) {
+        warnings.push(`Varian ${id} gagal disimpan: ${e?.message || e}`);
+      }
+    }
   }
 
   return { productId, updated, warnings };
@@ -500,7 +592,7 @@ export async function updateProduct(
 
 // Derive `bumi.colors` from the product's Color option values.
 export async function colorsFromProductVariants(handle: string): Promise<{
-  colors: { name: string; hex: string }[];
+  colors: ProductColor[];
   written: boolean;
   reason?: string;
 }> {
@@ -513,14 +605,85 @@ export async function colorsFromProductVariants(handle: string): Promise<{
   }
 
   const existing = parseColors(product.metafields.colors);
+  const existingByName = new Map(existing.map((c) => [c.name.toLowerCase(), c]));
   const variants = product.variants.map((v) => ({
     options: { Color: String((v as any)[`option${colorPos}`] || "") },
   }));
   const derived = colorsFromVariants(variants, existing);
-  if (!derived.length) {
+
+  // Carry over any image already bound to the colourway (either from the
+  // metafield or from the variant images Shopify already stores).
+  const imageByColor = new Map<string, { imageId: number | null; image: string | null }>();
+  for (const v of product.variants) {
+    const name = String((v as any)[`option${colorPos}`] || "").trim().toLowerCase();
+    if (!name || imageByColor.has(name)) continue;
+    if (v.imageId) imageByColor.set(name, { imageId: v.imageId, image: v.image });
+  }
+  const enriched: ProductColor[] = derived.map((c) => {
+    const stored = existingByName.get(c.name.toLowerCase());
+    const bound = imageByColor.get(c.name.toLowerCase());
+    return {
+      ...c,
+      imageId: stored?.imageId ?? bound?.imageId ?? null,
+      image: stored?.image ?? bound?.image ?? null,
+    };
+  });
+
+  if (!enriched.length) {
     return { colors: [], written: false, reason: "Tidak ada warna yang bisa diambil dari varian." };
   }
 
-  await updateProduct(handle, { colors: derived });
-  return { colors: derived, written: true };
+  await updateProduct(handle, { colors: enriched, noColor: false });
+  return { colors: enriched, written: true };
+}
+
+// Copy the image already bound to each variant onto its colourway entry, so the
+// editor shows the right thumbnails without the admin picking them again.
+export async function bindColorImagesFromVariants(handle: string): Promise<{
+  bound: { colorName: string; imageId: number | null }[];
+  written: boolean;
+  reason?: string;
+}> {
+  const product = await getProduct(handle);
+  if (!product) throw new Error(`Produk "${handle}" tidak ditemukan.`);
+
+  const colorPos = optionPosition(product.options, /^(colou?r|colour|warna)$/i);
+  if (!colorPos) {
+    return { bound: [], written: false, reason: "Produk ini tidak punya opsi warna." };
+  }
+
+  const byColor = new Map<string, { colorName: string; imageId: number | null }>();
+  for (const v of product.variants) {
+    const name = String((v as any)[`option${colorPos}`] || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const current = byColor.get(key);
+    if (!current) {
+      byColor.set(key, { colorName: name, imageId: v.imageId ?? null });
+    } else if (!current.imageId && v.imageId) {
+      current.imageId = v.imageId;
+    }
+  }
+
+  const bound = [...byColor.values()].filter((c) => c.imageId != null);
+  if (!bound.length) {
+    return { bound: [], written: false, reason: "Belum ada varian yang punya gambar." };
+  }
+
+  const existing = parseColors(product.metafields.colors);
+  const names = existing.map((c) => c.name.toLowerCase());
+  const merged: ProductColor[] = [...existing];
+  for (const entry of bound) {
+    const key = entry.colorName.toLowerCase();
+    const idx = names.indexOf(key);
+    if (idx >= 0) {
+      merged[idx] = { ...merged[idx], imageId: entry.imageId };
+    } else {
+      merged.push({ name: entry.colorName, hex: resolveColorHex(entry.colorName), imageId: entry.imageId });
+      names.push(key);
+    }
+  }
+
+  await updateProduct(handle, { colors: merged });
+  return { bound, written: true };
 }

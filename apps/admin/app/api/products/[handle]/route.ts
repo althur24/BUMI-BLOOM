@@ -72,6 +72,11 @@ export async function PATCH(
   if (body.metafields?.source_url) {
     body.metafields.source_url = canonicalizeUrl(body.metafields.source_url);
   }
+  // `noColor` is a boolean flag on the payload; it must not be duplicated as a
+  // string metafield that could disagree with it.
+  if (body.metafields && "no_color" in body.metafields) {
+    delete body.metafields.no_color;
+  }
 
   try {
     const result = await updateProduct(handle, body);

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { ImagePicker } from "@/components/ImagePicker";
 
 interface Variant {
   id: number;
@@ -44,8 +45,14 @@ interface ProductDetail {
 }
 
 interface Color {
+  // Stable identity for React keys + edits (survives renames, unlike the name).
+  key: string;
   name: string;
   hex: string;
+  imageId: number | null;
+  image?: string | null;
+  // true when the name comes from the Shopify Color option (read-only).
+  fromVariant?: boolean;
 }
 
 const CATEGORIES = [
@@ -83,7 +90,14 @@ function parseColorsJson(raw: string | undefined): Color[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((c: any) => ({ name: String(c?.name || ""), hex: String(c?.hex || "#CCCCCC") }))
+      .map((c: any, i: number) => ({
+        key: `c${i}-${String(c?.name || "")}`,
+        name: String(c?.name || ""),
+        hex: String(c?.hex || "#CCCCCC"),
+        imageId:
+          c?.imageId != null && Number.isFinite(Number(c.imageId)) ? Number(c.imageId) : null,
+        image: c?.image ? String(c.image) : null,
+      }))
       .filter((c) => Boolean(c.name));
   } catch {
     return [];
@@ -114,6 +128,7 @@ export default function ProductEditorPage() {
   const [bodyHtml, setBodyHtml] = useState("");
 
   const [colors, setColors] = useState<Color[]>([]);
+  const [noColor, setNoColor] = useState(false);
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
 
@@ -152,6 +167,7 @@ export default function ProductEditorPage() {
         setTags(p.tags);
         setBodyHtml(p.bodyHtml);
         setColors(parseColorsJson(p.metafields.colors));
+        setNoColor(String(p.metafields.no_color || "") === "true");
         setMeta(p.metafields || {});
         setVariantEdits({});
         setRemovedImages(new Set());
@@ -185,6 +201,115 @@ export default function ProductEditorPage() {
     setVariantEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   }
 
+  // ── Colour helpers ──────────────────────────────────────────────────────
+
+  // One row per colourway: the metafield entry merged with the Shopify Color
+  // option values and their variants, so the admin sees a single list.
+  const colorRows = useMemo(() => {
+    if (!product) return [] as {
+      key: string;
+      name: string;
+      hex: string;
+      imageId: number | null;
+      fromVariant: boolean;
+      varian: { id: number; stock: number }[];
+    }[];
+
+    const byName = new Map<
+      string,
+      {
+        key: string;
+        name: string;
+        hex: string;
+        imageId: number | null;
+        fromVariant: boolean;
+        varian: { id: number; stock: number }[];
+      }
+    >();
+
+    // Colours from the metafield first (keeps their image + hex).
+    for (const c of colors) {
+      byName.set(c.name.toLowerCase(), {
+        key: c.key,
+        name: c.name,
+        hex: c.hex,
+        imageId: c.imageId ?? null,
+        fromVariant: false,
+        varian: [],
+      });
+    }
+
+    // Then the Shopify Color option values.
+    if (colorPosition > 0) {
+      for (const v of product.variants) {
+        const name = variantValue(v, colorPosition).trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        const patch = variantEdits[v.id] || {};
+        const stock = patch.inventoryQuantity ?? v.inventoryQuantity ?? 0;
+        const existing = byName.get(key);
+        if (existing) {
+          existing.fromVariant = true;
+          existing.varian.push({ id: v.id, stock: Number(stock) });
+          if (existing.imageId == null && v.imageId != null) existing.imageId = v.imageId;
+        } else {
+          byName.set(key, {
+            key: `v-${key}`,
+            name,
+            hex: "#CCCCCC",
+            imageId: v.imageId ?? null,
+            fromVariant: true,
+            varian: [{ id: v.id, stock: Number(stock) }],
+          });
+        }
+      }
+    }
+
+    return [...byName.values()];
+  }, [product, colors, colorPosition, variantEdits]);
+
+  function updateColorName(key: string, name: string) {
+    setColors((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, name } : c)),
+    );
+  }
+
+  function updateColorHex(key: string, hex: string) {
+    setColors((prev) => prev.map((c) => (c.key === key ? { ...c, hex } : c)));
+  }
+
+  // Picking an image for a colourway stores it on the colour entry; variants of
+  // that colour are re-bound on save.
+  function setColorImage(name: string, imageId: number | null) {
+    const image = product?.images.find((img) => img.id === imageId)?.src || null;
+    setColors((prev) => {
+      const key = name.toLowerCase();
+      const idx = prev.findIndex((c) => c.name.toLowerCase() === key);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], imageId, image };
+        return next;
+      }
+      return [
+        ...prev,
+        {
+          key: `new-${key}`,
+          name,
+          hex: "#CCCCCC",
+          imageId,
+          image,
+        },
+      ];
+    });
+  }
+
+  function removeColor(key: string) {
+    setColors((prev) => prev.filter((c) => c.key !== key));
+  }
+
+  const newColorKey = () =>
+    `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   function addColor() {
     const name = newColorName.trim();
     if (!name) return;
@@ -193,9 +318,31 @@ export default function ProductEditorPage() {
       return;
     }
     setError("");
-    setColors((prev) => [...prev, { name, hex: newColorHex }]);
+    setColors((prev) => [
+      ...prev,
+      { key: newColorKey(), name, hex: newColorHex, imageId: null },
+    ]);
     setNewColorName("");
     setNewColorHex("#CCCCCC");
+  }
+
+  async function bindColorImages() {
+    if (!product) return;
+    setError("");
+    setMessage("");
+    try {
+      const res = await api(`/api/products/${encodeURIComponent(handle)}/fix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "bind-color-images" }),
+      });
+      const refreshed = await api(`/api/products/${encodeURIComponent(handle)}`);
+      setProduct(refreshed.product);
+      setColors(parseColorsJson(refreshed.product.metafields.colors));
+      setMessage(`${(res.bound || []).length} gambar warna diambil dari varian.`);
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
 
   async function fillColorsFromVariants() {
@@ -208,7 +355,10 @@ export default function ProductEditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "colors-from-variants" }),
       });
-      setColors(res.colors || []);
+      const refreshed = await api(`/api/products/${encodeURIComponent(handle)}`);
+      setProduct(refreshed.product);
+      setNoColor(false);
+      setColors(parseColorsJson(refreshed.product.metafields.colors));
       setMessage(`${(res.colors || []).length} warna diambil dari varian dan disimpan.`);
     } catch (e: any) {
       setError(e.message);
@@ -254,6 +404,16 @@ export default function ProductEditorPage() {
     setMessage("");
     setWarnings([]);
     try {
+      // Colours + their image ids. When "tanpa warna" is ticked the palette is
+      // cleared but Shopify's Color option (and its variants) stay untouched.
+      const colorPayload = noColor
+        ? []
+        : colorRows.map((row) => ({
+            name: row.name,
+            hex: row.hex,
+            imageId: row.imageId,
+          }));
+
       const payload: any = {
         title,
         bodyHtml,
@@ -261,7 +421,13 @@ export default function ProductEditorPage() {
         productType,
         status,
         tags,
-        colors,
+        colors: colorPayload,
+        noColor,
+        colorImages: noColor
+          ? []
+          : colorRows
+              .filter((row) => row.varian.length > 0)
+              .map((row) => ({ colorName: row.name, imageId: row.imageId })),
         metafields: {
           material: meta.material || "",
           fibre: meta.fibre || "",
@@ -394,133 +560,184 @@ export default function ProductEditorPage() {
       </div>
 
       <div className="card">
-        <h3>Warna (filter storefront)</h3>
+        <h3>Varian &amp; Warna</h3>
         <p className="hint">
-          Warna di sini yang dipakai filter warna di storefront. Produk satu warna pun boleh diisi.
+          Pilih gambar per warna — otomatis berlaku untuk semua ukuran warna itu. Swatch di
+          storefront tetap memakai kode warna, bukan gambar.
         </p>
-        {colors.length === 0 && <p className="muted">Belum ada warna.</p>}
-        {colors.map((c, i) => (
-          <div key={i} className="color-row">
+
+        {/* ── Bagian A: warna ───────────────────────────────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={noColor}
+              onChange={(e) => setNoColor(e.target.checked)}
+            />
+            Tanpa warna (produk tanpa pilihan warna)
+          </label>
+          {noColor && colors.length > 0 && (
+            <span className="hint" style={{ color: "#a15c00" }}>
+              Warna di bawah akan dihapus saat disimpan.
+            </span>
+          )}
+        </div>
+
+        {!noColor && colorRows.map((row) => {
+          const bound = row.varian.length;
+          const stock = row.varian.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+          const usedByOthers = Object.fromEntries(
+            colorRows
+              .filter((r) => r.name.toLowerCase() !== row.name.toLowerCase())
+              .map((r) => [r.name, r.imageId]),
+          );
+          return (
+            <div key={row.key} className="color-row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
+              <ImagePicker
+                images={product.images}
+                value={row.imageId}
+                onChange={(imageId) => setColorImage(row.name, imageId)}
+                usedBy={usedByOthers}
+                ariaLabel={`Gambar untuk warna ${row.name}`}
+              />
+              <input
+                className="input"
+                style={{ flex: "0 1 130px" }}
+                value={row.name}
+                placeholder="Nama warna"
+                readOnly={row.fromVariant}
+                title={row.fromVariant ? "Nama warna mengikuti opsi varian Shopify" : undefined}
+                onChange={(e) => updateColorName(row.key, e.target.value)}
+              />
+              <input
+                type="color"
+                className="color-row__hex"
+                value={/^#[0-9a-f]{6}$/i.test(row.hex) ? row.hex : "#CCCCCC"}
+                onChange={(e) => updateColorHex(row.key, e.target.value.toUpperCase())}
+                aria-label={`Kode warna untuk ${row.name}`}
+              />
+              <span className="muted" style={{ fontSize: 12, minWidth: 130 }}>
+                {bound > 0 ? `${bound} ukuran · stok ${stock}` : "tanpa varian"}
+              </span>
+              <button
+                className="btn btn--ghost btn--sm"
+                type="button"
+                onClick={() => removeColor(row.key)}
+                aria-label={`Hapus warna ${row.name}`}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+
+        {!noColor && (
+          <div className="color-row">
             <input
               className="input"
-              value={c.name}
-              placeholder="Nama warna"
-              onChange={(e) => {
-                const next = [...colors];
-                next[i] = { ...next[i], name: e.target.value };
-                setColors(next);
-              }}
+              placeholder="Warna baru, mis. Butter"
+              value={newColorName}
+              onChange={(e) => setNewColorName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addColor(); }}
             />
             <input
               type="color"
               className="color-row__hex"
-              value={/^#[0-9a-f]{6}$/i.test(c.hex) ? c.hex : "#CCCCCC"}
-              onChange={(e) => {
-                const next = [...colors];
-                next[i] = { ...next[i], hex: e.target.value.toUpperCase() };
-                setColors(next);
-              }}
-              aria-label={`Hex untuk ${c.name}`}
+              value={newColorHex}
+              onChange={(e) => setNewColorHex(e.target.value)}
+              aria-label="Kode warna baru"
             />
-            <button
-              className="btn btn--ghost btn--sm"
-              type="button"
-              onClick={() => setColors(colors.filter((_, idx) => idx !== i))}
-            >
-              ×
+            <button className="btn btn--secondary btn--sm" type="button" onClick={addColor}>
+              + Tambah warna
             </button>
           </div>
-        ))}
-        <div className="color-row">
-          <input
-            className="input"
-            placeholder="Warna baru, mis. Butter"
-            value={newColorName}
-            onChange={(e) => setNewColorName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") addColor(); }}
-          />
-          <input
-            type="color"
-            className="color-row__hex"
-            value={newColorHex}
-            onChange={(e) => setNewColorHex(e.target.value)}
-            aria-label="Hex warna baru"
-          />
-          <button className="btn btn--secondary btn--sm" type="button" onClick={addColor}>
-            + Tambah
+        )}
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          {colorPosition > 0 && !noColor && (
+            <button className="btn btn--ghost btn--sm" type="button" onClick={fillColorsFromVariants}>
+              Isi warna dari varian
+            </button>
+          )}
+          <button className="btn btn--ghost btn--sm" type="button" onClick={bindColorImages}>
+            Ambil gambar dari varian
           </button>
         </div>
-        {product.variants.length > 1 && colorPosition > 0 && colors.length === 0 && (
-          <button className="btn btn--ghost btn--sm" type="button" onClick={fillColorsFromVariants}>
-            Isi warna dari varian
-          </button>
-        )}
-      </div>
 
-      <div className="card">
-        <h3>Varian</h3>
-        <p className="hint">Ubah harga, harga coret, SKU, stok, dan gambar per varian.</p>
+        <hr style={{ border: "none", borderTop: "1px solid var(--line)", margin: "16px 0" }} />
+
+        {/* ── Bagian B: varian ──────────────────────────────────────────── */}
+        <h3 style={{ marginTop: 0 }}>Varian</h3>
+        <p className="hint">
+          Harga, harga coret, stok, dan SKU per varian. Gambar mengikuti warna di atas
+          (produk tanpa opsi warna memilih gambar per baris).
+        </p>
         {product.variants.map((v) => {
           const patch = variantEdits[v.id] || {};
           const price = patch.price ?? v.price;
-          const compareAt = patch.compareAtPrice ?? v.compareAtPrice ?? "";
+          const compareAt = (patch.compareAtPrice ?? v.compareAtPrice ?? "") as any;
           const sku = patch.sku ?? v.sku;
           const stock = patch.inventoryQuantity ?? v.inventoryQuantity;
           const imageId = patch.imageId !== undefined ? patch.imageId : v.imageId;
+          const colorName = variantValue(v, colorPosition);
+          const sizeName = variantValue(v, sizePosition);
           const variantTitle =
-            [variantValue(v, colorPosition), variantValue(v, sizePosition)]
-              .filter(Boolean)
-              .join(" · ") || v.title;
+            (colorPosition > 0
+              ? [colorName, sizeName].filter(Boolean).join(" · ")
+              : sizeName || v.title);
+          const inherited = colorPosition > 0
+            ? colorRows.find((r) => r.name.toLowerCase() === colorName.toLowerCase())?.imageId ?? null
+            : imageId;
+          const thumb = product.images.find((img) => img.id === (inherited ?? imageId))?.src || null;
+
           return (
             <div key={v.id} className="variant-row" style={{ flexWrap: "wrap", gap: 6 }}>
-              <span style={{ flex: "1 1 150px", fontSize: 13 }}>{variantTitle}</span>
+              <span
+                style={{
+                  width: 28, height: 28, borderRadius: 4, overflow: "hidden",
+                  background: "#f4f1ec", flex: "0 0 auto", display: "inline-flex",
+                }}
+              >
+                {thumb ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : null}
+              </span>
+              <span style={{ flex: "1 1 140px", fontSize: 13 }}>{variantTitle}</span>
               <input
-                className="input"
-                style={{ width: 92 }}
-                type="number"
-                step="0.01"
+                className="input" style={{ width: 92 }} type="number" step="0.01"
                 value={price}
                 onChange={(e) => setVariantField(v.id, "price", e.target.value)}
                 aria-label="Harga"
               />
               <input
-                className="input"
-                style={{ width: 92 }}
-                type="number"
-                step="0.01"
-                placeholder="coret"
-                value={compareAt as any}
+                className="input" style={{ width: 92 }} type="number" step="0.01"
+                placeholder="coret" value={compareAt}
                 onChange={(e) => setVariantField(v.id, "compareAtPrice", e.target.value)}
                 aria-label="Harga coret"
               />
               <input
-                className="input"
-                style={{ width: 90 }}
-                type="number"
+                className="input" style={{ width: 84 }} type="number"
                 value={stock}
                 onChange={(e) => setVariantField(v.id, "inventoryQuantity", Number(e.target.value))}
                 aria-label="Stok"
               />
               <input
-                className="input"
-                style={{ width: 120 }}
-                placeholder="SKU"
+                className="input" style={{ width: 110 }} placeholder="SKU"
                 value={sku}
                 onChange={(e) => setVariantField(v.id, "sku", e.target.value)}
                 aria-label="SKU"
               />
-              <select
-                className="input"
-                style={{ width: 120 }}
-                value={imageId ?? ""}
-                onChange={(e) => setVariantField(v.id, "imageId", e.target.value ? Number(e.target.value) : null)}
-                aria-label="Gambar varian"
-              >
-                <option value="">— gambar —</option>
-                {product.images.map((img, idx) => (
-                  <option key={img.id} value={img.id}>Gambar {idx + 1}</option>
-                ))}
-              </select>
+              {colorPosition === 0 && (
+                <ImagePicker
+                  images={product.images}
+                  value={imageId}
+                  onChange={(next) => setVariantField(v.id, "imageId", next)}
+                  size={28}
+                  max={12}
+                  ariaLabel={`Gambar untuk ${variantTitle}`}
+                />
+              )}
             </div>
           );
         })}

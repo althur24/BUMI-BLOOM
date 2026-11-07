@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@bumi/db";
 import { requireAdmin, jsonError } from "@/lib/auth";
-import { colorsFromProductVariants, getProduct, updateProduct } from "@/lib/products";
+import {
+  bindColorImagesFromVariants,
+  colorsFromProductVariants,
+  getProduct,
+  updateProduct,
+} from "@/lib/products";
 import { fetchExistingVendors, resolveVendorSimple, adminRest } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
 const EDIT_ROLES = ["SUPER_ADMIN", "MARKETPLACE_ADMIN", "CONTENT_EDITOR"] as const;
 
-type FixAction = "colors-from-variants" | "normalize-vendor" | "clean-handle";
+type FixAction =
+  | "colors-from-variants"
+  | "bind-color-images"
+  | "normalize-vendor"
+  | "clean-handle";
 
 // POST /api/products/[handle]/fix { action }
 export async function POST(
@@ -39,6 +48,15 @@ export async function POST(
       }
       await flagManualEdit(handle);
       return NextResponse.json({ ok: true, action, colors: result.colors });
+    }
+
+    if (action === "bind-color-images") {
+      const result = await bindColorImagesFromVariants(handle);
+      if (!result.written) {
+        return jsonError(409, result.reason || "Tidak ada gambar varian yang bisa dipakai.");
+      }
+      await flagManualEdit(handle);
+      return NextResponse.json({ ok: true, action, bound: result.bound });
     }
 
     if (action === "normalize-vendor") {

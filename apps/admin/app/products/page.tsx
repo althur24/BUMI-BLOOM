@@ -17,7 +17,8 @@ interface ProductSummary {
   variantCount: number;
   variantsWithImage: number;
   imageCount: number;
-  colors: { name: string; hex: string }[];
+  colors: { name: string; hex: string; imageId?: number | null }[];
+  noColor: boolean;
   colorOptionCount: number;
   sizeGuide: boolean;
   sourceUrl: string | null;
@@ -199,6 +200,9 @@ export default function ProductsPage() {
                 </span>
                 {p.issues.length > 0 && (
                   <span className="badge badge--yellow">{p.issues.length} masalah</span>
+                )}
+                {p.colors.length === 0 && p.noColor && (
+                  <span className="badge badge--dark">Tanpa warna</span>
                 )}
               </div>
               <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
