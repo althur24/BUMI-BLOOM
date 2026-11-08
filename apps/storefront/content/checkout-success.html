@@ -25,11 +25,17 @@
       </div>
 
       <div id="order-confirmed" hidden>
-        <div class="order-success__icon" aria-hidden="true">✓</div>
+        <div class="order-success__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
         <p class="checkout-eyebrow">Thank you</p>
         <h1 class="checkout-title">Your order is confirmed</h1>
+        <p class="order-success__paid" id="order-paid" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          Payment successful
+        </p>
         <p class="order-success__lead">
-          We have received your order and a confirmation email is on its way.
+          Your payment was received and your order is confirmed.
         </p>
 
         <div class="order-success__card">
@@ -51,6 +57,16 @@
           </div>
         </div>
 
+        <div class="order-success__email" id="order-email-note">
+          <p>
+            Your confirmation email is on its way to <strong id="order-email-inline">your email address</strong>.
+            It can take a few minutes to arrive — please check your inbox and spam folder.
+          </p>
+          <p>
+            We'll email you again with tracking details once your parcel is on its way.
+          </p>
+        </div>
+
         <div class="order-success__actions">
           <a href="#" class="btn btn--primary" id="order-track" hidden target="_blank" rel="noopener">
             Track your order
@@ -60,7 +76,8 @@
 
         <div class="order-success__help">
           <p>
-            Questions about your order? Email us and we will help within one business day.
+            Questions about your order? Email us at
+            <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a> and we will help within one business day.
           </p>
           <p class="order-success__note" id="order-track-note" hidden>
             Tracking details become available once your parcel is on its way.

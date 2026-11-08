@@ -236,9 +236,9 @@ const BumiCart = {
   },
 
   /* ── Promo codes ──
-     Shopify discount codes are the source of truth. Known codes get a local
-     estimate for the cart summary; any other code is stored and passed to
-     Shopify checkout for validation. */
+     The checkout API is the source of truth. Known codes get a local estimate
+     for the cart summary; any other code is stored and validated server-side
+     when the checkout session is created. */
   async applyPromo(code) {
     const key = String(code || '').trim().toUpperCase();
     if (!key) {
@@ -273,66 +273,6 @@ const BumiCart = {
     if (!p || p.pending) return 0;
     if (p.fixed != null) return Math.min(p.fixed, subtotal);
     return subtotal * (p.rate || 0);
-  },
-
-  /* ── Shopify checkout (Fase 4/5) ──
-     Bangun Shopify cart dari isi localStorage cart, lalu kembalikan
-     checkoutUrl Shopify (pembayaran asli). Promo code (kalau ada) dikirim
-     sebagai discountCodes — Shopify yang validasi. */
-  async createShopifyCart() {
-    const items = this.getCart();
-    if (!items.length) throw new Error('Cart is empty');
-
-    const lineItems = [];
-    const skipped = [];
-    for (const item of items) {
-      const product = window.BumiData ? BumiData.getProduct(item.id) : null;
-      const variant = findCartVariant(product, item.color, item.size);
-      if (!variant) { skipped.push(item); continue; }
-      lineItems.push({ merchandiseId: variant.id, quantity: item.quantity || 1 });
-    }
-    if (skipped.length) {
-      // Jangan diam-diam drop item — beri tahu customer agar bisa hapus & retry.
-      throw new Error('Some cart items could not be matched to a variant: '
-        + skipped.map((s) => s.name || s.id).join(', ')
-        + '. Please remove them and try again.');
-    }
-    if (!lineItems.length) throw new Error('No matching product variants (catalog not loaded?)');
-
-    // BUMI / BLOOM sells to Australia. Sending the buyer country keeps the
-    // Shopify checkout in AUD / en-AU instead of falling back to the visitor's
-    // IP country (which produced en-ID and comma-decimal prices).
-    const input = {
-      lines: lineItems,
-      buyerIdentity: { countryCode: 'AU' },
-    };
-    const promo = this.getPromo();
-    if (promo && promo.code) input.discountCodes = [promo.code];
-
-    const shop = window.BumiShop;
-    if (!shop) throw new Error('Shopify config missing');
-    const res = await fetch(shop.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': shop.token },
-      body: JSON.stringify({
-        query: `mutation CartCreate($input: CartInput!) {
-          cartCreate(input: $input) {
-            cart { id checkoutUrl }
-            userErrors { field message code }
-          }
-        }`,
-        variables: { input },
-      }),
-    });
-    if (!res.ok) throw new Error(`Storefront HTTP ${res.status}`);
-    const json = await res.json();
-    if (json.errors && json.errors.length) throw new Error('Cart GraphQL: ' + JSON.stringify(json.errors));
-    const cart = json.data.cartCreate.cart;
-    if (json.data.cartCreate.userErrors && json.data.cartCreate.userErrors.length) {
-      throw new Error('Cart errors: ' + json.data.cartCreate.userErrors.map((e) => e.message).join('; '));
-    }
-    if (!cart) throw new Error('Shopify did not return a cart');
-    return cart.checkoutUrl;
   },
 
   /* Display formatting — delegates to BumiCurrency (AUD only). */
@@ -507,6 +447,22 @@ const BumiCart = {
       d.root.classList.add('is-open');
       d.root.setAttribute('aria-hidden', 'false');
       this._syncTriggers(true);
+      if (window.BumiTrack) {
+        const items = this.getCart().map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity || 1,
+        }));
+        const total = this.getTotal();
+        if (items.length) {
+          BumiTrack.event('view_cart', {
+            currency: 'AUD',
+            value: total - this.getDiscount(total),
+            items,
+          });
+        }
+      }
       requestAnimationFrame(() => {
         const closeBtn = d.root.querySelector('.bb-cart-drawer__close');
         if (closeBtn) closeBtn.focus({ preventScroll: true });
@@ -773,13 +729,11 @@ const BumiCart = {
       }
 
       const mode = window.__BB_PUBLIC_ENV__ && window.__BB_PUBLIC_ENV__.checkoutMode;
-      if (mode === 'stripe') {
-        window.location.href = '/checkout';
-        return;
+      if (mode && mode !== 'stripe') {
+        throw new Error('Checkout is not available right now.');
       }
 
-      const url = await this.createShopifyCart();
-      window.location.href = url;
+      window.location.href = '/checkout';
     } catch (err) {
       console.error('Checkout failed', err);
       alert('Sorry, checkout could not start: ' + (err.message || err) + '. Please try again.');

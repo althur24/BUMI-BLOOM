@@ -96,7 +96,7 @@
         promoMsg.style.display = 'block';
         promoMsg.className = 'promo-field__msg promo-field__msg--ok';
         promoMsg.textContent = p.pending
-          ? 'Code saved — it will be validated at Shopify checkout.'
+          ? 'Nice — your discount will be applied at checkout.'
           : p.label + ' applied';
         if (promoInput) promoInput.value = p.code;
       } else {
@@ -117,7 +117,7 @@
         if (res.valid) {
           promoMsg.className = 'promo-field__msg promo-field__msg--ok';
           promoMsg.textContent = res.pending
-            ? 'Code saved — it will be validated at Shopify checkout.'
+            ? 'Nice — your discount will be applied at checkout.'
             : res.label + ' applied';
         } else {
           promoMsg.className = 'promo-field__msg promo-field__msg--err';

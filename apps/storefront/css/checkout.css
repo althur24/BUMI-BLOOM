@@ -303,6 +303,10 @@
   color: var(--text-muted);
 }
 
+.checkout-secure-note--email {
+  margin-top: var(--space-2);
+}
+
 /* Payment-in-progress banner. Lives outside the Stripe iframe so it stays
    visible while the form owns the Pay button. */
 .checkout-payment-banner {
@@ -396,7 +400,7 @@
   border-radius: 50%;
   background: var(--color-blue-light);
   color: var(--color-dark);
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-size: var(--text-2xl);
   font-weight: var(--fw-bold);
   margin-bottom: var(--space-4);
@@ -487,6 +491,11 @@
     transform var(--duration-normal) var(--ease-smooth);
 }
 
+.checkout-step__check svg {
+  width: 13px;
+  height: 13px;
+}
+
 /* [hidden] is display:none globally, which would kill the fade. Keep these two
    in the flow and only animate their opacity/scale so the hand-off is smooth. */
 .checkout-step__check[hidden] {
@@ -557,6 +566,18 @@
 .checkout-processing__hint {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+.checkout-processing__help {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.checkout-processing__help a {
+  color: var(--color-coral);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -698,10 +719,34 @@
   border-radius: 50%;
   background: var(--color-blue-light);
   color: var(--color-dark);
-  font-family: var(--font-heading);
-  font-size: 2rem;
-  font-weight: var(--fw-bold);
   margin-bottom: var(--space-5);
+}
+
+.order-success__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.order-success__paid {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  margin-bottom: var(--space-4);
+  border-radius: 999px;
+  background: var(--color-blue-light);
+  color: var(--color-dark);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.order-success__paid[hidden] {
+  display: none;
+}
+
+.order-success__paid svg {
+  width: 16px;
+  height: 16px;
 }
 
 .order-success .checkout-eyebrow {
@@ -714,7 +759,27 @@
 
 .order-success__lead {
   color: var(--text-muted);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
+}
+
+.order-success__email {
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.order-success__email p + p {
+  margin-top: var(--space-3);
+}
+
+.order-success__email strong {
+  color: var(--color-dark);
+  overflow-wrap: anywhere;
 }
 
 .order-success__card {

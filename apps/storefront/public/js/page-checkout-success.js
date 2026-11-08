@@ -14,6 +14,8 @@
     missing: document.getElementById('order-missing'),
     number: document.getElementById('order-number'),
     email: document.getElementById('order-email'),
+    paid: document.getElementById('order-paid'),
+    emailInline: document.getElementById('order-email-inline'),
     track: document.getElementById('order-track'),
     trackNote: document.getElementById('order-track-note'),
   };
@@ -21,6 +23,27 @@
   const STATES = ['loading', 'confirmed', 'pending', 'missing'];
   let attempts = 0;
   let timer = null;
+
+  // Fire the browser purchase event at most once per checkout (survives reloads
+  // and the 2s status poll). The server sends the same event_id via Meta CAPI /
+  // GA4 MP, so browsers + server deduplicate on the ad platforms.
+  function trackPurchase(data) {
+    if (!window.BumiTrack) return;
+    const purchase = data && data.purchase;
+    if (!purchase || !purchase.event_id) return;
+    const key = 'bb-purchase-' + purchase.event_id;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch {}
+    window.BumiTrack.purchase({
+      transaction_id: purchase.transaction_id,
+      value: purchase.value,
+      currency: purchase.currency,
+      items: purchase.items,
+      event_id: purchase.event_id,
+    });
+  }
 
   function show(name) {
     for (const key of STATES) {
@@ -37,14 +60,22 @@
   }
 
   function renderConfirmed(data) {
+    trackPurchase(data);
     if (els.number) {
       els.number.textContent = data.orderName || '—';
     }
     if (els.email) {
       els.email.textContent = data.email || 'Your email address';
     }
-    // Prefer our own tracking page; fall back to the Shopify status page only
-    // if the token could not be produced.
+    if (els.emailInline) {
+      els.emailInline.textContent = data.email || 'your email address';
+    }
+    // Only promise "payment successful" when Stripe actually reports it paid.
+    if (els.paid) {
+      els.paid.hidden = !(data.paymentStatus === 'paid' || data.status === 'PAID');
+    }
+    // Prefer our own tracking page; fall back to the status page only if the
+    // token could not be produced.
     const trackHref = data.trackingUrl || data.statusPageUrl || '';
     if (trackHref && els.track) {
       els.track.href = trackHref;

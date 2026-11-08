@@ -48,7 +48,7 @@
               <button class="btn btn--secondary btn--sm" id="checkout-promo-apply" type="button">Apply</button>
             </div>
             <p class="checkout-promo__msg" id="checkout-promo-msg" hidden></p>
-            <p class="checkout-help">Discount codes are validated securely with Shopify.</p>
+            <p class="checkout-help">Have a code? Enter it above and we'll apply your discount right away.</p>
           </div>
 
           <label class="checkout-consent">
@@ -67,9 +67,10 @@
             Payment details are securely handled by Stripe. We never see your card number.
           </p>
 
-          <button class="checkout-link checkout-link--button" id="checkout-fallback-prepay" type="button" hidden>
-            Continue with Shopify checkout
-          </button>
+          <p class="checkout-secure-note checkout-secure-note--email">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            You'll receive a confirmation email once payment is complete.
+          </p>
         </div>
 
         <div id="checkout-stripe-section" class="checkout-stripe-section" hidden>
@@ -95,17 +96,17 @@
         <div id="checkout-processing" class="checkout-state" hidden aria-live="polite">
           <div class="checkout-processing__steps" id="checkout-processing-steps">
             <div class="checkout-step is-active" data-step="payment">
-              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
               <span class="checkout-step__spinner" aria-hidden="true"></span>
               <span class="checkout-step__label">Payment received</span>
             </div>
             <div class="checkout-step" data-step="order">
-              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
               <span class="checkout-step__spinner" aria-hidden="true"></span>
               <span class="checkout-step__label">Creating your order</span>
             </div>
             <div class="checkout-step" data-step="email">
-              <span class="checkout-step__check" hidden>✓</span>
+              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
               <span class="checkout-step__spinner" aria-hidden="true"></span>
               <span class="checkout-step__label">Sending confirmation</span>
             </div>
@@ -119,6 +120,9 @@
           <p class="checkout-processing__hint">
             This usually takes 5–10 seconds. Please keep this page open.
           </p>
+          <p class="checkout-processing__help">
+            Need help? Email <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a>
+          </p>
         </div>
 
         <div id="checkout-failed" class="checkout-state checkout-state--failed" hidden aria-live="polite">
@@ -129,7 +133,6 @@
             <button class="btn btn--primary" id="checkout-retry" type="button">Try again</button>
             <a href="/cart" class="btn btn--ghost">Back to bag</a>
           </div>
-          <button class="checkout-link checkout-link--button" id="checkout-fallback" type="button" hidden>Continue with Shopify checkout</button>
         </div>
       </section>
 

@@ -410,8 +410,5 @@ const BumiData = {
 
 window.BumiData = BumiData;
 
-// Storefront config dibuka untuk dipakai modul lain (cart.js createShopifyCart).
-window.BumiShop = { endpoint: SHOPIFY_ENDPOINT, token: SHOPIFY_STOREFRONT_TOKEN };
-
 // Eagerly start the fetch as soon as the script loads (parallel with page parsing).
 BumiData.ready();

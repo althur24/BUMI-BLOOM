@@ -2,7 +2,7 @@
   'use strict';
 
   const env = window.__BB_PUBLIC_ENV__ || {};
-  const MODE = env.checkoutMode || 'shopify';
+  const MODE = env.checkoutMode || 'stripe';
   const API_BASE = String(env.checkoutApiUrl || '').replace(/\/+$/, '');
   const state = {
     quote: null,
@@ -14,6 +14,7 @@
     busy: false,
     confirming: false,
     redirecting: false,
+    paymentInfoTracked: false,
     promoCode: null,
     lines: [],
     unavailable: [],
@@ -42,8 +43,6 @@
     failedMessage: $('checkout-failed-message'),
     failedActions: $('checkout-failed-actions'),
     retry: $('checkout-retry'),
-    fallback: $('checkout-fallback'),
-    fallbackPrepay: $('checkout-fallback-prepay'),
     summarySubtotal: $('checkout-summary-subtotal'),
     summaryDiscountRow: $('checkout-summary-discount-row'),
     summaryDiscountLabel: $('checkout-summary-discount-label'),
@@ -166,6 +165,24 @@
       state.confirming = true;
       showPaymentBanner('Processing your payment…', 'info');
 
+      // The customer clicked Pay: they've entered payment details and are about
+      // to be charged. Fire once per checkout session.
+      if (window.BumiTrack && !state.paymentInfoTracked) {
+        state.paymentInfoTracked = true;
+        const lines = cartLines().lines || [];
+        const items = lines.map((line) => ({
+          id: line.variantId || line.id,
+          name: line.name || line.productTitle,
+          price: Number(line.price || 0),
+          quantity: Number(line.quantity || 1),
+        }));
+        BumiTrack.event('add_payment_info', {
+          currency: 'AUD',
+          value: state.quote ? Number(state.quote.totalAudCents || 0) / 100 : 0,
+          items,
+        });
+      }
+
       try {
         const result = await actions.confirm({
           formConfirmEvent: event,
@@ -224,7 +241,6 @@
       destroyEmbedded();
       setVisible('ready');
       showError('We could not load the payment form. Please try again.');
-      showPrepayFallback();
     });
   }
 
@@ -251,7 +267,6 @@
     state.checkoutId = checkoutId;
     state.embedded = form;
     state.confirming = false;
-    hideFallbacks();
     hidePaymentBanner();
     setVisible('stripeSection');
     form.mount('#stripe-checkout');
@@ -564,7 +579,6 @@
         await refreshQuote();
       } catch {
         state.quote = null;
-        showPrepayFallback();
       }
     } finally {
       setBusy(false);
@@ -617,7 +631,6 @@
     state.redirecting = true;
 
     stopPolling();
-    hideFallbacks();
     markAllStepsDone();
     // Hand off to the dedicated confirmation page so the order reference is
     // bookmarkable and survives a reload. The cart is cleared first.
@@ -646,15 +659,6 @@
     }, delay);
   }
 
-  function showPrepayFallback() {
-    if (els.fallbackPrepay) els.fallbackPrepay.hidden = false;
-  }
-
-  function hideFallbacks() {
-    if (els.fallback) els.fallback.hidden = true;
-    if (els.fallbackPrepay) els.fallbackPrepay.hidden = true;
-  }
-
   function showFailed(message, allowRetry = true) {
     stopPolling();
     destroyEmbedded();
@@ -666,8 +670,6 @@
     }
     if (els.failedActions) els.failedActions.hidden = !allowRetry;
     if (els.retry) els.retry.hidden = !allowRetry;
-    if (els.fallback) els.fallback.hidden = true;
-    if (els.fallbackPrepay) els.fallbackPrepay.hidden = true;
   }
 
   async function pollStatus({ paymentStarted = false } = {}) {
@@ -735,7 +737,6 @@
             showError(
               'We could not load the payment form. Please try again.',
             );
-            showPrepayFallback();
           }
           return;
         }
@@ -776,8 +777,8 @@
     if (els.processingNote) {
       const messages = {
         payment: 'Confirming your payment with Stripe…',
-        order: 'Creating your order in Shopify…',
-        email: 'Sending your confirmation email…',
+        order: 'Creating your order…',
+        email: 'Finalising your order…',
         done: 'All done! Redirecting…',
       };
       const next = messages[step] || 'Processing…';
@@ -811,8 +812,6 @@
     // `confirm` success and the `change` event can both fire. Only start the
     // stepper/polling once.
     if (els.processing && !els.processing.hidden) return;
-
-    hideFallbacks();
     hidePaymentBanner();
     setVisible('processing');
     state.pollCount = 0;
@@ -841,7 +840,6 @@
       quote = await refreshQuote();
     } catch (err) {
       showError(err.message);
-      showPrepayFallback();
       return;
     }
 
@@ -851,7 +849,6 @@
 
     if (!env.stripePublishableKey) {
       showError('Stripe is not configured yet.');
-      showPrepayFallback();
       return;
     }
 
@@ -897,23 +894,6 @@
       state.checkoutId = null;
       state.sessionId = null;
       showError(err.message || 'Checkout could not start.');
-      showPrepayFallback();
-    }
-  }
-
-  async function fallbackToShopify() {
-    if (!window.BumiCart) return;
-    clearStoredSession();
-    if (els.fallback) els.fallback.disabled = true;
-    if (els.fallbackPrepay) els.fallbackPrepay.disabled = true;
-    try {
-      await window.BumiData.ready();
-      const url = await window.BumiCart.createShopifyCart();
-      window.location.href = url;
-    } catch (err) {
-      if (els.fallback) els.fallback.disabled = false;
-      if (els.fallbackPrepay) els.fallbackPrepay.disabled = false;
-      showError(err.message || 'Shopify checkout could not start.');
     }
   }
 
@@ -998,11 +978,9 @@
           await refreshQuote();
         } catch (retryErr) {
           showError(retryErr.message);
-          showPrepayFallback();
         }
       } else {
         showError(err.message);
-        showPrepayFallback();
       }
     }
   }
@@ -1024,10 +1002,6 @@
       state.sessionId = null;
       window.location.reload();
     });
-  }
-  if (els.fallback) els.fallback.addEventListener('click', fallbackToShopify);
-  if (els.fallbackPrepay) {
-    els.fallbackPrepay.addEventListener('click', fallbackToShopify);
   }
   if (els.unavailable) {
     els.unavailable.addEventListener('click', async (event) => {

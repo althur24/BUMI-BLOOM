@@ -140,7 +140,7 @@
                 <div class="cart-summary__row" id="cart-discount-row" style="display:none;"><span id="cart-discount-label">Discount</span><span id="cart-discount">—</span></div>
                 <div class="cart-summary__row"><span>Shipping (est.)</span><span id="cart-shipping">—</span></div>
                 <div class="cart-summary__row cart-summary__row--total"><span>Estimated total</span><span id="cart-total">—</span></div>
-                <p style="font-size:var(--text-xs);opacity:0.7;margin-top:var(--space-2);">Shipping &amp; taxes finalized at Shopify checkout.</p>
+                <p style="font-size:var(--text-xs);opacity:0.7;margin-top:var(--space-2);">Shipping &amp; taxes finalized at checkout.</p>
                 <p style="font-size:var(--text-xs);opacity:0.6;text-align:right;margin:var(--space-1) 0 0;">Taxes calculated at checkout.</p>
                 <button class="btn btn--primary btn--full" type="button" id="checkout-btn">Proceed to Checkout</button>
                 <a href="products" class="btn btn--ghost btn--full" style="margin-top: var(--space-2);">Continue Shopping</a>
@@ -324,9 +324,8 @@
       const original = checkoutBtn.textContent;
       checkoutBtn.textContent = 'Preparing checkout…';
       try {
-        await BumiData.ready(); // pastikan katalog (variant GID) sudah dimuat
-        const url = await BumiCart.createShopifyCart();
-        window.location.href = url;
+        await BumiData.ready();
+        window.location.href = '/checkout';
       } catch (err) {
         console.error('Checkout failed', err);
         alert('Sorry, checkout could not start: ' + (err.message || err) + '. Please try again.');

@@ -1521,7 +1521,7 @@
     el.innerHTML =
       '<h2 class="admin-tab__title">Promotions</h2>' +
       '<p style="margin-bottom:var(--space-4);padding:var(--space-4);border:2px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-surface);font-size:var(--text-sm);">' +
-        'Discount codes are created and managed in <strong>Shopify Admin → Discounts</strong>. ' +
+        'Discount codes are managed and published from your store admin. ' +
         'This legacy table is read-only and is not used at Stripe checkout.' +
       '</p>' +
       '<div id="promotions-table"><p>Loading…</p></div>';
