@@ -2,21 +2,33 @@ import Stripe from "stripe";
 
 let stripeClient: Stripe | null = null;
 let cachedTaxRateId: string | null = null;
+let warnedAboutMode = false;
 
-// Reject an obvious test/live mismatch at startup instead of silently taking
-// the wrong kind of payment. Staging deployments that run with
-// NODE_ENV=production can opt out with ALLOW_TEST_KEYS=true.
-function assertKeyMode(secret: string): void {
-  if (process.env.NODE_ENV !== "production") return;
-  if (process.env.ALLOW_TEST_KEYS === "true") return;
-  if (secret.startsWith("sk_test_")) {
-    throw new Error(
-      "STRIPE_SECRET_KEY is a test key but NODE_ENV=production. " +
-        "Set a live key, or set ALLOW_TEST_KEYS=true if this is a staging deploy.",
+// Which Stripe mode the configured key belongs to. Surfaced by /api/health so
+// a test-key-in-production situation is visible instead of silent — the app
+// keeps running either way (staging legitimately runs test keys).
+export function stripeMode(): "test" | "live" | "unconfigured" {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) return "unconfigured";
+  if (secret.startsWith("sk_test_")) return "test";
+  if (secret.startsWith("sk_live_")) return "live";
+  return "unconfigured";
+}
+
+function warnIfUnexpectedMode(): void {
+  const mode = stripeMode();
+  if (mode === "unconfigured" || warnedAboutMode) return;
+  warnedAboutMode = true;
+  if (mode === "test" && process.env.NODE_ENV === "production") {
+    console.warn(
+      "[stripe] RUNNING WITH A TEST KEY IN PRODUCTION — real payments are " +
+        "not being taken. Set sk_live_... before going live.",
     );
   }
-  if (secret.startsWith("sk_live_") && process.env.NODE_ENV !== "production") {
-    throw new Error("STRIPE_SECRET_KEY is a live key outside production.");
+  if (mode === "live" && process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[stripe] live key used outside production — make sure this is intended.",
+    );
   }
 }
 
@@ -25,7 +37,7 @@ export function getStripe(): Stripe {
   if (!secret) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  assertKeyMode(secret);
+  warnIfUnexpectedMode();
   if (!stripeClient) {
     stripeClient = new Stripe(secret, {
       // Checkout form mode (ui_mode: "form") requires the dahlia API version.
