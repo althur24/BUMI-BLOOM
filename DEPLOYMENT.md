@@ -45,18 +45,15 @@ DIRECT_URL=<isi dari .env.local>
 STOREFRONT_URL=https://www.bumibloom.com,https://bumi-bloom.vercel.app
 
 # Stripe — mode sesuai environment
-#   staging  : sk_test_...
-#   produksi : sk_live_...
-# NODE_ENV=production + sk_test_ akan DITOLAK saat checkout dipanggil,
-# kecuali ALLOW_TEST_KEYS=true (khusus staging yang berjalan sbg production).
+#   staging  : sk_test_... atau rk_test_...
+#   produksi : rk_live_... (restricted key, rekomendasi Stripe) atau sk_live_...
+# Mode aktif terlihat di /api/health → checks.stripeMode ("test"/"live").
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=<dari webhook, lihat 1.4>
 STRIPE_GST_TAX_RATE_ID=txr_...
 STRIPE_CHECKOUT_MODE=stripe
 # Kosongkan untuk memakai default Stripe. Isi hanya bila perlu override.
 STRIPE_PAYMENT_METHODS=
-# Isi "true" hanya di staging yang memakai NODE_ENV=production + key test.
-ALLOW_TEST_KEYS=
 
 # Order tracking (/order/<token>) — WAJIB. Tanpa ini pembuatan order gagal
 # SETELAH Stripe menagih customer.
@@ -169,6 +166,10 @@ NEXT_PUBLIC_SHOPIFY_API_VERSION=2026-10
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 NEXT_PUBLIC_CHECKOUT_MODE=stripe
 NEXT_PUBLIC_CHECKOUT_API_URL=https://admin.bumibloom.com
+
+# Analytics (browser) — lihat bagian 6 di bawah
+NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_META_PIXEL_ID=123456789012345
 ```
 
 **Penting:** `NEXT_PUBLIC_*` dibaca saat **build**. Setelah mengisi env,
@@ -238,10 +239,20 @@ txr_...      → STRIPE_GST_TAX_RATE_ID (Railway)
 **Saat jualan nyata:** ganti semua ke live mode.
 ```text
 pk_live_...  → NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (Vercel)
-sk_live_...  → STRIPE_SECRET_KEY (Railway)
+rk_live_...  → STRIPE_SECRET_KEY (Railway) — restricted key, lihat permission di bawah
 whsec_...    → STRIPE_WEBHOOK_SECRET (Railway, dari endpoint live dashboard)
-txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode)
+txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode — opsional, auto-create)
 ```
+
+**Permission restricted key `rk_live_`** (sesuai call yang dipakai kode):
+| Resource di dashboard | Permission | Dipakai untuk |
+|---|---|---|
+| Checkout Sessions | **Write** | create/retrieve/expire session |
+| Coupons | **Write** | kode diskon saat checkout |
+| Tax rates | **Write** | GST 10% (write mencakup read) |
+| Charges | **Read** | `refunds.list` di resolusi refund/dispute |
+
+Resource lain → None. `sk_live_` lama tetap didukung kode sebagai fallback.
 
 **Langkah ganti ke live mode:**
 1. Stripe Dashboard → toggle ke **Live mode**
@@ -250,6 +261,48 @@ txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode)
 4. Ganti semua env di Vercel dan Railway
 5. Redeploy Vercel (wajib untuk `NEXT_PUBLIC_*`)
 6. Restart Railway service
+
+---
+
+## 3.5 Analytics — GA4 & Meta Pixel
+
+Ada dua jalur tracking yang berjalan bersamaan dan **saling dedupe** lewat
+`event_id` yang sama (id checkout):
+
+| Jalur | Kode | Env | Kapan kirim |
+|---|---|---|---|
+| Browser (GA4 + Meta Pixel) | `apps/storefront/public/js/analytics.js` | Storefront: `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_META_PIXEL_ID` | Setiap event, termasuk `purchase` di halaman sukses |
+| Server (GA4 MP + Meta CAPI) | `apps/admin/lib/checkout-analytics.ts` | Admin: `GA4_MEASUREMENT_ID`, `GA4_API_SECRET`, `META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN` | `purchase` saja, setelah Stripe konfirmasi |
+
+### 3.5.1 Ambil ID
+
+- **GA4**: analytics.google.com → Admin → Data Streams → pilih web stream →
+  copy **Measurement ID** (`G-…`). Untuk server-side: tab *Measurement Protocol
+  API secrets* → **Create** → copy **secret value**.
+- **Meta**: business.facebook.com → Events Manager → Data Sources → pilih Pixel →
+  copy **Dataset ID**. Untuk server-side: Settings → Conversions API →
+  **Generate access token** (pakai System User token untuk jangka panjang).
+
+### 3.5.2 Isi env
+
+**Vercel (storefront)** → `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_META_PIXEL_ID` → redeploy.
+**Railway (admin)** → `GA4_MEASUREMENT_ID`, `GA4_API_SECRET`, `META_PIXEL_ID`,
+`META_CAPI_ACCESS_TOKEN` → restart service.
+
+Kosongkan salah satu sisi tidak merusak apa pun: sisi itu hanya diam.
+
+### 3.5.3 Event yang dikirim
+
+`view_item_list`, `view_item`, `view_cart`, `add_to_cart`,
+`add_to_wishlist`, `begin_checkout`, `add_payment_info`, `purchase`,
+`generate_lead`, `sign_up` / `login`.
+
+### 3.5.4 Verifikasi
+
+1. **Meta**: Events Manager → Test Events → buka situs, klik-klik → event muncul.
+   Untuk `purchase`, lihat apakah **deduplicated** (browser + server jadi 1).
+2. **GA4**: Admin → DebugView → kunjungi `https://www.bumibloom.com/?debug_mode=1`.
+3. **Dev**: tanpa ID, buka console browser → event ter-log `[BumiTrack] …`.
 
 ---
 
@@ -265,6 +318,7 @@ txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode)
 | Webhook | Stripe Dashboard → Webhooks → pastikan endpoint production punya delivery sukses |
 | Database | Migration sudah dijalankan |
 | Scope Shopify | `read_discounts`, `read_draft_orders`, `write_draft_orders`, `write_orders` aktif |
+| Analytics | `NEXT_PUBLIC_GA_ID` / `NEXT_PUBLIC_META_PIXEL_ID` terisi & redeploy; event tampil di Meta Test Events / GA4 DebugView |
 
 ---
 
@@ -308,3 +362,19 @@ txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode)
 ```bash
 node --env-file=apps/admin/.env.local scripts/_verify-scopes.mjs
 ```
+
+### Stripe 403 / `insufficient_permissions` di log Railway
+
+**Penyebab:** restricted key (`rk_live_`/`rk_test_`) belum punya permission untuk
+resource yang dipanggil kode.
+
+**Gejala per permission yang kurang:**
+- `tax_rate_write` → SEMUA checkout gagal (GST lookup throw saat create session)
+- `coupon_write` → checkout dengan kode diskon gagal
+- `checkout_session_write` → gagal membuat session payment
+- `charge_read` → resolusi refund/dispute via webhook gagal (payment tetap jalan)
+
+**Solusi:** Stripe Dashboard → Developers → API keys → edit restricted key
+(⋯ → Edit key) → tambah permission yang kurang. Permission bisa diubah tanpa
+mengganti nilai key, tidak perlu redeploy. Tabel lengkap ada di §3.2.
+

@@ -7,11 +7,18 @@ let warnedAboutMode = false;
 // Which Stripe mode the configured key belongs to. Surfaced by /api/health so
 // a test-key-in-production situation is visible instead of silent — the app
 // keeps running either way (staging legitimately runs test keys).
+// Accepts both secret keys (sk_*) and restricted API keys (rk_*). Restricted
+// keys are Stripe's recommended production key: live mode issues rk_live_ with
+// per-resource permissions instead of an unrestricted sk_live_.
 export function stripeMode(): "test" | "live" | "unconfigured" {
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) return "unconfigured";
-  if (secret.startsWith("sk_test_")) return "test";
-  if (secret.startsWith("sk_live_")) return "live";
+  if (secret.startsWith("sk_test_") || secret.startsWith("rk_test_")) {
+    return "test";
+  }
+  if (secret.startsWith("sk_live_") || secret.startsWith("rk_live_")) {
+    return "live";
+  }
   return "unconfigured";
 }
 
@@ -21,8 +28,8 @@ function warnIfUnexpectedMode(): void {
   warnedAboutMode = true;
   if (mode === "test" && process.env.NODE_ENV === "production") {
     console.warn(
-      "[stripe] RUNNING WITH A TEST KEY IN PRODUCTION — real payments are " +
-        "not being taken. Set sk_live_... before going live.",
+        "[stripe] RUNNING WITH A TEST KEY IN PRODUCTION — real payments are " +
+          "not being taken. Set a live key (rk_live_/sk_live_) before going live.",
     );
   }
   if (mode === "live" && process.env.NODE_ENV !== "production") {
