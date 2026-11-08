@@ -22,6 +22,59 @@ async function resolveChargeRefund(charge: any): Promise<any | null> {
   return list.data[0] || null;
 }
 
+// Record a chargeback and link it back to our checkout when the payment intent
+// matches a known StripeCheckout row. Idempotent: Stripe replays events.
+async function recordDispute(dispute: any): Promise<void> {
+  if (!dispute?.id) return;
+
+  const paymentIntent = paymentIntentId(dispute.payment_intent);
+  let checkoutId: string | null = null;
+  let shopifyOrderId: string | null = null;
+
+  if (paymentIntent) {
+    const checkout = await prisma.stripeCheckout.findFirst({
+      where: { stripePaymentIntentId: paymentIntent },
+      select: { id: true, shopifyOrderId: true },
+    });
+    checkoutId = checkout?.id || null;
+    shopifyOrderId = checkout?.shopifyOrderId || null;
+  }
+
+  const evidenceDueBy =
+    typeof dispute.evidence_details?.due_by === "number"
+      ? new Date(dispute.evidence_details.due_by * 1000)
+      : null;
+
+  const data = {
+    stripeChargeId: String(dispute.charge || ""),
+    stripePaymentIntentId: paymentIntent,
+    checkoutId,
+    shopifyOrderId,
+    amountAudCents: Number(dispute.amount) || 0,
+    currency: dispute.currency || null,
+    reason: dispute.reason || null,
+    status: String(dispute.status || "warning_needs_response"),
+    evidenceDueBy,
+  };
+
+  try {
+    await prisma.dispute.upsert({
+      where: { id: String(dispute.id) },
+      create: { id: String(dispute.id), ...data },
+      update: data,
+    });
+  } catch (err: any) {
+    // Never let dispute bookkeeping fail the webhook ack — Stripe would retry
+    // the whole event and the money-relevant handlers already succeeded.
+    console.error("[stripe] dispute record failed", dispute.id, err?.message);
+  }
+
+  console.error(
+    `[stripe] dispute ${dispute.status || "created"} ${dispute.id} ` +
+      `amount=${data.amountAudCents} reason=${data.reason || "-"}`,
+  );
+}
+
 async function markPendingSession(session: any): Promise<void> {
   if (!session?.id) return;
   await prisma.stripeCheckout.updateMany({
@@ -166,8 +219,9 @@ async function handleEvent(event: any): Promise<void> {
     return;
   }
 
-  if (event.type === "charge.dispute.created") {
-    console.error("[stripe] dispute created", event.data.object?.id);
+  if (event.type === "charge.dispute.created" || event.type === "charge.dispute.updated" || event.type === "charge.dispute.closed") {
+    await recordDispute(event.data.object);
+    return;
   }
 }
 

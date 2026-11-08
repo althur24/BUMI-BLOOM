@@ -3,11 +3,29 @@ import Stripe from "stripe";
 let stripeClient: Stripe | null = null;
 let cachedTaxRateId: string | null = null;
 
+// Reject an obvious test/live mismatch at startup instead of silently taking
+// the wrong kind of payment. Staging deployments that run with
+// NODE_ENV=production can opt out with ALLOW_TEST_KEYS=true.
+function assertKeyMode(secret: string): void {
+  if (process.env.NODE_ENV !== "production") return;
+  if (process.env.ALLOW_TEST_KEYS === "true") return;
+  if (secret.startsWith("sk_test_")) {
+    throw new Error(
+      "STRIPE_SECRET_KEY is a test key but NODE_ENV=production. " +
+        "Set a live key, or set ALLOW_TEST_KEYS=true if this is a staging deploy.",
+    );
+  }
+  if (secret.startsWith("sk_live_") && process.env.NODE_ENV !== "production") {
+    throw new Error("STRIPE_SECRET_KEY is a live key outside production.");
+  }
+}
+
 export function getStripe(): Stripe {
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
+  assertKeyMode(secret);
   if (!stripeClient) {
     stripeClient = new Stripe(secret, {
       // Checkout form mode (ui_mode: "form") requires the dahlia API version.

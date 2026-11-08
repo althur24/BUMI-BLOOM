@@ -44,11 +44,24 @@ DIRECT_URL=<isi dari .env.local>
 # Production: www.bumibloom.com + Vercel staging
 STOREFRONT_URL=https://www.bumibloom.com,https://bumi-bloom.vercel.app
 
-# Stripe (test mode dulu, ganti ke live saat jualan nyata)
+# Stripe — mode sesuai environment
+#   staging  : sk_test_...
+#   produksi : sk_live_...
+# NODE_ENV=production + sk_test_ akan DITOLAK saat checkout dipanggil,
+# kecuali ALLOW_TEST_KEYS=true (khusus staging yang berjalan sbg production).
 STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=<dari webhook production, lihat 1.4>
+STRIPE_WEBHOOK_SECRET=<dari webhook, lihat 1.4>
 STRIPE_GST_TAX_RATE_ID=txr_...
 STRIPE_CHECKOUT_MODE=stripe
+# Kosongkan untuk memakai default Stripe. Isi hanya bila perlu override.
+STRIPE_PAYMENT_METHODS=
+# Isi "true" hanya di staging yang memakai NODE_ENV=production + key test.
+ALLOW_TEST_KEYS=
+
+# Order tracking (/order/<token>) — WAJIB. Tanpa ini pembuatan order gagal
+# SETELAH Stripe menagih customer.
+# Generate: openssl rand -hex 32
+TRACKING_TOKEN_SECRET=<64 hex chars>
 
 # Inventory location untuk restock refund
 SHOPIFY_INVENTORY_LOCATION_ID=gid://shopify/Location/95822119154
@@ -64,6 +77,28 @@ REDIS_URL=
 ```
 
 **Penting:** `NEXT_PUBLIC_*` di admin hanya untuk halaman login Supabase. Jangan masukkan `pk_test` atau `sk_test` di sini — itu untuk storefront dan server.
+
+### 1.2b Migrasi database (WAJIB, manual)
+
+Migrasi SQL **tidak** dijalankan otomatis oleh build. Jalankan berurutan
+terhadap database tujuan sebelum deploy pertama:
+
+```bash
+node --env-file=apps/admin/.env.local scripts/apply-stripe-migration.mjs
+node --env-file=apps/admin/.env.local scripts/apply-tracking-migration.mjs
+node --env-file=apps/admin/.env.local scripts/apply-dispute-migration.mjs
+```
+
+Semua skrip idempoten (aman dijalankan berulang) dan menolak statement
+destruktif.
+
+Backfill token tracking untuk order lama (opsional, idempoten):
+
+```bash
+node --env-file=apps/admin/.env.local scripts/backfill-tracking-tokens.mjs --dry-run
+node --env-file=apps/admin/.env.local scripts/backfill-tracking-tokens.mjs
+```
+
 
 ### 1.3 Set Custom Domain
 
@@ -86,14 +121,22 @@ REDIS_URL=
    ```text
    https://admin.bumibloom.com/api/webhooks/stripe
    ```
-4. Pilih event:
+4. Pilih event (8):
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
+   - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
    - `payment_intent.payment_failed`
    - `charge.refunded`
+   - `charge.refund.updated`
    - `charge.dispute.created`
+   - `charge.dispute.updated`
+   - `charge.dispute.closed`
 5. Klik **Add endpoint**
+
+> Webhook di mode TEST dan LIVE terpisah. Saat pindah ke live, buat endpoint
+> baru di mode LIVE dan ganti `STRIPE_WEBHOOK_SECRET` — endpoint test tidak
+> menerima event live.
 6. Buka endpoint → **Signing secret** → Reveal → copy `whsec_...`
 7. Set ke Railway: `STRIPE_WEBHOOK_SECRET=whsec_...`
 

@@ -14,7 +14,23 @@ export async function middleware(request: NextRequest) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon =
     process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return response; // not configured → no gating (dev)
+  const path = request.nextUrl.pathname;
+
+  if (!url || !anon) {
+    // Missing Supabase config is a dev convenience, but in production it would
+    // silently disable every page gate. Fail closed there: send everyone to
+    // /login rather than serving admin pages unprotected.
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[middleware] Supabase env missing in production — blocking admin pages",
+      );
+      if (path === "/login") return response;
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+    return response; // not configured in dev → no gating
+  }
 
   const supabase = createServerClient(url, anon, {
     cookies: {
@@ -34,8 +50,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
 
   if (!user && !PUBLIC_PAGES.includes(path)) {
     const loginUrl = request.nextUrl.clone();

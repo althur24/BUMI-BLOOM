@@ -5,8 +5,12 @@ import { requireAdmin, jsonError } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 // Temporary diagnostic: isolates whether Prisma connects + which table errors.
-// Auth-gated. Remove after debugging.
+// Auth-gated AND disabled in production. Remove after debugging.
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
   try {
     await requireAdmin();
   } catch (e: any) {

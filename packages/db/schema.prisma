@@ -437,3 +437,25 @@ model Refund {
   @@index([stripePaymentIntentId])
   @@index([shopifyOrderId])
 }
+
+// Chargebacks opened by the customer's bank. Recorded so disputes are visible
+// after the fact instead of only appearing in server logs.
+model Dispute {
+  id                    String   @id
+  stripeChargeId        String
+  stripePaymentIntentId String?
+  checkoutId            String?
+  shopifyOrderId        String?
+  amountAudCents        Int      @default(0)
+  currency              String?
+  reason                String?
+  status                String
+  evidenceDueBy         DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([stripeChargeId])
+  @@index([stripePaymentIntentId])
+  @@index([checkoutId])
+  @@index([status])
+}

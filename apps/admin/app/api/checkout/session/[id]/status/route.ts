@@ -1,5 +1,10 @@
 import { prisma } from "@bumi/db";
-import { corsHeaders, jsonWithCors } from "@/lib/checkout";
+import {
+  corsHeaders,
+  getClientIp,
+  isRateLimited,
+  jsonWithCors,
+} from "@/lib/checkout";
 import { reconcileCheckout } from "@/lib/checkout-service";
 import { getOrderStatusUrl } from "@/lib/shopify-checkout";
 import { getStripe } from "@/lib/stripe";
@@ -7,6 +12,11 @@ import { createTrackingToken, trackingUrl } from "@/lib/tracking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// The success page polls this every 2s (30/min). 90/min leaves headroom for
+// reloads and a second tab while still blocking UUID enumeration attempts.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 90;
 
 export async function OPTIONS(request: Request) {
   return new Response(null, { status: 204, headers: corsHeaders(request) });
@@ -16,8 +26,22 @@ export async function GET(
   request: Request,
   context: { params: { id: string } },
 ) {
-  const respond = (body: unknown, status: number) =>
-    jsonWithCors(body, status, { "Cache-Control": "no-store" }, request);
+  const respond = (body: unknown, status: number, extraHeaders?: Record<string, string>) =>
+    jsonWithCors(
+      body,
+      status,
+      { "Cache-Control": "no-store", ...(extraHeaders || {}) },
+      request,
+    );
+
+  const ip = getClientIp(request);
+  if (isRateLimited(`status:${ip}`, RATE_MAX, RATE_WINDOW_MS)) {
+    return respond(
+      { error: "Too many requests. Please try again shortly." },
+      429,
+      { "Retry-After": "60" },
+    );
+  }
 
   const id = context.params.id;
   if (!id) return respond({ error: "Checkout not found." }, 404);

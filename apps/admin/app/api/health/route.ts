@@ -7,7 +7,10 @@ export const dynamic = "force-dynamic";
 // detected as "not configured").
 export async function GET() {
   const checks = checkEnv();
-  const ok = checks.shopify && checks.supabase && checks.database;
+  // Stripe is included: a build that cannot take payments must not be promoted
+  // as healthy by the platform health check.
+  const ok =
+    checks.shopify && checks.supabase && checks.database && checks.stripe;
   return Response.json(
     {
       status: ok ? "ok" : "degraded",
