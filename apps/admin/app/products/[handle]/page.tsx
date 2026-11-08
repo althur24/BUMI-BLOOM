@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { ImagePicker } from "@/components/ImagePicker";
+import { hexForColorName } from "@/lib/colors";
 
 interface Variant {
   id: number;
@@ -129,6 +130,9 @@ export default function ProductEditorPage() {
 
   const [colors, setColors] = useState<Color[]>([]);
   const [noColor, setNoColor] = useState(false);
+  // Colour name -> image id as loaded from Shopify. Used so saving does not
+  // rewrite (and therefore null out) images the admin never touched.
+  const [originalColorImages, setOriginalColorImages] = useState<Record<string, number | null>>({});
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
 
@@ -166,7 +170,13 @@ export default function ProductEditorPage() {
         setStatus(p.status);
         setTags(p.tags);
         setBodyHtml(p.bodyHtml);
-        setColors(parseColorsJson(p.metafields.colors));
+        const loadedColors = parseColorsJson(p.metafields.colors);
+        setColors(loadedColors);
+        setOriginalColorImages(
+          Object.fromEntries(
+            loadedColors.map((c) => [c.name.toLowerCase(), c.imageId ?? null]),
+          ),
+        );
         setNoColor(String(p.metafields.no_color || "") === "true");
         setMeta(p.metafields || {});
         setVariantEdits({});
@@ -256,7 +266,9 @@ export default function ProductEditorPage() {
           byName.set(key, {
             key: `v-${key}`,
             name,
-            hex: "#CCCCCC",
+            // Resolve from the colour dictionary so a variant-only colour is
+            // not saved as neutral grey.
+            hex: hexForColorName(name),
             imageId: v.imageId ?? null,
             fromVariant: true,
             varian: [{ id: v.id, stock: Number(stock) }],
@@ -414,6 +426,19 @@ export default function ProductEditorPage() {
             imageId: row.imageId,
           }));
 
+      // Only send variants whose colour image was actually changed by the
+      // admin. Sending every colour would null out images that already exist.
+      const changedColorImages = noColor
+        ? []
+        : colorRows
+            .filter((row) => row.varian.length > 0)
+            .filter(
+              (row) =>
+                (originalColorImages[row.name.toLowerCase()] ?? null) !==
+                (row.imageId ?? null),
+            )
+            .map((row) => ({ colorName: row.name, imageId: row.imageId }));
+
       const payload: any = {
         title,
         bodyHtml,
@@ -423,11 +448,6 @@ export default function ProductEditorPage() {
         tags,
         colors: colorPayload,
         noColor,
-        colorImages: noColor
-          ? []
-          : colorRows
-              .filter((row) => row.varian.length > 0)
-              .map((row) => ({ colorName: row.name, imageId: row.imageId })),
         metafields: {
           material: meta.material || "",
           fibre: meta.fibre || "",
@@ -440,13 +460,42 @@ export default function ProductEditorPage() {
         },
       };
 
-      const priceEdits = Object.entries(variantEdits).map(([id, patch]) => ({
-        id: Number(id),
-        price: patch.price,
-        compareAtPrice: patch.compareAtPrice,
-        sku: patch.sku,
-        inventoryQuantity: patch.inventoryQuantity,
-      }));
+      const priceEdits = Object.entries(variantEdits)
+        .map(([id, patch]) => {
+          const live = product.variants.find((v) => v.id === Number(id));
+          const entry: {
+            id: number;
+            price?: string;
+            compareAtPrice?: string | null;
+            sku?: string;
+            inventoryQuantity?: number;
+          } = { id: Number(id) };
+          if (patch.price !== undefined && String(patch.price) !== live?.price) {
+            entry.price = String(patch.price);
+          }
+          // compare_at_price: only send when the value really differs, so an
+          // untouched empty input does not wipe an existing strike-through price.
+          if (patch.compareAtPrice !== undefined) {
+            const next = String(patch.compareAtPrice ?? "").trim();
+            const prev = String(live?.compareAtPrice ?? "").trim();
+            if (next !== prev) entry.compareAtPrice = next === "" ? null : next;
+          }
+          if (patch.sku !== undefined && patch.sku !== live?.sku) entry.sku = patch.sku;
+          if (
+            patch.inventoryQuantity !== undefined &&
+            patch.inventoryQuantity !== live?.inventoryQuantity
+          ) {
+            entry.inventoryQuantity = patch.inventoryQuantity;
+          }
+          return entry;
+        })
+        .filter(
+          (e) =>
+            e.price !== undefined ||
+            e.compareAtPrice !== undefined ||
+            e.sku !== undefined ||
+            e.inventoryQuantity !== undefined,
+        );
       if (priceEdits.length) payload.variantPrices = priceEdits;
 
       const imageEdits = Object.entries(variantEdits)
@@ -454,6 +503,7 @@ export default function ProductEditorPage() {
         .map(([id, patch]) => ({ id: Number(id), imageId: patch.imageId ?? null }));
       if (imageEdits.length) payload.variantImages = imageEdits;
 
+      if (changedColorImages.length) payload.colorImages = changedColorImages;
       if (removedImages.size) payload.removeImageIds = [...removedImages];
 
       const res = await api(`/api/products/${encodeURIComponent(handle)}`, {
@@ -467,6 +517,13 @@ export default function ProductEditorPage() {
       setRemovedImages(new Set());
       const refreshed = await api(`/api/products/${encodeURIComponent(handle)}`);
       setProduct(refreshed.product);
+      const freshColors = parseColorsJson(refreshed.product.metafields.colors);
+      setColors(freshColors);
+      setOriginalColorImages(
+        Object.fromEntries(freshColors.map((c) => [c.name.toLowerCase(), c.imageId ?? null])),
+      );
+      setNoColor(String(refreshed.product.metafields.no_color || "") === "true");
+      setMeta(refreshed.product.metafields || {});
     } catch (e: any) {
       if (e.message === "NO_SESSION") router.replace("/login");
       else setError(e.message);
@@ -659,9 +716,11 @@ export default function ProductEditorPage() {
               Isi warna dari varian
             </button>
           )}
-          <button className="btn btn--ghost btn--sm" type="button" onClick={bindColorImages}>
-            Ambil gambar dari varian
-          </button>
+          {colorPosition > 0 && (
+            <button className="btn btn--ghost btn--sm" type="button" onClick={bindColorImages}>
+              Ambil gambar dari varian
+            </button>
+          )}
         </div>
 
         <hr style={{ border: "none", borderTop: "1px solid var(--line)", margin: "16px 0" }} />
@@ -760,8 +819,30 @@ export default function ProductEditorPage() {
                   type="button"
                   onClick={() => {
                     const next = new Set(removedImages);
-                    if (next.has(img.id)) next.delete(img.id);
-                    else next.add(img.id);
+                    if (next.has(img.id)) {
+                      next.delete(img.id);
+                      setRemovedImages(next);
+                      return;
+                    }
+                    const boundColors = colorRows
+                      .filter((row) => row.imageId === img.id)
+                      .map((row) => row.name);
+                    const warning = boundColors.length
+                      ? `\n\nGambar ini dipakai warna: ${boundColors.join(", ")}. Tautan warnanya akan dilepas.`
+                      : "";
+                    if (!window.confirm(`Hapus gambar ini dari produk?${warning}\n\nGambar akan dihapus permanen saat disimpan.`)) {
+                      return;
+                    }
+                    if (boundColors.length) {
+                      setColors((prev) =>
+                        prev.map((c) =>
+                          boundColors.some((n) => n.toLowerCase() === c.name.toLowerCase())
+                            ? { ...c, imageId: null, image: null }
+                            : c,
+                        ),
+                      );
+                    }
+                    next.add(img.id);
                     setRemovedImages(next);
                   }}
                 >

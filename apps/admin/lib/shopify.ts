@@ -66,11 +66,21 @@ export async function adminRest<T = any>(
     },
   );
   const callLimit = res.headers.get("x-shopify-shop-api-call-limit");
+  const linkHeader = res.headers.get("link");
   const text = await res.text();
   let json: any = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {}
+  // Cursor pagination for list endpoints (products, orders, …) is carried in
+  // the Link header; keep it next to the payload so callers can page.
+  if (json && typeof json === "object" && linkHeader) {
+    Object.defineProperty(json, "__link", {
+      value: linkHeader,
+      enumerable: false,
+      configurable: true,
+    });
+  }
   if (!res.ok) {
     const msg = json?.errors ? JSON.stringify(json.errors) : text.slice(0, 300);
     throw new Error(`REST ${method} ${path} → HTTP ${res.status}: ${msg}`);

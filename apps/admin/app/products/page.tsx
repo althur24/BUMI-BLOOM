@@ -55,6 +55,8 @@ export default function ProductsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busyHandle, setBusyHandle] = useState("");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -79,6 +81,7 @@ export default function ProductsPage() {
         if (f) params.set("filter", f);
         const res = await api(`/api/products?${params.toString()}`);
         setProducts(res.products || []);
+        setNextCursor(res.nextCursor || null);
         setCounts(res.counts || { total: 0, withIssues: 0, noColors: 0 });
       } catch (e: any) {
         if (e.message === "NO_SESSION") router.replace("/login");
@@ -94,6 +97,29 @@ export default function ProductsPage() {
     if (ready) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    setLoadingMore(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("search", search.trim());
+      if (filter) params.set("filter", filter);
+      params.set("pageInfo", nextCursor);
+      const res = await api(`/api/products?${params.toString()}`);
+      setProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...(res.products || []).filter((p: ProductSummary) => !seen.has(p.id))];
+      });
+      setNextCursor(res.nextCursor || null);
+    } catch (e: any) {
+      if (e.message === "NO_SESSION") router.replace("/login");
+      else setError(e.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function runFix(handle: string, action: string) {
     setBusyHandle(handle);
@@ -241,6 +267,13 @@ export default function ProductsPage() {
             </div>
           </div>
         ))}
+        {nextCursor && (
+          <div style={{ textAlign: "center", marginTop: 12 }}>
+            <button className="btn btn--secondary btn--sm" type="button" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? "Memuat…" : "Muat lebih banyak"}
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

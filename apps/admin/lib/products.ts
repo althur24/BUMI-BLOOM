@@ -267,7 +267,9 @@ export async function listProducts(opts: {
     });
   }
 
-  const nextCursor = linkHeader?.match(/page_info=([^&>]+)/)?.[1] || null;
+  // Shopify returns: <https://…products.json?limit=50&page_info=ABC>; rel="next"
+  const nextMatch = linkHeader?.match(/<[^>]*[?&]page_info=([^&>]+)[^>]*>;\s*rel="next"/i);
+  const nextCursor = nextMatch ? decodeURIComponent(nextMatch[1]) : null;
   return { products, nextCursor };
 }
 
@@ -481,14 +483,30 @@ export async function updateProduct(
     updated.push("imageOrder");
   }
 
-  for (const imageId of patch.removeImageIds || []) {
-    try {
-      await adminRest("DELETE", `/products/${productId}/images/${imageId}.json`);
-    } catch (e: any) {
-      warnings.push(`Gambar ${imageId} gagal dihapus: ${e?.message || e}`);
+  if (patch.removeImageIds?.length) {
+    const removing = new Set(patch.removeImageIds.map(Number));
+    // Detach the image from every variant first; Shopify refuses (or silently
+    // leaves dangling references) if a variant still points at it.
+    for (const v of current.variants) {
+      if (v.imageId != null && removing.has(v.imageId)) {
+        try {
+          await adminRest("PUT", `/variants/${v.id}.json`, {
+            variant: { id: v.id, image_id: null },
+          });
+        } catch (e: any) {
+          warnings.push(`Gambar varian ${v.id} gagal dilepas: ${e?.message || e}`);
+        }
+      }
     }
+    for (const imageId of patch.removeImageIds) {
+      try {
+        await adminRest("DELETE", `/products/${productId}/images/${imageId}.json`);
+      } catch (e: any) {
+        warnings.push(`Gambar ${imageId} gagal dihapus: ${e?.message || e}`);
+      }
+    }
+    updated.push("imagesRemoved");
   }
-  if (patch.removeImageIds?.length) updated.push("imagesRemoved");
 
   const metaPatch: Partial<Record<BumiMetafieldKey, string>> = { ...(patch.metafields || {}) };
 
@@ -652,16 +670,18 @@ export async function bindColorImagesFromVariants(handle: string): Promise<{
     return { bound: [], written: false, reason: "Produk ini tidak punya opsi warna." };
   }
 
+  // Group by colour and take the first variant that actually has an image —
+  // previously a colour whose first variant had no image was reported as
+  // unbound even when another size of the same colour had one.
   const byColor = new Map<string, { colorName: string; imageId: number | null }>();
   for (const v of product.variants) {
     const name = String((v as any)[`option${colorPos}`] || "").trim();
-    if (!name) continue;
+    if (!name || v.imageId == null) continue;
     const key = name.toLowerCase();
-    const current = byColor.get(key);
-    if (!current) {
-      byColor.set(key, { colorName: name, imageId: v.imageId ?? null });
-    } else if (!current.imageId && v.imageId) {
-      current.imageId = v.imageId;
+    const imageValid = product.images.some((img) => img.id === v.imageId);
+    if (!imageValid) continue;
+    if (!byColor.has(key)) {
+      byColor.set(key, { colorName: name, imageId: v.imageId });
     }
   }
 
@@ -671,19 +691,39 @@ export async function bindColorImagesFromVariants(handle: string): Promise<{
   }
 
   const existing = parseColors(product.metafields.colors);
+  const imageById = new Map(product.images.map((img) => [img.id, img.src]));
   const names = existing.map((c) => c.name.toLowerCase());
-  const merged: ProductColor[] = [...existing];
+  const toWrite: ProductColor[] = [];
+  const newlyBound: { colorName: string; imageId: number | null }[] = [];
+
   for (const entry of bound) {
     const key = entry.colorName.toLowerCase();
     const idx = names.indexOf(key);
+    const currentImage = idx >= 0 ? existing[idx].imageId ?? null : null;
+    if (currentImage === entry.imageId) continue; // already correct
+    const image = entry.imageId != null ? imageById.get(entry.imageId) || null : null;
     if (idx >= 0) {
-      merged[idx] = { ...merged[idx], imageId: entry.imageId };
+      toWrite[idx] = { ...existing[idx], imageId: entry.imageId, image };
     } else {
-      merged.push({ name: entry.colorName, hex: resolveColorHex(entry.colorName), imageId: entry.imageId });
       names.push(key);
+      toWrite[names.length - 1] = {
+        name: entry.colorName,
+        hex: resolveColorHex(entry.colorName),
+        imageId: entry.imageId,
+        image,
+      };
     }
+    newlyBound.push(entry);
   }
 
-  await updateProduct(handle, { colors: merged });
-  return { bound, written: true };
+  if (!newlyBound.length) {
+    return { bound: [], written: false, reason: "Semua warna sudah punya gambar yang sesuai." };
+  }
+
+  const merged: ProductColor[] = [];
+  for (let i = 0; i < Math.max(existing.length, toWrite.length); i++) {
+    merged[i] = toWrite[i] || existing[i];
+  }
+  await updateProduct(handle, { colors: merged.filter(Boolean) });
+  return { bound: newlyBound, written: true };
 }
