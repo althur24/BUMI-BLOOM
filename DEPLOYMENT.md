@@ -118,7 +118,7 @@ node --env-file=apps/admin/.env.local scripts/backfill-tracking-tokens.mjs
    ```text
    https://admin.bumibloom.com/api/webhooks/stripe
    ```
-4. Pilih event (8):
+4. Pilih event (10):
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.async_payment_failed`
@@ -134,6 +134,11 @@ node --env-file=apps/admin/.env.local scripts/backfill-tracking-tokens.mjs
 > Webhook di mode TEST dan LIVE terpisah. Saat pindah ke live, buat endpoint
 > baru di mode LIVE dan ganti `STRIPE_WEBHOOK_SECRET` — endpoint test tidak
 > menerima event live.
+>
+> Webhook **tidak butuh permission API key** — autentikasinya lewat signing
+> secret (`whsec_`). Satu-satunya permission restricted key yang dipakai
+> handler webhook adalah **Charges: Read** (untuk `refunds.list` saat
+> memetakan refund ke charge).
 6. Buka endpoint → **Signing secret** → Reveal → copy `whsec_...`
 7. Set ke Railway: `STRIPE_WEBHOOK_SECRET=whsec_...`
 

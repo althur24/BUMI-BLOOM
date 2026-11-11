@@ -105,6 +105,21 @@ async function handleEvent(event: any): Promise<void> {
     return;
   }
 
+  if (event.type === "checkout.session.async_payment_failed") {
+    const session = event.data.object;
+    await prisma.stripeCheckout.updateMany({
+      where: {
+        stripeSessionId: session.id,
+        status: StripeCheckoutStatus.PENDING,
+      },
+      data: {
+        status: StripeCheckoutStatus.FAILED,
+        errorMessage: "Payment failed.",
+      },
+    });
+    return;
+  }
+
   if (event.type === "checkout.session.expired") {
     const session = event.data.object;
     await prisma.stripeCheckout.updateMany({
@@ -216,6 +231,32 @@ async function handleEvent(event: any): Promise<void> {
         data: { status: StripeCheckoutStatus.REFUNDED },
       });
     }
+    return;
+  }
+
+  if (event.type === "charge.refund.updated") {
+    const refund = event.data.object;
+    if (!refund?.id) return;
+
+    // Refund lifecycle changed (processing → succeeded/failed/canceled).
+    // Keep our ledger in sync; the Shopify-side refund is handled by
+    // charge.refunded so we only reconcile the Stripe state here.
+    const stripeStatus = String(refund.status || "");
+    const failed = stripeStatus === "failed" || stripeStatus === "canceled";
+    const amountAudCents = Number(refund.amount) || 0;
+
+    await prisma.refund.updateMany({
+      where: { stripeRefundId: String(refund.id) },
+      data: {
+        ...(amountAudCents > 0 ? { amountAudCents } : {}),
+        ...(failed
+          ? {
+              status: "FAILED",
+              errorMessage: `Stripe refund ${stripeStatus}.`,
+            }
+          : {}),
+      },
+    });
     return;
   }
 
