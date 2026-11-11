@@ -82,6 +82,9 @@ export function getPaymentMethodOverride(): string[] | null {
   return list.length ? list : null;
 }
 
+// Dormant: the store is not GST-registered, so checkout does NOT attach a tax
+// rate (see app/api/checkout/session/route.ts). Kept for when GST is enabled
+// again — see DEPLOYMENT.md §3.2 for the re-enable steps.
 export async function getGstTaxRateId(): Promise<string> {
   if (cachedTaxRateId) return cachedTaxRateId;
   const configured = process.env.STRIPE_GST_TAX_RATE_ID;
