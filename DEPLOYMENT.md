@@ -50,7 +50,9 @@ STOREFRONT_URL=https://www.bumibloom.com,https://bumi-bloom.vercel.app
 # Mode aktif terlihat di /api/health → checks.stripeMode ("test"/"live").
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=<dari webhook, lihat 1.4>
-STRIPE_GST_TAX_RATE_ID=txr_...
+# Kosongkan selama toko belum terdaftar GST (default). Kode tidak memakai tax
+# rate sama sekali; isi hanya bila nanti sudah terdaftar GST.
+STRIPE_GST_TAX_RATE_ID=
 STRIPE_CHECKOUT_MODE=stripe
 # Kosongkan untuk memakai default Stripe. Isi hanya bila perlu override.
 STRIPE_PAYMENT_METHODS=
@@ -238,7 +240,6 @@ Stripe → Settings → Payments → Apple Pay:
 pk_test_...  → NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (Vercel)
 sk_test_...  → STRIPE_SECRET_KEY (Railway)
 whsec_...    → STRIPE_WEBHOOK_SECRET (Railway, dari endpoint dashboard)
-txr_...      → STRIPE_GST_TAX_RATE_ID (Railway)
 ```
 
 **Saat jualan nyata:** ganti semua ke live mode.
@@ -246,24 +247,32 @@ txr_...      → STRIPE_GST_TAX_RATE_ID (Railway)
 pk_live_...  → NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (Vercel)
 rk_live_...  → STRIPE_SECRET_KEY (Railway) — restricted key, lihat permission di bawah
 whsec_...    → STRIPE_WEBHOOK_SECRET (Railway, dari endpoint live dashboard)
-txr_...      → STRIPE_GST_TAX_RATE_ID (Railway, buat baru di live mode — opsional, auto-create)
 ```
+
+> **GST:** toko belum terdaftar GST, jadi harga ditampilkan sebagai harga biasa
+> (AUD) tanpa klaim GST, dan checkout Stripe tidak memasang tax rate. Karena itu
+> `STRIPE_GST_TAX_RATE_ID` dikosongkan dan permission **Tax rates** tidak
+> diperlukan. Saat nanti terdaftar GST, lihat catatan di akhir bagian ini.
 
 **Permission restricted key `rk_live_`** (sesuai call yang dipakai kode):
 | Resource di dashboard | Permission | Dipakai untuk |
 |---|---|---|
 | Checkout Sessions | **Write** | create/retrieve/expire session |
 | Coupons | **Write** | kode diskon saat checkout |
-| Tax rates | **Write** | GST 10% (write mencakup read) |
 | Charges | **Read** | `refunds.list` di resolusi refund/dispute |
 
 Resource lain → None. `sk_live_` lama tetap didukung kode sebagai fallback.
+(**Tax rates: Write** baru diperlukan nanti bila GST diaktifkan kembali.)
 
 **Langkah ganti ke live mode:**
 1. Stripe Dashboard → toggle ke **Live mode**
 2. Buat webhook endpoint baru (di live mode) → copy `whsec_`
-3. Buat GST tax rate baru (di live mode) → copy `txr_`
-4. Ganti semua env di Vercel dan Railway
+3. Ganti semua env di Vercel dan Railway
+4. **Mengaktifkan GST nanti (setelah terdaftar):** buat tax rate GST 10% inclusive
+   di live mode → set `STRIPE_GST_TAX_RATE_ID=txr_...`, tambah permission
+   **Tax rates: Write**, lalu pulihkan `tax_rates` di `app/api/checkout/session/route.ts`
+   serta label "GST included" di storefront (baris ringkasan checkout & catatan cart
+   sengaja disimpan `hidden` + komentar).
 5. Redeploy Vercel (wajib untuk `NEXT_PUBLIC_*`)
 6. Restart Railway service
 
@@ -374,10 +383,10 @@ node --env-file=apps/admin/.env.local scripts/_verify-scopes.mjs
 resource yang dipanggil kode.
 
 **Gejala per permission yang kurang:**
-- `tax_rate_write` → SEMUA checkout gagal (GST lookup throw saat create session)
 - `coupon_write` → checkout dengan kode diskon gagal
 - `checkout_session_write` → gagal membuat session payment
 - `charge_read` → resolusi refund/dispute via webhook gagal (payment tetap jalan)
+- `tax_rate_write` → hanya relevan bila GST diaktifkan kembali (lihat §3.2)
 
 **Solusi:** Stripe Dashboard → Developers → API keys → edit restricted key
 (⋯ → Edit key) → tambah permission yang kurang. Permission bisa diubah tanpa

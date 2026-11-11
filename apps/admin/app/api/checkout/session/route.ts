@@ -13,7 +13,6 @@ import {
 } from "@/lib/checkout";
 import { ensureShopifyOrder, prepareCheckout } from "@/lib/checkout-service";
 import {
-  getGstTaxRateId,
   getPaymentMethodOverride,
   getStripe,
 } from "@/lib/stripe";
@@ -170,7 +169,6 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe();
-    const taxRateId = await getGstTaxRateId();
     const paymentMethodOverride = getPaymentMethodOverride();
     const checkoutId = randomUUID();
     const stripeSessionKey = `checkout_${checkoutId}`;
@@ -195,11 +193,9 @@ export async function POST(request: Request) {
 
     const lineItems = prepared.items.map((item) => ({
       quantity: item.quantity,
-      tax_rates: [taxRateId],
       price_data: {
         currency: "aud",
         unit_amount: item.priceAudCents,
-        tax_behavior: "inclusive" as const,
         product_data: {
           name: `${item.productTitle} — ${item.variantTitle}`,
           images: item.imageUrl ? [item.imageUrl] : undefined,
@@ -248,7 +244,6 @@ export async function POST(request: Request) {
                 currency: "aud",
               },
               display_name: shippingLabel,
-              tax_behavior: "inclusive",
               delivery_estimate: {
                 minimum: { unit: "business_day", value: 5 },
                 maximum: { unit: "business_day", value: 8 },

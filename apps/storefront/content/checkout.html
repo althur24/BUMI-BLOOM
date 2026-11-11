@@ -150,7 +150,8 @@
           <span>Shipping</span>
           <span id="checkout-summary-shipping">—</span>
         </div>
-        <div class="checkout-summary__row checkout-summary__row--muted">
+        <!-- GST row stays hidden until the store is registered for GST. -->
+        <div class="checkout-summary__row checkout-summary__row--muted" id="checkout-summary-tax-row" hidden>
           <span>GST included</span>
           <span id="checkout-summary-tax">—</span>
         </div>
@@ -158,7 +159,7 @@
           <span>Total</span>
           <span id="checkout-summary-total">—</span>
         </div>
-        <p class="checkout-summary__note" id="checkout-summary-note">Free AU shipping over $99. GST included in displayed prices.</p>
+        <p class="checkout-summary__note" id="checkout-summary-note">Free AU shipping over $99. All prices in AUD.</p>
 
         <div class="checkout-trust">
           <div class="checkout-trust__item"><span class="checkout-trust__dot"></span><span>Made in Indonesia</span></div>

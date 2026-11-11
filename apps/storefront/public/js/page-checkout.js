@@ -485,12 +485,12 @@
       const discounted = quote.subtotalAudCents - quote.discountAudCents;
       const remaining = quote.freeShippingThresholdAudCents - discounted;
       if (quote.shippingAudCents === 0) {
-        els.summaryNote.textContent = 'Free AU shipping applied. GST included in displayed prices.';
+        els.summaryNote.textContent = 'Free AU shipping applied. All prices in AUD.';
       } else if (remaining > 0) {
         els.summaryNote.textContent =
-          'Add ' + money(remaining) + ' for free AU shipping. GST included in displayed prices.';
+          'Add ' + money(remaining) + ' for free AU shipping. All prices in AUD.';
       } else {
-        els.summaryNote.textContent = 'GST included in displayed prices.';
+        els.summaryNote.textContent = 'All prices in AUD.';
       }
     }
   }

@@ -402,7 +402,7 @@ const BumiData = {
 
   /* ── Formatting ──
      Delegates to BumiCurrency (AUD only).
-     switch). Amounts are always GST-inclusive AUD at source. */
+     switch). Amounts are always AUD at source. */
   formatPrice(amount) {
     return BumiCurrency.format(amount);
   }

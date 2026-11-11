@@ -398,7 +398,7 @@ const BumiCart = {
             <div class="bb-cart-drawer__total-row"><span>Subtotal</span><strong data-cart-subtotal>—</strong></div>
             <div class="bb-cart-drawer__total-row bb-cart-drawer__total-row--discount" data-cart-discount hidden><span data-cart-discount-label>Discount</span><strong data-cart-discount-value>—</strong></div>
           </div>
-          <p class="bb-cart-drawer__note">Shipping &amp; GST finalized at checkout.</p>
+          <p class="bb-cart-drawer__note">Shipping finalized at checkout.</p>
           <button class="btn btn--primary btn--full" type="button" data-cart-checkout>Checkout</button>
           <a class="btn btn--ghost btn--full" data-cart-view href="${this._storeHref()}">View Bag</a>
         </footer>
