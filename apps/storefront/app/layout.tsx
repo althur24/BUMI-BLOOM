@@ -22,6 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     checkoutMode: process.env.NEXT_PUBLIC_CHECKOUT_MODE || 'stripe',
     checkoutApiUrl: process.env.NEXT_PUBLIC_CHECKOUT_API_URL || '',
     stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+    gaId: process.env.NEXT_PUBLIC_GA_ID || '',
+    metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || '',
   };
 
   return (

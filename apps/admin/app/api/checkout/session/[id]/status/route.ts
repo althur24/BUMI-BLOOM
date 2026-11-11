@@ -113,6 +113,23 @@ export async function GET(
     ? checkout.trackingToken || createTrackingToken(checkout.id)
     : null;
 
+  // Purchase event payload for the success page. Browser tracking fires with
+  // `event_id: checkout.id`, matching the server-side Meta CAPI / GA4 MP event
+  // in lib/checkout-analytics.ts so both sides deduplicate.
+  const itemsJson = Array.isArray(checkout.itemsJson) ? (checkout.itemsJson as any[]) : [];
+  const purchase = {
+    transaction_id: checkout.shopifyOrderName || checkout.id,
+    event_id: checkout.id,
+    value: Number(checkout.amountAudCents || 0) / 100,
+    currency: checkout.currency || "AUD",
+    items: itemsJson.map((item: any) => ({
+      id: String(item.variantId || item.productId || ""),
+      name: item.productTitle || item.title || "",
+      price: Number(item.priceAudCents || 0) / 100,
+      quantity: Number(item.quantity || 1),
+    })),
+  };
+
   return respond(
     {
       ok: true,
@@ -128,6 +145,7 @@ export async function GET(
       trackingUrl: trackingToken ? trackingUrl(trackingToken) : null,
       // Internal fallback only; the storefront should prefer trackingUrl.
       statusPageUrl,
+      purchase,
     },
     200,
   );

@@ -39,7 +39,22 @@ const BumiWishlist = {
 
   toggle(id) {
     if (this.isWishlisted(id)) { this.remove(id); return false; }
-    this.add(id); return true;
+    this.add(id); this._track(id); return true;
+  },
+
+  _track(id) {
+    if (!window.BumiTrack) return;
+    const product = window.BumiData ? BumiData.getProduct(id) : null;
+    BumiTrack.event('add_to_wishlist', {
+      currency: 'AUD',
+      value: product ? Number(product.price || 0) : 0,
+      items: [{
+        id: id,
+        name: product ? product.name : '',
+        price: product ? Number(product.price || 0) : 0,
+        quantity: 1
+      }]
+    });
   },
 
   clear() {

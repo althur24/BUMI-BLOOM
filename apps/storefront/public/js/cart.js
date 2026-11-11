@@ -447,22 +447,6 @@ const BumiCart = {
       d.root.classList.add('is-open');
       d.root.setAttribute('aria-hidden', 'false');
       this._syncTriggers(true);
-      if (window.BumiTrack) {
-        const items = this.getCart().map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity || 1,
-        }));
-        const total = this.getTotal();
-        if (items.length) {
-          BumiTrack.event('view_cart', {
-            currency: 'AUD',
-            value: total - this.getDiscount(total),
-            items,
-          });
-        }
-      }
       requestAnimationFrame(() => {
         const closeBtn = d.root.querySelector('.bb-cart-drawer__close');
         if (closeBtn) closeBtn.focus({ preventScroll: true });

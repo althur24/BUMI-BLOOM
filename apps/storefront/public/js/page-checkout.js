@@ -169,12 +169,14 @@
       // to be charged. Fire once per checkout session.
       if (window.BumiTrack && !state.paymentInfoTracked) {
         state.paymentInfoTracked = true;
-        const lines = cartLines().lines || [];
-        const items = lines.map((line) => ({
-          id: line.variantId || line.id,
-          name: line.name || line.productTitle,
-          price: Number(line.price || 0),
-          quantity: Number(line.quantity || 1),
+        // getCheckoutLines() only returns {variantId, quantity}; use the cart
+        // items themselves (id/name/price/quantity, same shape as add_to_cart).
+        const cartItems = (window.BumiCart && BumiCart.getCart()) || [];
+        const items = cartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price || 0),
+          quantity: Number(item.quantity || 1),
         }));
         BumiTrack.event('add_payment_info', {
           currency: 'AUD',
