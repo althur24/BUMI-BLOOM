@@ -942,7 +942,10 @@
       } else {
         state.checkoutId = stored.checkoutId;
         state.sessionId = stored.sessionId || null;
-        setVisible('processing');
+        // A stored session only means the form was opened, not that money was
+        // sent. Resume into the payment form instead of flashing the
+        // "payment received" stepper on every refresh.
+        setVisible(stored.paid ? 'processing' : 'ready');
         setBusy(false);
         pollStatus({ paymentStarted: Boolean(stored.paid) });
         return;
