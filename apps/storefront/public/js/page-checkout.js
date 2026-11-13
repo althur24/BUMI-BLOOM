@@ -6,6 +6,7 @@
   const API_BASE = String(env.checkoutApiUrl || '').replace(/\/+$/, '');
   const state = {
     quote: null,
+    cartHash: null,
     checkoutId: null,
     sessionId: null,
     embedded: null,
@@ -44,6 +45,7 @@
     failedActions: $('checkout-failed-actions'),
     retry: $('checkout-retry'),
     summarySubtotal: $('checkout-summary-subtotal'),
+    summaryItems: $('checkout-summary-items'),
     summaryDiscountRow: $('checkout-summary-discount-row'),
     summaryDiscountLabel: $('checkout-summary-discount-label'),
     summaryDiscount: $('checkout-summary-discount'),
@@ -414,7 +416,44 @@
     }
   }
 
+  function renderSummaryItems() {
+    if (!els.summaryItems) return;
+    const cart = window.BumiCart ? window.BumiCart.getCart() : [];
+    if (!cart.length) {
+      els.summaryItems.hidden = true;
+      els.summaryItems.innerHTML = '';
+      return;
+    }
+    els.summaryItems.hidden = false;
+    const fallbackImage = '/images/placeholder.png';
+    els.summaryItems.innerHTML = cart
+      .map((item) => {
+        const variant = window.BumiCart ? window.BumiCart.resolveItemVariant(item) : null;
+        const image = item.image || fallbackImage;
+        const priceCents = variant
+          ? Math.round(Number(variant.price || 0) * 100)
+          : Math.round(Number(item.price || 0) * 100);
+        const qty = Number(item.quantity || 1);
+        const meta = [item.color, item.size].filter(Boolean).join(' · ');
+        return (
+          '<div class="checkout-summary__item">' +
+            '<div class="checkout-summary__item-thumb">' +
+              '<img src="' + esc(image) + '" alt="' + esc(item.name || '') + '" loading="lazy">' +
+              '<span class="checkout-summary__item-qty">' + qty + '</span>' +
+            '</div>' +
+            '<div class="checkout-summary__item-info">' +
+              '<p class="checkout-summary__item-name">' + esc(item.name || '') + '</p>' +
+              (meta ? '<p class="checkout-summary__item-meta">' + esc(meta) + '</p>' : '') +
+            '</div>' +
+            '<div class="checkout-summary__item-price">' + money(priceCents * qty) + '</div>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
   function renderItems() {
+    renderSummaryItems();
     if (!els.items) return;
     const cart = window.BumiCart ? window.BumiCart.getCart() : [];
     if (!cart.length) {
@@ -547,6 +586,7 @@
       promoCode: state.promoCode || undefined,
     });
     state.quote = data.quote;
+    if (data.cartHash) state.cartHash = data.cartHash;
     renderSummary(state.quote);
     if (state.quote && state.quote.promo) {
       showPromoMessage(
@@ -701,12 +741,8 @@
       return;
     }
     try {
-      const res = await fetch(
-        API_BASE + '/api/checkout/session/' + encodeURIComponent(state.checkoutId) + '/status',
-        { cache: 'no-store' },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
+      const data = await fetchCheckoutStatus(state.checkoutId);
+      if (data) {
         // Update progress steps based on real status from the server.
         if (paymentStarted) {
           if (data.paymentStatus === 'paid') {
@@ -757,7 +793,9 @@
           return;
         }
       }
-    } catch {}
+    } catch (err) {
+      console.error('[checkout] status poll failed', err);
+    }
     state.pollTimer = setTimeout(
       () => pollStatus({ paymentStarted }),
       2000,
@@ -913,6 +951,54 @@
     }
   }
 
+  // A stored session only means the form was opened at some point, NOT that a
+  // payment is in flight. Only auto-open a payment that is genuinely paid or
+  // processing; an open (unpaid) session stays dormant until the customer
+  // presses "Continue to payment" again.
+  async function fetchCheckoutStatus(checkoutId) {
+    if (!API_BASE || !checkoutId) return null;
+    const res = await fetch(
+      API_BASE + '/api/checkout/session/' + encodeURIComponent(checkoutId) + '/status',
+      { cache: 'no-store' },
+    );
+    if (!res.ok) return null;
+    return res.json().catch(() => null);
+  }
+
+  function isStoredSessionStale(stored) {
+    return Date.now() - Number((stored && stored.createdAt) || 0) > 2 * 60 * 60_000;
+  }
+
+  async function checkStoredSession(stored) {
+    state.checkoutId = stored.checkoutId;
+    state.sessionId = stored.sessionId || null;
+
+    let data = null;
+    try {
+      data = await fetchCheckoutStatus(stored.checkoutId);
+    } catch (err) {
+      console.error('[checkout] status check failed', err);
+    }
+    if (!data) return false;
+
+    if (data.status === 'PAID') {
+      showSuccess(data);
+      return true;
+    }
+    if (data.status === 'EXPIRED' || data.status === 'FAILED') {
+      clearStoredSession();
+      state.checkoutId = null;
+      state.sessionId = null;
+      return false;
+    }
+    if (data.paymentStatus === 'paid' || data.stripeStatus === 'complete') {
+      showProcessing();
+      return true;
+    }
+    // Session still open: keep it for reuse, but never auto-mount the form.
+    return false;
+  }
+
   async function init() {
     if (MODE !== 'stripe') {
       window.location.replace('/cart');
@@ -921,35 +1007,35 @@
 
     const stored = readStoredSession();
     const cart = window.BumiCart ? window.BumiCart.getCart() : [];
+
     if (!cart.length) {
-      if (stored) {
-        state.checkoutId = stored.checkoutId;
-        state.sessionId = stored.sessionId || null;
-        setVisible('processing');
-        pollStatus({ paymentStarted: Boolean(stored.paid) });
-        return;
+      if (stored && !isStoredSessionStale(stored)) {
+        const handled = await checkStoredSession(stored);
+        if (handled) return;
       }
+      if (stored) clearStoredSession();
+      state.checkoutId = null;
+      state.sessionId = null;
+      renderSummary(null);
       setVisible('empty');
       return;
     }
 
     setVisible('ready');
     renderItems();
-    if (stored) {
-      const stale = Date.now() - Number(stored.createdAt || 0) > 2 * 60 * 60_000;
-      if (stale) {
-        clearStoredSession();
-      } else {
-        state.checkoutId = stored.checkoutId;
-        state.sessionId = stored.sessionId || null;
-        // A stored session only means the form was opened, not that money was
-        // sent. Resume into the payment form instead of flashing the
-        // "payment received" stepper on every refresh.
-        setVisible(stored.paid ? 'processing' : 'ready');
-        setBusy(false);
-        pollStatus({ paymentStarted: Boolean(stored.paid) });
-        return;
-      }
+
+    // Restore an applied promo so the UI matches the stored cart.
+    const existingPromo = window.BumiCart ? window.BumiCart.getPromo() : null;
+    if (existingPromo && existingPromo.code) {
+      state.promoCode = String(existingPromo.code).toUpperCase();
+      if (els.promoInput) els.promoInput.value = state.promoCode;
+    }
+
+    if (stored && !isStoredSessionStale(stored)) {
+      const handled = await checkStoredSession(stored);
+      if (handled) return;
+    } else if (stored) {
+      clearStoredSession();
     }
 
     if (window.BumiData && window.BumiData.ready) {
@@ -958,29 +1044,33 @@
       } catch {}
     }
 
-    // Catalog is now loaded: drop lines whose product/variant no longer exists
-    // so a stale bag cannot wedge checkout.
-    if (window.BumiCart && typeof window.BumiCart.purgeStaleCart === 'function') {
+    // Only purge when the catalog actually loaded. If the product fetch failed,
+    // every line would look unknown and we would wipe the customer's bag.
+    const catalogReady =
+      window.BumiData &&
+      !window.BumiData.loadError &&
+      Array.isArray(window.BumiData.PRODUCTS) &&
+      window.BumiData.PRODUCTS.length > 0;
+    if (
+      catalogReady &&
+      window.BumiCart &&
+      typeof window.BumiCart.purgeStaleCart === 'function'
+    ) {
       try {
         const purged = window.BumiCart.purgeStaleCart();
-        if (purged?.removed) {
+        if (purged && purged.removed) {
           console.info('[checkout] removed ' + purged.removed + ' unavailable item(s)');
         }
       } catch {}
     }
 
     if (!(window.BumiCart ? window.BumiCart.getCart() : []).length) {
+      renderSummary(null);
       setVisible('empty');
       return;
     }
 
     renderItems();
-
-    const existingPromo = window.BumiCart ? window.BumiCart.getPromo() : null;
-    if (existingPromo && existingPromo.code) {
-      state.promoCode = String(existingPromo.code).toUpperCase();
-      if (els.promoInput) els.promoInput.value = state.promoCode;
-    }
 
     try {
       await refreshQuote();
@@ -1001,6 +1091,19 @@
       } else {
         showError(err.message);
       }
+    }
+
+    // If the bag changed since the stored session was created, drop it so we
+    // don't reuse a checkout built for different items.
+    if (
+      stored &&
+      state.cartHash &&
+      stored.cartHash &&
+      state.cartHash !== stored.cartHash
+    ) {
+      clearStoredSession();
+      state.checkoutId = null;
+      state.sessionId = null;
     }
   }
 

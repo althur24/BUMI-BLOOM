@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       {
         ok: true,
         quote: prepared.quote,
+        cartHash: prepared.cartHash,
         promo: prepared.quote.promo || null,
       },
       200,
