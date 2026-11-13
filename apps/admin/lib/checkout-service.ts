@@ -3,12 +3,14 @@ import { StripeCheckoutStatus } from "@prisma/client";
 import {
   CheckoutError,
   checkoutCartHash,
-  computeTotals,
+  computeShippingCents,
   isMissingTableError,
   normalizePromoCode,
   parseCheckoutItems,
+  totalsWithShipping,
   warnMissingTable,
   type CheckoutQuote,
+  type CheckoutShippingOption,
   type ResolvedCheckoutItem,
 } from "./checkout";
 import {
@@ -17,6 +19,7 @@ import {
   createShopifyOrderFromCheckout,
   fetchCheckoutVariants,
   fetchShopifyDiscount,
+  fetchShopifyShippingRates,
 } from "./shopify-checkout";
 import { sendPurchaseAnalytics } from "./checkout-analytics";
 import { getStripe } from "./stripe";
@@ -126,9 +129,47 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
     promoLabel = discount.title;
   }
 
-  const totals = computeTotals(subtotalAudCents, discountAudCents);
+  // Shopify is the single source of truth for shipping methods. Pulling the
+  // rates here means editing them in Shopify Admin automatically updates the
+  // options shown in the Stripe payment form.
+  let shippingOptions: CheckoutShippingOption[] | undefined;
+  try {
+    const rates = await fetchShopifyShippingRates(
+      items.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+        priceAudCents: item.priceAudCents,
+      })),
+      subtotalAudCents,
+      undefined,
+      discountAudCents,
+    );
+    if (rates.length) {
+      shippingOptions = rates.map((rate) => ({
+        title: rate.title,
+        amountCents: rate.amountCents,
+      }));
+    }
+  } catch (err: any) {
+    console.error(
+      "[checkout] failed to load Shopify shipping rates",
+      err?.message,
+    );
+  }
+
+  const baseTotals = totalsWithShipping(
+    subtotalAudCents,
+    discountAudCents,
+    shippingOptions
+      ? Math.min(...shippingOptions.map((option) => option.amountCents))
+      : computeShippingCents(
+          subtotalAudCents -
+            Math.max(0, Math.min(discountAudCents, subtotalAudCents)),
+        ),
+  );
   const quote: CheckoutQuote = {
-    ...totals,
+    ...baseTotals,
+    ...(shippingOptions ? { shippingOptions } : {}),
     promo: promoCode
       ? {
           code: promoCode,
@@ -200,12 +241,23 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
       session,
       trackingToken,
     );
+    // The chosen shipping method can differ from the pre-payment estimate, so
+    // reconcile against what Stripe actually charged.
+    const actualShippingCents = Math.max(
+      0,
+      Number(session?.shipping_cost?.amount_total ?? checkout.shippingAudCents) ||
+        0,
+    );
+    const actualTotalCents = Math.max(
+      0,
+      Number(session?.amount_total ?? checkout.amountAudCents) || 0,
+    );
     const issues: string[] = [];
     if (order.totalAudCents == null) {
       issues.push("Shopify order total is unavailable.");
-    } else if (order.totalAudCents !== checkout.amountAudCents) {
+    } else if (order.totalAudCents !== actualTotalCents) {
       issues.push(
-        `Shopify total ${order.totalAudCents} differs from Stripe ${checkout.amountAudCents}.`,
+        `Shopify total ${order.totalAudCents} differs from Stripe ${actualTotalCents}.`,
       );
     }
     if (
@@ -231,6 +283,8 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
         shopifyOrderName: order.orderName,
         shopifyTotalAudCents: order.totalAudCents,
         shopifyFinancialStatus: order.financialStatus,
+        shippingAudCents: actualShippingCents,
+        amountAudCents: actualTotalCents,
         trackingToken,
         errorMessage,
       },

@@ -31,6 +31,11 @@ export interface CheckoutPromo {
   shopifyDiscountId: string;
 }
 
+export interface CheckoutShippingOption {
+  title: string;
+  amountCents: number;
+}
+
 export interface CheckoutQuote {
   currency: "AUD";
   subtotalAudCents: number;
@@ -39,6 +44,9 @@ export interface CheckoutQuote {
   taxAudCents: number;
   totalAudCents: number;
   freeShippingThresholdAudCents: number;
+  // Shipping methods configured in Shopify. The customer picks one inside the
+  // Stripe form, so these are informational before payment.
+  shippingOptions?: CheckoutShippingOption[];
   promo?: {
     code: string;
     label: string;
@@ -126,13 +134,14 @@ export function computeShippingCents(discountedSubtotalCents: number): number {
     : SHIPPING_FLAT_CENTS;
 }
 
-export function computeTotals(
+export function totalsWithShipping(
   subtotalAudCents: number,
   discountAudCents: number,
-): Omit<CheckoutQuote, "promo"> {
+  shippingAudCents: number,
+): Omit<CheckoutQuote, "promo" | "shippingOptions"> {
   const safeDiscount = Math.max(0, Math.min(discountAudCents, subtotalAudCents));
-  const shippingAudCents = computeShippingCents(subtotalAudCents - safeDiscount);
-  const totalAudCents = subtotalAudCents - safeDiscount + shippingAudCents;
+  const shipping = Math.max(0, Math.round(shippingAudCents));
+  const totalAudCents = subtotalAudCents - safeDiscount + shipping;
   const taxAudCents = Math.round(
     (totalAudCents * GST_PERCENT) / (100 + GST_PERCENT),
   );
@@ -141,11 +150,23 @@ export function computeTotals(
     currency: CHECKOUT_CURRENCY,
     subtotalAudCents,
     discountAudCents: safeDiscount,
-    shippingAudCents,
+    shippingAudCents: shipping,
     taxAudCents,
     totalAudCents,
     freeShippingThresholdAudCents: FREE_SHIPPING_THRESHOLD_CENTS,
   };
+}
+
+export function computeTotals(
+  subtotalAudCents: number,
+  discountAudCents: number,
+): Omit<CheckoutQuote, "promo" | "shippingOptions"> {
+  const safeDiscount = Math.max(0, Math.min(discountAudCents, subtotalAudCents));
+  return totalsWithShipping(
+    subtotalAudCents,
+    discountAudCents,
+    computeShippingCents(subtotalAudCents - safeDiscount),
+  );
 }
 
 export function checkoutCartHash(

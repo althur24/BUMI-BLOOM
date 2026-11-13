@@ -143,6 +143,178 @@ export async function fetchCheckoutVariants(
   return out;
 }
 
+export interface ShopifyShippingRate {
+  handle: string;
+  title: string;
+  amountCents: number;
+}
+
+interface ShippingRateItem {
+  variantId: string;
+  quantity: number;
+  priceAudCents?: number;
+}
+
+interface RateCacheEntry {
+  at: number;
+  rates: ShopifyShippingRate[];
+}
+
+const RATES_CACHE_TTL_MS = 60_000;
+const RATES_CACHE_MAX = 200;
+const ratesCache = new Map<string, RateCacheEntry>();
+
+// Shopify calculates shipping rates against a destination, so we need an
+// address before Stripe has collected one. BUMI / BLOOM ships flat-rate within
+// Australia, so a representative AU address returns the same methods/prices.
+function sampleShippingAddress(): Record<string, unknown> {
+  return {
+    countryCode: process.env.SHIPPING_SAMPLE_COUNTRY || "AU",
+    provinceCode: process.env.SHIPPING_SAMPLE_PROVINCE || "NSW",
+    city: process.env.SHIPPING_SAMPLE_CITY || "Sydney",
+    zip: process.env.SHIPPING_SAMPLE_ZIP || "2000",
+  };
+}
+
+// Recalculate against the real address Stripe collected so zone-based rates
+// still resolve correctly at order time.
+export function shippingAddressForRates(
+  session: any,
+): Record<string, unknown> {
+  const collected = session?.collected_information?.shipping_details;
+  const legacy = session?.shipping_details;
+  const shipping = collected || legacy || null;
+  const address =
+    shipping?.address || session?.customer_details?.address || null;
+  if (!address?.country) return sampleShippingAddress();
+  return {
+    countryCode: address.country,
+    provinceCode: address.state || undefined,
+    city: address.city || undefined,
+    zip: address.postal_code || undefined,
+  };
+}
+
+const SHIPPING_RATES_QUERY = `mutation CheckoutShippingRates($input: DraftOrderInput!) {
+  draftOrderCalculate(input: $input) {
+    calculatedDraftOrder {
+      availableShippingRates {
+        handle
+        title
+        price { amount currencyCode }
+      }
+    }
+    userErrors { field message }
+  }
+}`;
+
+function rateCacheKey(
+  items: ShippingRateItem[],
+  subtotalAudCents: number | undefined,
+  address: Record<string, unknown>,
+): string {
+  const signature = items
+    .map((item) => `${item.variantId}:${item.quantity}`)
+    .sort()
+    .join("|");
+  const location = [
+    address.countryCode,
+    address.provinceCode,
+    address.city,
+    address.zip,
+  ]
+    .map((value) => String(value ?? ""))
+    .join("/");
+  return `${signature}@${Number(subtotalAudCents || 0)}@${location}`;
+}
+
+function moneyToCents(value: any): number {
+  if (value == null) return 0;
+  if (typeof value === "object" && value.amount != null) {
+    return Math.round(Number(value.amount) * 100);
+  }
+  return Math.round(Number(value) * 100);
+}
+
+// Reads the shipping methods configured in Shopify Admin so they stay the
+// single source of truth. The result feeds the Stripe checkout form.
+export async function fetchShopifyShippingRates(
+  items: ShippingRateItem[],
+  subtotalAudCents?: number,
+  address?: Record<string, unknown>,
+  discountCents?: number,
+): Promise<ShopifyShippingRate[]> {
+  if (!items.length) return [];
+
+  const safeDiscount = Math.max(0, Math.round(Number(discountCents || 0)));
+  const resolvedAddress = address || sampleShippingAddress();
+  const key = `${rateCacheKey(
+    items,
+    subtotalAudCents,
+    resolvedAddress,
+  )}#${safeDiscount}`;
+  const cached = ratesCache.get(key);
+  if (cached && Date.now() - cached.at < RATES_CACHE_TTL_MS) {
+    return cached.rates;
+  }
+
+  const input: Record<string, unknown> = {
+    presentmentCurrencyCode: "AUD",
+    shippingAddress: resolvedAddress,
+    // Mirror the discount so price-based shipping conditions (e.g. free over
+    // a threshold) are evaluated against the same subtotal the order uses.
+    ...(safeDiscount > 0
+      ? {
+          appliedDiscount: {
+            description: "Discount",
+            valueType: "FIXED_AMOUNT",
+            value: safeDiscount / 100,
+          },
+        }
+      : {}),
+    lineItems: items.map((item) => ({
+      variantId: item.variantId,
+      quantity: item.quantity,
+      ...(item.priceAudCents != null
+        ? {
+            originalUnitPriceWithCurrency: {
+              amount: (item.priceAudCents / 100).toFixed(2),
+              currencyCode: "AUD",
+            },
+          }
+        : {}),
+    })),
+  };
+
+  const data = await adminGraphQL<any>(SHIPPING_RATES_QUERY, { input });
+  const errors = data?.draftOrderCalculate?.userErrors || [];
+  if (errors.length) {
+    throw new Error(
+      `Shopify draftOrderCalculate: ${errors
+        .map((e: any) => `${(e.field || []).join(".")} ${e.message}`.trim())
+        .join("; ")}`,
+    );
+  }
+
+  const rawRates =
+    data?.draftOrderCalculate?.calculatedDraftOrder?.availableShippingRates ||
+    [];
+  const rates: ShopifyShippingRate[] = rawRates
+    .map((rate: any) => ({
+      handle: String(rate?.handle || ""),
+      title: String(rate?.title || "").trim(),
+      amountCents: moneyToCents(rate?.price),
+    }))
+    .filter((rate: ShopifyShippingRate) => rate.handle && rate.title);
+
+  if (ratesCache.size >= RATES_CACHE_MAX) {
+    const oldest = ratesCache.keys().next().value;
+    if (oldest) ratesCache.delete(oldest);
+  }
+  ratesCache.set(key, { at: Date.now(), rates });
+  return rates;
+}
+
 const DISCOUNT_QUERY = `query CheckoutDiscount($code: String!) {
   codeDiscountNodeByCode(code: $code) {
     id
@@ -374,6 +546,7 @@ function draftOrderInput(
   checkout: any,
   session: any,
   trackingToken?: string | null,
+  shippingLineOverride?: Record<string, unknown> | null,
 ): Record<string, unknown> {
   const collected = session?.collected_information?.shipping_details;
   const legacy = session?.shipping_details;
@@ -407,7 +580,14 @@ function draftOrderInput(
       }
     : undefined;
 
-  const shippingAmount = (Number(checkout.shippingAudCents || 0) / 100).toFixed(2);
+  // The customer chooses a shipping method inside the Stripe form, so the
+  // charged amount must come from the session rather than our quote estimate.
+  const shippingCents = Math.max(
+    0,
+    Number(session?.shipping_cost?.amount_total ?? checkout.shippingAudCents) ||
+      0,
+  );
+  const shippingAmount = (shippingCents / 100).toFixed(2);
   const discountAmount = (discountCents / 100).toFixed(2);
 
   return {
@@ -417,16 +597,15 @@ function draftOrderInput(
     taxExempt: false,
     shippingAddress,
     billingAddress: shippingAddress,
-    shippingLine: {
-      title:
-        Number(checkout.shippingAudCents || 0) === 0
-          ? "Free standard shipping"
-          : "Standard shipping (5-8 business days)",
-      priceWithCurrency: {
-        amount: shippingAmount,
-        currencyCode: "AUD",
+    shippingLine:
+      shippingLineOverride ||
+      {
+        title: shippingCents === 0 ? "Free shipping" : "Shipping",
+        priceWithCurrency: {
+          amount: shippingAmount,
+          currencyCode: "AUD",
+        },
       },
-    },
     appliedDiscount:
       discountCents > 0
         ? {
@@ -480,7 +659,43 @@ export async function createShopifyOrderFromCheckout(
   financialStatus: string | null;
   totalAudCents: number | null;
 }> {
-  const input = draftOrderInput(checkout, session, trackingToken);
+  const items = Array.isArray(checkout.itemsJson) ? checkout.itemsJson : [];
+  const shippingCents = Math.max(
+    0,
+    Number(session?.shipping_cost?.amount_total ?? checkout.shippingAudCents) ||
+      0,
+  );
+
+  // Tie the order to the actual Shopify shipping method the customer chose in
+  // Stripe (matched by the charged amount) so Shopify reports the right method.
+  let shippingLineOverride: Record<string, unknown> | null = null;
+  try {
+    const rates = await fetchShopifyShippingRates(
+      items.map((item: any) => ({
+        variantId: item.variantId,
+        quantity: Number(item.quantity || 1),
+        priceAudCents: Number(item.priceAudCents || 0),
+      })),
+      Number(checkout.subtotalAudCents || 0),
+      shippingAddressForRates(session),
+      Number(checkout.discountAudCents || 0),
+    );
+    const match = rates.find((rate) => rate.amountCents === shippingCents);
+    if (match) shippingLineOverride = { shippingRateHandle: match.handle };
+  } catch (err: any) {
+    console.warn(
+      "[checkout] could not resolve Shopify shipping rate; using custom line",
+      checkout.id,
+      err?.message,
+    );
+  }
+
+  const input = draftOrderInput(
+    checkout,
+    session,
+    trackingToken,
+    shippingLineOverride,
+  );
   const created = await adminGraphQL<any>(
     `mutation CheckoutDraftOrderCreate($input: DraftOrderInput!) {
       draftOrderCreate(input: $input) {

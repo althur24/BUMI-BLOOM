@@ -463,9 +463,18 @@
       return;
     }
     if (els.summarySubtotal) els.summarySubtotal.textContent = money(quote.subtotalAudCents);
+    const shippingOptions = Array.isArray(quote.shippingOptions) ? quote.shippingOptions : [];
     if (els.summaryShipping) {
-      els.summaryShipping.textContent =
-        quote.shippingAudCents === 0 ? 'Free' : money(quote.shippingAudCents);
+      if (shippingOptions.length > 1) {
+        const amounts = shippingOptions.map(function (option) { return Number(option.amountCents) || 0; });
+        const min = Math.min.apply(null, amounts);
+        const max = Math.max.apply(null, amounts);
+        els.summaryShipping.textContent =
+          (min === 0 ? 'Free' : money(min)) + ' – ' + (max === 0 ? 'Free' : money(max));
+      } else {
+        els.summaryShipping.textContent =
+          quote.shippingAudCents === 0 ? 'Free' : money(quote.shippingAudCents);
+      }
     }
     if (els.summaryTax) els.summaryTax.textContent = money(quote.taxAudCents);
     if (els.summaryTotal) els.summaryTotal.textContent = money(quote.totalAudCents);
@@ -484,15 +493,20 @@
     }
 
     if (els.summaryNote) {
-      const discounted = quote.subtotalAudCents - quote.discountAudCents;
-      const remaining = quote.freeShippingThresholdAudCents - discounted;
-      if (quote.shippingAudCents === 0) {
-        els.summaryNote.textContent = 'Free AU shipping applied. All prices in AUD.';
-      } else if (remaining > 0) {
+      if (shippingOptions.length) {
         els.summaryNote.textContent =
-          'Add ' + money(remaining) + ' for free AU shipping. All prices in AUD.';
+          'Choose your shipping method at payment. All prices in AUD.';
       } else {
-        els.summaryNote.textContent = 'All prices in AUD.';
+        const discounted = quote.subtotalAudCents - quote.discountAudCents;
+        const remaining = quote.freeShippingThresholdAudCents - discounted;
+        if (quote.shippingAudCents === 0) {
+          els.summaryNote.textContent = 'Free AU shipping applied. All prices in AUD.';
+        } else if (remaining > 0) {
+          els.summaryNote.textContent =
+            'Add ' + money(remaining) + ' for free AU shipping. All prices in AUD.';
+        } else {
+          els.summaryNote.textContent = 'All prices in AUD.';
+        }
       }
     }
   }

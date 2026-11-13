@@ -207,10 +207,40 @@ export async function POST(request: Request) {
       },
     }));
 
-    const shippingLabel =
-      prepared.quote.shippingAudCents === 0
-        ? "Free standard shipping (5-8 business days)"
-        : "Standard shipping (5-8 business days)";
+    // Shipping methods come straight from Shopify Admin. If Shopify returns
+    // none (e.g. a transient API error), fall back to a single flat option so
+    // checkout still works.
+    const shopifyShippingOptions = prepared.quote.shippingOptions || [];
+    const shippingOptions = shopifyShippingOptions.length
+      ? shopifyShippingOptions.slice(0, 5).map((option) => ({
+          shipping_rate_data: {
+            type: "fixed_amount" as const,
+            fixed_amount: {
+              amount: option.amountCents,
+              currency: "aud" as const,
+            },
+            display_name: option.title,
+          },
+        }))
+      : [
+          {
+            shipping_rate_data: {
+              type: "fixed_amount" as const,
+              fixed_amount: {
+                amount: prepared.quote.shippingAudCents,
+                currency: "aud" as const,
+              },
+              display_name:
+                prepared.quote.shippingAudCents === 0
+                  ? "Free standard shipping (5-8 business days)"
+                  : "Standard shipping (5-8 business days)",
+              delivery_estimate: {
+                minimum: { unit: "business_day" as const, value: 5 },
+                maximum: { unit: "business_day" as const, value: 8 },
+              },
+            },
+          },
+        ];
 
     const storefrontUrl = (process.env.STOREFRONT_URL || "http://localhost:3000")
       .split(",")[0]
@@ -235,22 +265,7 @@ export async function POST(request: Request) {
         line_items: lineItems,
         discounts: couponId ? [{ coupon: couponId }] : undefined,
         shipping_address_collection: { allowed_countries: ["AU"] },
-        shipping_options: [
-          {
-            shipping_rate_data: {
-              type: "fixed_amount",
-              fixed_amount: {
-                amount: prepared.quote.shippingAudCents,
-                currency: "aud",
-              },
-              display_name: shippingLabel,
-              delivery_estimate: {
-                minimum: { unit: "business_day", value: 5 },
-                maximum: { unit: "business_day", value: 8 },
-              },
-            },
-          },
-        ],
+        shipping_options: shippingOptions,
         customer_creation: "if_required",
         billing_address_collection: "auto",
         client_reference_id: checkoutId,
