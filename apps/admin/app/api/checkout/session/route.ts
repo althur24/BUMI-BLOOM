@@ -44,7 +44,25 @@ function processingResponse(checkout: any) {
   };
 }
 
-async function reusableSession(cartHash: string) {
+// A Stripe Checkout Session is immutable. If Shopify shipping methods (or the
+// quoted totals) changed since an open session was created, reusing it would
+// keep showing the old options, so sign the quote to detect that case.
+function quoteSignature(quote: any): string {
+  const options = Array.isArray(quote?.shippingOptions)
+    ? quote.shippingOptions
+    : [];
+  const shipping = options
+    .map((option: any) => [String(option.title), Number(option.amountCents)])
+    .sort();
+  return JSON.stringify([
+    shipping,
+    Number(quote?.subtotalAudCents || 0),
+    Number(quote?.discountAudCents || 0),
+    Number(quote?.shippingAudCents || 0),
+  ]);
+}
+
+async function reusableSession(cartHash: string, quote: any) {
   let existing;
   try {
     existing = await prisma.stripeCheckout.findFirst({
@@ -85,6 +103,30 @@ async function reusableSession(cartHash: string) {
   }
 
   if (session.status === "open" && session.client_secret) {
+    if (quoteSignature(existing.quoteJson) !== quoteSignature(quote)) {
+      // Shipping/totals changed: retire the stale session and let the caller
+      // create a fresh one with the current Shopify shipping options.
+      try {
+        await getStripe().checkout.sessions.expire(existing.stripeSessionId);
+      } catch (err: any) {
+        console.error(
+          "[checkout] failed to expire stale session",
+          existing.id,
+          err?.message,
+        );
+      }
+      try {
+        await prisma.stripeCheckout.update({
+          where: { id: existing.id },
+          data: { status: StripeCheckoutStatus.EXPIRED },
+        });
+      } catch (err: any) {
+        if (!isMissingTableError(err)) throw err;
+        warnMissingTable("session expiry");
+      }
+      return null;
+    }
+
     return {
       checkoutId: existing.id,
       sessionId: existing.stripeSessionId,
@@ -155,14 +197,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const reusable = await reusableSession(prepared.cartHash);
+    const reusable = await reusableSession(prepared.cartHash, prepared.quote);
     if (reusable) {
       return respond(
         {
           ok: true,
           cartHash: prepared.cartHash,
-          quote: prepared.quote,
           ...reusable,
+          quote: prepared.quote,
         },
         200,
       );
