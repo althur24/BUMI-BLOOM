@@ -305,12 +305,60 @@
 
     function accordionHTML(product) {
       return '<div class="accordion" style="margin-top:var(--space-6);">' +
-        item('Description', '<p>' + product.description + '</p>', true) +
-        item('Material &amp; Care', '<p>' + product.material + '</p>') +
+        item('Description', richText(product.description), true) +
+        item('Material &amp; Care', richText(product.material)) +
         item('Size Guide', sizeGuideHTML(product)) +
         item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
       '</div>';
     }
+
+    // Product copy from Shopify/iOS scrapers can arrive either as rich HTML or
+    // as flattened plain text. Render both cleanly: keep trusted block HTML
+    // (after stripping scripts/handlers) and turn plain text into paragraphs,
+    // line breaks and bullet lists instead of one long run-on blob.
+    function richText(value) {
+      const raw = String(value == null ? '' : value).trim();
+      if (!raw) return '<p>Details coming soon.</p>';
+      if (!/<[a-z][\s\S]*>/i.test(raw)) return plainTextToHtml(raw);
+      const cleaned = sanitizeHtml(raw);
+      if (cleaned.replace(/<[^>]*>/g, ' ').trim()) return cleaned;
+      return plainTextToHtml(raw.replace(/<[^>]*>/g, ' ').trim()) || '<p>Details coming soon.</p>';
+    }
+
+    function plainTextToHtml(text) {
+      return text
+        .replace(/\r\n?/g, '\n')
+        .split(/\n{2,}/)
+        .map((block) => {
+          const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+          if (!lines.length) return '';
+          if (lines.every((l) => /^[-*•]\s+/.test(l))) {
+            return '<ul>' + lines
+              .map((l) => '<li>' + escapeHtml(l.replace(/^[-*•]\s+/, '')) + '</li>')
+              .join('') + '</ul>';
+          }
+          return '<p>' + lines.map(escapeHtml).join('<br>') + '</p>';
+        })
+        .join('');
+    }
+
+    // Lightweight allow-list filter — descriptions are store-owned content but
+    // are injected as HTML, so drop anything that could execute or leak.
+    function sanitizeHtml(html) {
+      const doc = new DOMParser().parseFromString(String(html), 'text/html');
+      doc.querySelectorAll('script, style, iframe, object, embed, form, link, meta').forEach((el) => el.remove());
+      doc.querySelectorAll('*').forEach((el) => {
+        [...el.attributes].forEach((attr) => {
+          const name = attr.name.toLowerCase();
+          const val = String(attr.value || '');
+          if (name.startsWith('on')) el.removeAttribute(attr.name);
+          else if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(val)) el.removeAttribute(attr.name);
+          else if (name === 'style' && /expression|javascript:/i.test(val)) el.removeAttribute(attr.name);
+        });
+      });
+      return doc.body.innerHTML.trim();
+    }
+
     function item(title, body, open) {
       return '<div class="accordion__item' + (open ? ' is-active' : '') + '">' +
         '<button class="accordion__trigger" type="button">' + title + '<span class="accordion__icon">+</span></button>' +

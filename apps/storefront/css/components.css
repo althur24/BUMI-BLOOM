@@ -1485,6 +1485,90 @@
   display: block;
 }
 
+/* ── Rich product copy (Shopify descriptionHtml) ──
+   The global reset zeroes margins and removes list markers, so restore the
+   structure Shopify sends: paragraphs, bullets/numbers, headings and media. */
+.accordion__content > *:first-child {
+  margin-top: 0;
+}
+
+.accordion__content > *:last-child {
+  margin-bottom: 0;
+}
+
+.accordion__content p {
+  max-width: none;
+}
+
+.accordion__content p + p {
+  margin-top: var(--space-4);
+}
+
+.accordion__content ul,
+.accordion__content ol {
+  list-style: disc;
+  padding-left: 1.35em;
+  margin: var(--space-3) 0;
+}
+
+.accordion__content ol {
+  list-style: decimal;
+}
+
+.accordion__content li {
+  margin-bottom: var(--space-1);
+}
+
+.accordion__content li::marker {
+  color: var(--color-coral);
+}
+
+.accordion__content h1,
+.accordion__content h2,
+.accordion__content h3,
+.accordion__content h4,
+.accordion__content h5,
+.accordion__content h6 {
+  font-size: var(--text-lg);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+.accordion__content strong,
+.accordion__content b {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.accordion__content a {
+  text-decoration: underline;
+}
+
+.accordion__content blockquote {
+  border-left: 3px solid var(--color-coral);
+  padding-left: var(--space-4);
+  margin: var(--space-4) 0;
+  font-style: italic;
+}
+
+.accordion__content img {
+  margin: var(--space-4) 0;
+  border-radius: var(--radius-md);
+}
+
+.accordion__content table {
+  width: 100%;
+  margin: var(--space-3) 0;
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+}
+
+.accordion__content th,
+.accordion__content td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+}
+
 
 /* ─────────────────────────────────────────────
    MODAL / DRAWER

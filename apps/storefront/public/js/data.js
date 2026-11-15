@@ -135,6 +135,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
       node {
         handle
         title
+        descriptionHtml
         description
         productType
         vendor
@@ -253,7 +254,9 @@ function mapShopifyProduct(node) {
     rating: meta.rating ? parseFloat(meta.rating) : 0,
     reviews: meta.reviews_count ? parseInt(meta.reviews_count, 10) : 0,
     addedAt: meta.added_at_rank ? parseInt(meta.added_at_rank, 10) : 0,
-    description: node.description || '',
+    // `descriptionHtml` keeps the paragraph/heading/list structure from Shopify;
+    // `description` is the tag-stripped plain text and only a last resort.
+    description: node.descriptionHtml || node.description || '',
     material: meta.material || '',
     sizeGuide: meta.size_guide || '',
     sizeChartImage: meta.size_chart_image || '',
