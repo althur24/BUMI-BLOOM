@@ -1,5 +1,7 @@
 // Unit tests for the pure import helpers. Run: npx tsx apps/admin/scripts/unit-test.ts
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   imageUrlCandidates,
   imageIdentity,
@@ -12,6 +14,7 @@ import {
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { canonicalizeUrl } from "../lib/urls";
+import { brandFromOgTitle, extractPdpStructured } from "../lib/scrapers/tokopedia-pdp";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -184,6 +187,63 @@ test("category and audience inference", () => {
   assert.equal(inferCategory("Baby Romper"), "baby");
   assert.equal(inferAudience("Unisex kids longsleeved top"), "unisex");
   assert.equal(inferAudience("Dress untuk anak perempuan"), "girls");
+});
+
+// ── Tokopedia PDP structured extraction ─────────────────────────────────────
+// Real PDPMainInfo payload for a listing with 10 colours × 13 sizes where the
+// adult sizes and the "pure/white" colourway are priced DIFFERENTLY from the
+// kids sizes. Regression guard for: one price for all variants, the 100-variant
+// cap, and stock "1,2 jt" being parsed as 1.
+const PDP_FIXTURE: unknown = JSON.parse(
+  readFileSync(join(__dirname, "../lib/scrapers/__fixtures__/tokopedia-pdp.json"), "utf8"),
+);
+const pdp = extractPdpStructured([PDP_FIXTURE]);
+
+test("PDP extraction keeps every real colour × size combination", () => {
+  assert.ok(pdp);
+  // 130 combinations minus 7 that the seller does not stock
+  // (Ungu has no adult sizes; pure/white has no XXXL-ADULT).
+  assert.equal(pdp!.variants.length, 123);
+});
+
+test("PDP extraction preserves the per-variant price tiers", () => {
+  const prices = [...new Set(pdp!.variants.map((v) => v.price))].sort((a, b) => a! - b!);
+  assert.deepEqual(prices, [32000, 56200, 60000, 92000]);
+});
+
+test("PDP adult sizes keep their own (higher) price and compare-at", () => {
+  const adult = pdp!.variants.find((v) => v.options.Ukuran === "S-ADULT");
+  assert.ok(adult);
+  assert.equal(adult!.price, 92000);
+  assert.equal(adult!.compareAtPrice, 230000);
+});
+
+test("PDP pure/white colourway keeps its distinct cheaper price", () => {
+  const cheap = pdp!.variants.find(
+    (v) => v.options.Warna === "pure/white" && v.options.Ukuran === "90",
+  );
+  assert.ok(cheap);
+  assert.equal(cheap!.price, 32000);
+  assert.equal(cheap!.compareAtPrice, 80000);
+});
+
+test("PDP extraction reads real per-variant stock (not the DOM '1,2 jt' bug)", () => {
+  assert.ok(pdp!.variants.every((v) => (v.stock ?? 0) > 0));
+  assert.ok(pdp!.variants.some((v) => (v.stock ?? 0) > 100));
+  assert.equal(pdp!.totalStock, 9402);
+});
+
+test("PDP extraction exposes the size chart, colours and per-colour images", () => {
+  assert.ok(pdp!.sizeChart?.includes("sizechart") || /^https?:/.test(pdp!.sizeChart || ""));
+  assert.equal(pdp!.colors.length, 10);
+  assert.equal(Object.keys(pdp!.colorImages).length, 10);
+  assert.ok(Object.values(pdp!.colorImages).every((u) => /^https?:/.test(u)));
+});
+
+test("brand comes from the trailing 'di <shop> | Tokopedia' segment", () => {
+  const og =
+    "Promo (Bayar di Tempat) Kaos Musim Panas Unisex untuk Anak Laki-laki dan Perempuan, cocok untuk tinggi 90-150cm, usia 3-15 tahun. di 495 Lucu Anak | Tokopedia";
+  assert.equal(brandFromOgTitle(og), "495 Lucu Anak");
 });
 
 console.log(`\n${passed} tests passed.`);

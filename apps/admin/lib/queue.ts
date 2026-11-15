@@ -13,6 +13,7 @@ import type { ImportSource, ImportStatus } from "@prisma/client";
 import { rehostImages } from "./storage";
 import { enrichProduct } from "./ai/enrich";
 import { getAudToIdrRate } from "./currency";
+import { canonicalizeUrl } from "./urls";
 
 const useBullMQ = (): boolean => Boolean(process.env.REDIS_URL);
 
@@ -38,6 +39,16 @@ async function processJob(jobId: string): Promise<void> {
     }
 
     const np = result.normalized;
+
+    // Short/affiliate links (tk.tokopedia.com/…) resolve to the canonical PDP
+    // URL while scraping. Persist it so a later import of the long URL is
+    // detected as the same product instead of creating a duplicate.
+    if (np.sourceUrl && np.sourceUrl !== job.sourceUrl) {
+      const resolvedKey = canonicalizeUrl(np.sourceUrl);
+      await prisma.importJob
+        .update({ where: { id: jobId }, data: { sourceUrl: np.sourceUrl, sourceKey: resolvedKey } })
+        .catch(() => {});
+    }
 
     // Re-host images to Supabase Storage (fallback to originals if not configured).
     await prisma.importJob.update({ where: { id: jobId }, data: { rawJson: { step: "rehosting" } as any } });

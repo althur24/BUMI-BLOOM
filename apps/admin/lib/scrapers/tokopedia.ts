@@ -10,6 +10,8 @@
 // normalised/validated by the shared image pipeline.
 
 import { withPage, readJsonLd, type CapturedResponse } from "./browser";
+import { extractPdpStructured, extractPdpFromHtml, brandFromOgTitle } from "./tokopedia-pdp";
+import { canonicalizeUrl } from "../urls";
 import {
   toNum,
   type NormalizedColor,
@@ -34,6 +36,14 @@ import {
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+// Transport-level blocks (as opposed to "page loaded but no data"): connection
+// resets / timeouts thrown by undici or Chromium when the host throttles the IP.
+function isNetworkThrottle(e: unknown): boolean {
+  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|EPIPE|socket hang up|fetch failed|ERR_CONNECTION_RESET|ERR_CONNECTION_CLOSED/i.test(
+    errMsg(e),
+  );
 }
 
 function productIdFromUrl(url: string): string | undefined {
@@ -237,6 +247,21 @@ function extractJsonVariants(product: Record<string, any>): JsonVariantResult {
   return { variants, colors: dedupeColors(colors), price: minPrice, compareAtPrice: compareAt };
 }
 
+// Indonesian stock counts: "1,2 jt" → 1_200_000, "15 rb" → 15_000,
+// "1.226.526" → 1_226_526. Used only by the DOM fallback; the structured
+// payload already ships exact integers.
+function parseIndonesianCount(raw: string): number | undefined {
+  const text = String(raw || "").toLowerCase();
+  const match = text.match(/([\d.,]+)\s*(jt|juta|rb|ribu|k)?/);
+  if (!match) return undefined;
+  const digits = match[1].replace(/\./g, "").replace(",", ".");
+  const value = Number(digits);
+  if (!Number.isFinite(value)) return undefined;
+  const unit = match[2] || "";
+  const multiplier = /jt|juta/.test(unit) ? 1_000_000 : /rb|ribu|^k$/.test(unit) ? 1_000 : 1;
+  return Math.round(value * multiplier);
+}
+
 // ── DOM / regex fallbacks ──────────────────────────────────────────────────
 
 async function getText(page: import("playwright").Page, testid: string): Promise<string> {
@@ -262,14 +287,9 @@ function extractRelayImages(html: string): string[] {
 }
 
 function extractBrand(html: string, ogTitle: string): string | undefined {
-  const m = html.match(/"shopName":"([^"]+)"/);
-  if (m) return decodeHtmlEntities(m[1]);
-  if (ogTitle) {
-    const beforePipe = ogTitle.split(" | Tokopedia")[0];
-    const diMatch = beforePipe.match(/ di (.+)$/);
-    if (diMatch) return diMatch[1].trim();
-  }
-  return undefined;
+  const jsonMatch = html.match(/"shopName":"([^"]+)"/);
+  if (jsonMatch) return decodeHtmlEntities(jsonMatch[1]);
+  return brandFromOgTitle(ogTitle);
 }
 
 function extractRelayVariants(
@@ -450,13 +470,8 @@ async function readSelectedNumbers(
     .first()
     .innerText()
     .catch(() => "");
-  const stockMatch = stockText.match(/([\d.]+)/);
   return {
-    stock: /habis|kosong/i.test(stockText)
-      ? 0
-      : stockMatch
-        ? Number(stockMatch[1].replace(/\./g, ""))
-        : undefined,
+    stock: /habis|kosong/i.test(stockText) ? 0 : parseIndonesianCount(stockText),
     price: toNum(priceText),
     compareAt: toNum(slashText),
   };
@@ -734,15 +749,89 @@ async function detailImages(page: import("playwright").Page): Promise<string[]> 
 
 // ── Main adapter ───────────────────────────────────────────────────────────
 
+// Tokopedia server-renders the PDP into an Apollo normalized cache exposed as
+// `window.__cache` (there is no client-side PDPMainInfo request). Denormalize
+// the `pdpMainInfo` components from it and hand back the same shape the GraphQL
+// capture path produces, so extractPdpStructured() can read either source.
+async function readPdpComponentsFromPage(
+  page: import("playwright").Page,
+): Promise<unknown[] | null> {
+  // NOTE: passed as a string expression, not a function. tsx/esbuild injects a
+  // `__name()` helper into serialized functions (keepNames), which the page
+  // doesn't define → ReferenceError. A string is evaluated verbatim.
+  const expression = `(() => {
+    const cache = window.__cache;
+    if (!cache || typeof cache !== "object") return null;
+    const resolve = (node, depth, path) => {
+      if (depth > 25) return null;
+      if (Array.isArray(node)) return node.map((n) => resolve(n, depth + 1, path));
+      if (!node || typeof node !== "object") return node;
+      if (node.type === "id" && typeof node.id === "string" && cache[node.id]) {
+        if (path.has(node.id)) return {};
+        const next = new Set(path);
+        next.add(node.id);
+        return resolve(cache[node.id], depth + 1, next);
+      }
+      const out = {};
+      for (const key of Object.keys(node)) out[key] = resolve(node[key], depth + 1, path);
+      return out;
+    };
+    const keys = Object.keys(cache).filter((k) => /pdpMainInfo\\(/.test(k) && /\\.components\\.\\d+$/.test(k));
+    if (!keys.length) return null;
+    keys.sort((a, b) => {
+      const ai = Number((a.match(/\\.components\\.(\\d+)$/) || [])[1] || 0);
+      const bi = Number((b.match(/\\.components\\.(\\d+)$/) || [])[1] || 0);
+      return ai - bi;
+    });
+    const components = keys.map((key) => resolve(cache[key], 0, new Set([key])));
+    return [{ data: { pdpMainInfo: { components } } }];
+  })()`;
+  return page.evaluate(expression).catch(() => null) as Promise<unknown[] | null>;
+}
+
 export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
   const id = productIdFromUrl(url);
+
+  // Fast path: read the server-rendered Apollo cache over plain HTTP. This
+  // sidesteps headless anti-bot / TCP resets and is usually enough on its own.
+  let httpResult: ScrapeResult | null = null;
+  let httpError: unknown = null;
   try {
-    return await withPage(
+    httpResult = await scrapeTokopediaHttp(url);
+    if (httpResult.ok && httpResult.normalized?.variants.length) return httpResult;
+  } catch (e) {
+    httpError = e;
+  }
+
+  // If the HTTP attempt was reset at the transport level, the browser will be
+  // reset too (same IP/host) — launching Chromium only adds hundreds of extra
+  // requests and makes the throttling worse. Fail fast with a clear message.
+  if (!httpResult && isNetworkThrottle(httpError)) {
+    return {
+      ok: false,
+      error:
+        `Tokopedia membatasi koneksi dari IP ini (rate-limit jaringan: ${errMsg(httpError)}). ` +
+        "Tunggu beberapa menit lalu ulangi. Di server produksi (IP berbeda) biasanya lancar.",
+      raw: { id, blocked: true },
+    };
+  }
+
+  let viaBrowser: ScrapeResult | null = null;
+  try {
+    viaBrowser = await withPage(
       async (page, captured: CapturedResponse[]) => {
+        // Short/affiliate links (tk.tokopedia.com/…) 302 to the real PDP, so the
+        // final URL is where the product ID and referer actually live. Store a
+        // canonical version so affiliate/tracking params never reach the
+        // storefront `source_url` metafield or the dedupe key.
+        const finalUrl = page.url() || url;
+        const resolvedUrl = canonicalizeUrl(finalUrl);
+        const resolvedId = productIdFromUrl(finalUrl) || id;
         await page
-          .waitForSelector("#pdpVariantContainer, #pdp_comp-variant_options", {
-            timeout: 8000,
-          })
+          .waitForSelector(
+            '#pdpVariantContainer, #pdp_comp-variant_options, [data-testid="lblPDPDetailProductPrice"]',
+            { timeout: 8000 },
+          )
           .catch(() => {});
         const html = await page.content();
         const pageTitle = await page.title().catch(() => "");
@@ -751,15 +840,25 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
             ok: false,
             error:
               "Tokopedia memblokir permintaan (captcha/anti-bot). Coba lagi beberapa saat atau gunakan jalur Affiliate API.",
-            raw: { id },
+            raw: { id: resolvedId },
           };
         }
 
         const jsonProduct =
           captured
-            .map((c) => findProductObject(c.json, id))
+            .map((c) => findProductObject(c.json, resolvedId))
             .filter(Boolean)
             .sort((a, b) => Object.keys(b as any).length - Object.keys(a as any).length)[0] || null;
+
+        // Authoritative structured snapshot (per-variant price + stock): the
+        // GraphQL capture when the client fetches PDPMainInfo, otherwise the
+        // server-rendered Apollo cache embedded in the HTML.
+        let structured = extractPdpStructured(captured.map((c) => c.json));
+        if (!structured || !structured.variants.length) {
+          const pageComponents = await readPdpComponentsFromPage(page);
+          const fromPage = pageComponents ? extractPdpStructured(pageComponents) : null;
+          if (fromPage && fromPage.variants.length) structured = fromPage;
+        }
 
         const jsonVariants = jsonProduct ? extractJsonVariants(jsonProduct) : { variants: [], colors: [] };
 
@@ -770,7 +869,8 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
         const ogImage = await getMeta(page, "og:image");
 
         const title = String(
-          jsonProduct?.name ||
+          structured?.title ||
+            jsonProduct?.name ||
             jsonProduct?.title ||
             domTitle ||
             (ogTitle ? ogTitle.split(" | Tokopedia")[0].trim() : "") ||
@@ -782,11 +882,13 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
             ok: false,
             error:
               "Data produk tidak ditemukan — halaman mungkin butuh login, anti-bot memblok render, atau struktur halaman berubah.",
-            raw: { id, captured: captured.length },
+            raw: { id: resolvedId, captured: captured.length },
           };
         }
 
-        const descriptionRaw = String(jsonProduct?.description || domDescription || "");
+        const descriptionRaw = String(
+          structured?.description || jsonProduct?.description || domDescription || "",
+        );
         const description = decodeHtmlEntities(descriptionRaw)
           .replace(/<\s*br\s*\/?>/gi, "\n")
           .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
@@ -796,12 +898,28 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
           .trim();
 
         const price =
+          structured?.basePrice ??
           toNum(jsonProduct?.price ?? jsonProduct?.priceValue) ??
           toNum(domPrice) ??
           jsonVariants.price;
-        const domResult = await extractDomVariants(page, price);
         const currency = "IDR";
+
+        // The structured payload already carries the exact per-variant matrix
+        // (price + stock), so skip the slow/fragile DOM chip sweep when present.
+        const hasStructuredVariants = Boolean(structured && structured.variants.length);
+        const domResult = hasStructuredVariants
+          ? {
+              variants: [],
+              colors: [],
+              colorImages: {},
+              compareAtPrice: undefined,
+              groups: [],
+              selected: {},
+            }
+          : await extractDomVariants(page, price);
+
         const compareAtPrice =
+          structured?.compareAtPrice ??
           domResult.compareAtPrice ??
           jsonVariants.compareAtPrice ??
           (() => {
@@ -814,17 +932,23 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
             return original && price && original > price ? original : undefined;
           })();
 
-        const regexVariants = extractRelayVariants(html, price);
-        let variants = jsonVariants.variants.length
-          ? jsonVariants.variants
-          : domResult.variants.length
-            ? domResult.variants
-            : regexVariants.variants;
-        let colors = jsonVariants.variants.length
-          ? jsonVariants.colors
-          : domResult.colors.length
-            ? domResult.colors
-            : regexVariants.colors;
+        const regexVariants = hasStructuredVariants
+          ? { variants: [] as ScraperVariant[], colors: [] as NormalizedColor[] }
+          : extractRelayVariants(html, price);
+        let variants = hasStructuredVariants
+          ? structured!.variants
+          : jsonVariants.variants.length
+            ? jsonVariants.variants
+            : domResult.variants.length
+              ? domResult.variants
+              : regexVariants.variants;
+        let colors = hasStructuredVariants
+          ? structured!.colors
+          : jsonVariants.variants.length
+            ? jsonVariants.colors
+            : domResult.colors.length
+              ? domResult.colors
+              : regexVariants.colors;
 
         let resolvedTitle = cleanTokpedTitle(title, domResult.groups, domResult.selected);
         const ratingFromDom = toNum(
@@ -860,13 +984,19 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
         // selection settles, so read the DOM again after the chip interactions.
         const htmlAfter = await page.content().catch(() => "");
         const plan = buildImagePlan({
-          structured: [...structuredImages, ...relayImages, ogImage].filter(Boolean),
+          structured: [
+            ...(structured?.images || []),
+            ...structuredImages,
+            ...relayImages,
+            ogImage,
+          ].filter(Boolean),
           html: `${html}
 ${htmlAfter}`,
-          pageUrl: url,
+          pageUrl: finalUrl,
         });
         const sizeChartImage =
           plan.sizeChartImage ||
+          structured?.sizeChart ||
           structuredImages.find((u) => isLikelySizeChart(u)) ||
           undefined;
 
@@ -908,16 +1038,18 @@ ${htmlAfter}`,
 
         const normalized: NormalizedProduct = {
           platform: "TOKPED",
-          sourceUrl: url,
+          sourceUrl: resolvedUrl,
           title: stripBrandPrefix(resolvedTitle || title, brand),
           description: description || undefined,
           price,
           compareAtPrice,
           currency,
           images: plan.images,
-          colorImages: Object.keys(domResult.colorImages).length
-            ? domResult.colorImages
-            : undefined,
+          colorImages: Object.keys(structured?.colorImages || {}).length
+            ? structured!.colorImages
+            : Object.keys(domResult.colorImages).length
+              ? domResult.colorImages
+              : undefined,
           sizeChartImage,
           variants,
           colors: colors.length ? dedupeColors(colors) : undefined,
@@ -935,11 +1067,13 @@ ${htmlAfter}`,
           fibre: facts.fibre,
           sizeGuide: buildSizeGuide(sizeLabels, { sizeChartImage }),
           extractionPath: variants.length
-            ? jsonVariants.variants.length
-              ? "graphql"
-              : domResult.variants.length
-                ? "dom+chips"
-                : "dom+regex"
+            ? hasStructuredVariants
+              ? "graphql-components"
+              : jsonVariants.variants.length
+                ? "graphql"
+                : domResult.variants.length
+                  ? "dom+chips"
+                  : "dom+regex"
             : jsonProduct
               ? "graphql-partial"
               : "dom",
@@ -948,9 +1082,11 @@ ${htmlAfter}`,
         return {
           ok: true,
           raw: {
-            id,
+            id: resolvedId,
+            resolvedUrl: finalUrl,
             captured: captured.length,
             hasJsonProduct: Boolean(jsonProduct),
+            hasStructured: Boolean(structured),
             imageCount: normalized.images.length,
             variantCount: variants.length,
             extractionPath: normalized.extractionPath,
@@ -960,12 +1096,140 @@ ${htmlAfter}`,
       },
       {
         url,
-        capture: (u) => /gql\.tokopedia\.com/i.test(u),
+        // Only the PDP queries matter; capturing every gql response risks
+        // picking a recommendation-carousel product instead of the real one.
+        capture: (u) => /gql\.tokopedia\.com\/graphql\/(PDPMainInfo|PDPShopNote)/i.test(u),
         blockAssets: true,
-        waitMs: 4000,
+        timeoutMs: 60_000,
+        waitMs: 5000,
       },
     );
   } catch (e) {
-    return { ok: false, error: errMsg(e), raw: { id } };
+    viaBrowser = { ok: false, error: errMsg(e), raw: { id } };
   }
+
+  // Prefer whichever source actually produced variants. The HTTP cache path is
+  // authoritative; the browser path covers pages whose SSR cache is unavailable.
+  if (viaBrowser?.ok && viaBrowser.normalized?.variants.length) return viaBrowser;
+  if (httpResult?.ok) return httpResult;
+  if (viaBrowser?.ok) return viaBrowser;
+
+  const httpMessage = httpError ? errMsg(httpError) : "tidak ada data";
+  return {
+    ok: false,
+    error: `${httpMessage} | browser: ${errMsg(viaBrowser?.error || "gagal")}`,
+    raw: { id, fallbackError: httpMessage },
+  };
+}
+
+// Direct HTTP scrape: no Playwright. Reads `window.__cache` from the SSR HTML.
+// Retries transient connection resets with backoff.
+async function scrapeTokopediaHttp(url: string): Promise<ScrapeResult> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await scrapeTokopediaHttpOnce(url);
+    } catch (e) {
+      lastError = e;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 + attempt * 2500));
+    }
+  }
+  throw lastError;
+}
+
+// One attempt at fetching + parsing the SSR HTML.
+async function scrapeTokopediaHttpOnce(url: string): Promise<ScrapeResult> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "id,ID;q=0.9,en;q=0.8",
+      },
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (e: any) {
+    const cause = e?.cause?.message || e?.cause?.code || "";
+    throw new Error(`fetch gagal: ${e?.message || e}${cause ? ` (${cause})` : ""}`);
+  }
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const html = await response.text();
+  const finalUrl = response.url || url;
+  const ogTitle = decodeHtmlEntities(
+    html.match(/property="og:title" content="([^"]*)"/i)?.[1] || "",
+  );
+  if (/captcha|verify you are human|unusual traffic/i.test(ogTitle.slice(0, 200))) {
+    throw new Error("Tokopedia memblokir permintaan (captcha/anti-bot).");
+  }
+
+  const structured = extractPdpFromHtml(html);
+  if (!structured || (!structured.variants.length && structured.basePrice == null)) {
+    throw new Error("Data produk tidak ditemukan di HTML (struktur berubah atau diblokir).");
+  }
+
+  const resolvedUrl = canonicalizeUrl(finalUrl);
+  const shopMatch = html.match(/"shopName":"([^"]+)"/);
+  const brand = shopMatch ? decodeHtmlEntities(shopMatch[1]) : brandFromOgTitle(ogTitle);
+  const rawTitle = structured.title || ogTitle.split(" | Tokopedia")[0].trim();
+  const title = cleanTokpedTitle(rawTitle, [], {});
+  const description = structured.description || "";
+  const facts = extractMaterialFacts(description);
+  const price = structured.basePrice;
+  const compareAtPrice =
+    structured.compareAtPrice != null && price != null && structured.compareAtPrice > price
+      ? structured.compareAtPrice
+      : undefined;
+  const sizeLabels = [
+    ...new Set(
+      structured.variants
+        .map((v) => v.options.Ukuran || v.options.Size)
+        .filter((s): s is string => Boolean(s)),
+    ),
+  ];
+  const category = inferCategory(rawTitle, description);
+  const rating = toNum(html.match(/"rating":"?([\d.]+)"?/)?.[1]);
+  const soldCount = toNum(html.match(/"countSold":"?(\d+)"?/)?.[1]);
+
+  const normalized: NormalizedProduct = {
+    platform: "TOKPED",
+    sourceUrl: resolvedUrl,
+    title: stripBrandPrefix(title || rawTitle, brand),
+    description: description || undefined,
+    price,
+    compareAtPrice,
+    currency: "IDR",
+    images: structured.images,
+    colorImages: Object.keys(structured.colorImages).length
+      ? structured.colorImages
+      : undefined,
+    sizeChartImage: structured.sizeChart,
+    variants: structured.variants,
+    colors: structured.colors.length ? structured.colors : undefined,
+    specs: {
+      ...(category ? { category } : {}),
+      audience: inferAudience(rawTitle, description),
+      ...(description ? { originalDescription: description.slice(0, 4000) } : {}),
+    },
+    brand,
+    rating,
+    soldCount,
+    materialCare: facts.materialCare,
+    fibre: facts.fibre,
+    sizeGuide: buildSizeGuide(sizeLabels, { sizeChartImage: structured.sizeChart }),
+    extractionPath: "http-cache",
+  };
+
+  return {
+    ok: true,
+    raw: {
+      id: productIdFromUrl(finalUrl),
+      resolvedUrl,
+      extractionPath: "http-cache",
+      variantCount: structured.variants.length,
+    },
+    normalized,
+  };
 }

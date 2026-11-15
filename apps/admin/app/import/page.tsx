@@ -649,6 +649,9 @@ export default function ImportPage() {
                   {activeVariants.map((v, i) => {
                     const removed = removedVariants.has(i);
                     const stock = variantStockEdits[i] ?? v.stock ?? 0;
+                    const isAdult = Object.entries(v.options).some(
+                      ([key, value]) => /size|ukuran/i.test(key) && /adult|dewasa/i.test(String(value)),
+                    );
                     return (
                       <div key={i} className="variant-row" style={{ opacity: removed ? 0.4 : 1 }}>
                         <label>
@@ -659,6 +662,9 @@ export default function ImportPage() {
                               setRemovedVariants(n);
                             }} />
                           {Object.entries(v.options).map(([k, val]) => `${val}`).join(" · ")}
+                          {isAdult && (
+                            <span className="badge badge--yellow" style={{ marginLeft: 6 }}>dewasa</span>
+                          )}
                         </label>
                         <input className="variant-stock-input" type="number" value={stock}
                           disabled={removed}
@@ -669,6 +675,30 @@ export default function ImportPage() {
                       </div>
                     );
                   })}
+                  {activeVariants.some((v) =>
+                    Object.entries(v.options).some(
+                      ([key, value]) => /size|ukuran/i.test(key) && /adult|dewasa/i.test(String(value)),
+                    ),
+                  ) && (
+                    <button
+                      className="btn btn--ghost btn--sm"
+                      type="button"
+                      style={{ marginBottom: 8 }}
+                      onClick={() => {
+                        const n = new Set(removedVariants);
+                        activeVariants.forEach((v, i) => {
+                          const adult = Object.entries(v.options).some(
+                            ([key, value]) =>
+                              /size|ukuran/i.test(key) && /adult|dewasa/i.test(String(value)),
+                          );
+                          if (adult) n.add(i);
+                        });
+                        setRemovedVariants(n);
+                      }}
+                    >
+                      Keluarkan semua size dewasa
+                    </button>
+                  )}
                   <p className="hint">Centang untuk aktif · edit stok · hapus yang tidak perlu</p>
                 </div>
               )}

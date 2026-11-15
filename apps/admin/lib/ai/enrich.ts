@@ -183,14 +183,45 @@ Return JSON: {"title_en": clean English title (keep the colourway, no marketing 
     }
   }
   if (originalToEnglish.size) {
+    const usedEnglish = new Set<string>();
+    const finalName = new Map<string, string>();
+    // Translate one source colour to its English name. Returns undefined when
+    // the source colour isn't in the AI output, or when its translation would
+    // collapse two different source colours into one (e.g. "Putih" and
+    // "pure/white" both → "White") — that would duplicate variants and lose a
+    // distinct, differently-priced SKU, so the source name is kept.
+    const translate = (original: string): string | undefined => {
+      const key = normalizeColorName(original);
+      if (finalName.has(key)) return finalName.get(key);
+      const candidate = originalToEnglish.get(key);
+      if (!candidate) return undefined;
+      const translatedKey = normalizeColorName(candidate);
+      if (translatedKey !== key && usedEnglish.has(translatedKey)) return undefined;
+      usedEnglish.add(translatedKey);
+      finalName.set(key, candidate);
+      return candidate;
+    };
+
     product.variants = product.variants.map((v) => {
       const color = colorOptionOf(v.options);
       if (!color) return v;
-      const translated = originalToEnglish.get(normalizeColorName(color.value));
+      const translated = translate(color.value);
       return translated
         ? { ...v, options: { ...v.options, [color.key]: translated } }
         : v;
     });
+
+    // The per-colourway images are keyed by the SOURCE colour name. Rename them
+    // with the same translation so they still match the (English) Color option
+    // values when the push attaches variant images.
+    if (product.colorImages) {
+      const remapped: Record<string, string> = {};
+      for (const [name, src] of Object.entries(product.colorImages)) {
+        const final = translate(name) || name;
+        if (!remapped[final]) remapped[final] = src;
+      }
+      product.colorImages = remapped;
+    }
   }
 
   // Derive the final palette from the (possibly translated) variants, using the

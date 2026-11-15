@@ -97,6 +97,7 @@ export async function adminRest<T = any>(
 export async function adminGraphQL<T = any>(
   query: string,
   variables?: Record<string, unknown>,
+  opts: { timeoutMs?: number } = {},
 ): Promise<T> {
   const token = await getAdminToken();
   const res = await fetch(
@@ -105,7 +106,7 @@ export async function adminGraphQL<T = any>(
       method: "POST",
       headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? REQUEST_TIMEOUT_MS),
     },
   );
   if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
@@ -317,10 +318,69 @@ function normaliseSig(value: unknown): string {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// REST product endpoints only return the first 100 variants. Products created
+// via productSet can have many more, so fetch the complete list from GraphQL and
+// map it to the REST variant shape the reconciliation helpers expect.
+async function getAllProductVariants(productId: number | string): Promise<any[] | null> {
+  try {
+    const data = await adminGraphQL<{
+      product: {
+        options: { name: string; position: number }[];
+        variants: { nodes: any[] };
+      } | null;
+    }>(
+      `query ProductVariants($id: ID!) {
+        product(id: $id) {
+          options { name position }
+          variants(first: 250) {
+            nodes {
+              id
+              sku
+              inventoryItem { id }
+              image { id }
+              selectedOptions { name optionValue { name } }
+            }
+          }
+        }
+      }`,
+      { id: `gid://shopify/Product/${productId}` },
+      { timeoutMs: 30_000 },
+    );
+    const product = data?.product;
+    if (!product) return null;
+    const options = product.options || [];
+    return (product.variants?.nodes || []).map((node: any) => {
+      const variant: Record<string, any> = {
+        id: Number(String(node.id).split("/").pop()),
+        sku: node.sku || null,
+      };
+      for (const option of options) {
+        const selected = (node.selectedOptions || []).find(
+          (s: any) => String(s?.name || "").toLowerCase() === String(option.name).toLowerCase(),
+        );
+        const value = selected?.optionValue?.name;
+        if (value != null) variant[`option${option.position}`] = value;
+      }
+      const inventoryItemId = node.inventoryItem?.id;
+      if (inventoryItemId) variant.inventory_item_id = Number(String(inventoryItemId).split("/").pop());
+      const imageId = node.image?.id;
+      if (imageId) variant.image_id = Number(String(imageId).split("/").pop());
+      return variant;
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function getProductById(id: number | string): Promise<any | null> {
   try {
     const res = await adminRest<any>("GET", `/products/${id}.json`);
-    return res?.product || null;
+    const product = res?.product || null;
+    if (product && Array.isArray(product.variants) && product.variants.length >= 100) {
+      const all = await getAllProductVariants(product.id);
+      if (all && all.length) product.variants = all;
+    }
+    return product;
   } catch {
     return null;
   }
@@ -448,7 +508,11 @@ async function applyInventory(
   }
 
   const changes: { inventoryItemId: string; locationId: string; delta: number }[] = [];
-  const restTargets: { inventoryItemId: number | string; qty: number; label: string }[] = [];
+  // Variants whose current quantity we don't know (e.g. >100-variant products
+  // where the REST payload is truncated) must be set ABSOLUTELY, never as a
+  // delta — a delta would add on top of the existing stock on every re-push.
+  const absoluteTargets: { inventoryItemId: number | string; qty: number; label: string }[] = [];
+  const bulkTargets: { inventoryItemId: number | string; qty: number; label: string }[] = [];
   for (const incoming of payloadVariants) {
     const sig = `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
     const skuKey = incoming.sku ? `sku:${normaliseSig(incoming.sku)}` : "";
@@ -457,51 +521,62 @@ async function applyInventory(
     const qty = Math.max(0, Math.round(Number(incoming.inventory_quantity) || 0));
     const current =
       typeof existing.inventory_quantity === "number" ? existing.inventory_quantity : null;
-    const delta = current == null ? qty : qty - current;
-    if (delta === 0) continue;
-    changes.push({
-      inventoryItemId: `gid://shopify/InventoryItem/${existing.inventory_item_id}`,
-      locationId: `gid://shopify/Location/${locationId}`,
-      delta,
-    });
-    restTargets.push({
+    const target = {
       inventoryItemId: existing.inventory_item_id,
       qty,
       label: incoming.sku || existing.sku || String(existing.id),
-    });
+    };
+    if (current == null) {
+      absoluteTargets.push(target);
+    } else if (qty !== current) {
+      changes.push({
+        inventoryItemId: `gid://shopify/InventoryItem/${existing.inventory_item_id}`,
+        locationId: `gid://shopify/Location/${locationId}`,
+        delta: qty - current,
+      });
+      bulkTargets.push(target);
+    }
   }
-  if (!changes.length) return;
+  if (!changes.length && !absoluteTargets.length) return;
 
   // One bulk mutation instead of one request per variant (important for
   // products with dozens of colour × size combinations).
-  try {
-    const data = await adminGraphQL<{
-      inventoryAdjustQuantities: {
-        userErrors: { field?: string[] | null; message: string }[];
-      };
-    }>(
-      `mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!) {
-        inventoryAdjustQuantities(input: $input) {
-          userErrors { field message }
-        }
-      }`,
-      {
-        input: {
-          name: "available",
-          reason: "correction",
-          changes: changes.map((c) => ({ ...c, changeFromQuantity: 0 })),
+  let bulkOk = false;
+  if (changes.length) {
+    try {
+      const data = await adminGraphQL<{
+        inventoryAdjustQuantities: {
+          userErrors: { field?: string[] | null; message: string }[];
+        };
+      }>(
+        `mutation AdjustInventory($input: InventoryAdjustQuantitiesInput!) {
+          inventoryAdjustQuantities(input: $input) {
+            userErrors { field message }
+          }
+        }`,
+        {
+          input: {
+            name: "available",
+            reason: "correction",
+            changes: changes.map((c) => ({ ...c, changeFromQuantity: 0 })),
+          },
         },
-      },
-    );
-    const errors = data?.inventoryAdjustQuantities?.userErrors || [];
-    if (!errors.length) return;
-    warnings.push(`Bulk inventory gagal: ${errors.map((e) => e.message).join("; ")}`);
-  } catch (e: any) {
-    warnings.push(`Bulk inventory gagal: ${e?.message || e}`);
+      );
+      const errors = data?.inventoryAdjustQuantities?.userErrors || [];
+      if (!errors.length) {
+        bulkOk = true;
+      } else {
+        warnings.push(`Bulk inventory gagal: ${errors.map((e) => e.message).join("; ")}`);
+      }
+    } catch (e: any) {
+      warnings.push(`Bulk inventory gagal: ${e?.message || e}`);
+    }
   }
 
-  // Fallback: set each level individually (slower, but reliable).
-  for (const target of restTargets) {
+  // Set the specific level absolutely. If the bulk adjust failed, every
+  // affected variant is corrected here instead of only the unknown ones.
+  const targets = bulkOk ? absoluteTargets : [...absoluteTargets, ...bulkTargets];
+  for (const target of targets) {
     try {
       await adminRest("POST", "/inventory_levels/set.json", {
         location_id: Number(locationId),
@@ -637,6 +712,14 @@ async function createProductPush(
   publicationId: string,
   warnings: string[],
 ): Promise<PushResult> {
+  const payloadVariants = (input.productPayload.variants as Record<string, any>[]) || [];
+  // REST caps product creation at 100 variants. Above that, create the whole
+  // product (options, variants, inventory, media) with one productSet call so
+  // no colour × size combination is dropped or left price-less.
+  if (payloadVariants.length > 100) {
+    return createProductViaProductSet(input, publicationId, warnings);
+  }
+
   const created = await createProduct(input.productPayload);
   const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
   if (metafields.length) {
@@ -645,12 +728,262 @@ async function createProductPush(
   }
   await publishToHeadless(created.id, publicationId);
 
-  const payloadVariants = (input.productPayload.variants as Record<string, any>[]) || [];
   const payloadOptions = input.productPayload.options as { name: string }[] | undefined;
   await applyVariantImages(created.id, payloadVariants, payloadOptions, input.colorImages, warnings);
   await applyInventory(created.id, payloadVariants, payloadOptions, warnings);
 
   return { productId: created.id, shopifyAdminUrl: productAdminUrl(created.id), warnings };
+}
+
+// Create a product with >100 variants via the GraphQL productSet mutation.
+// Options, every variant (with its own price/compare-at/stock) and the gallery
+// are created in a single synchronous call; the default REST create path cannot
+// express more than 100 variants.
+async function createProductViaProductSet(
+  input: {
+    handle: string;
+    productPayload: Record<string, unknown>;
+    metafields?: MetafieldInput[];
+    publicationId?: string;
+    colorImages?: Record<string, string>;
+  },
+  publicationId: string,
+  warnings: string[],
+): Promise<PushResult> {
+  const payload = input.productPayload as Record<string, any>;
+  const payloadVariants: Record<string, any>[] = (payload.variants as any[]) || [];
+  const payloadOptions: { name: string }[] = (payload.options as any[]) || [];
+  const colorImages = input.colorImages || {};
+  const locationId = await getPrimaryLocationId();
+
+  const optionIdx = (name: RegExp) =>
+    payloadOptions.findIndex((o) => name.test(String(o?.name || "")));
+  const colorIdx = optionIdx(/^colou?r$/i);
+
+  const productOptions = payloadOptions.map((opt, idx) => {
+    const seen = new Set<string>();
+    const values: { name: string }[] = [];
+    for (const v of payloadVariants) {
+      const name = String(v[`option${idx + 1}`] ?? "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      values.push({ name });
+    }
+    return { name: opt.name, position: idx + 1, values };
+  });
+
+  const title = String(payload.title || "");
+  const fileOrigins = new Set<string>();
+  const variants = payloadVariants.map((v) => {
+    const variant: Record<string, any> = {
+      optionValues: payloadOptions.map((opt, idx) => ({
+        optionName: opt.name,
+        name: String(v[`option${idx + 1}`] ?? "Default"),
+      })),
+      price: Number(v.price) || 0,
+      inventoryItem: { tracked: true },
+    };
+    if (v.compare_at_price != null && v.compare_at_price !== "") {
+      variant.compareAtPrice = Number(v.compare_at_price);
+    }
+    if (v.sku) variant.sku = String(v.sku);
+    if (locationId) {
+      variant.inventoryQuantities = [
+        {
+          locationId: `gid://shopify/Location/${locationId}`,
+          name: "available",
+          quantity: Math.max(0, Math.round(Number(v.inventory_quantity) || 0)),
+        },
+      ];
+    }
+    const color = colorIdx >= 0 ? String(v[`option${colorIdx + 1}`] || "").trim().toLowerCase() : "";
+    const colorSrc = color ? colorImages[color] : "";
+    if (colorSrc) {
+      variant.file = { originalSource: colorSrc, alt: title };
+      fileOrigins.add(colorSrc);
+    }
+    return variant;
+  });
+
+  const gallery = ((payload.images as any[]) || [])
+    .map((img) => String(img?.src || ""))
+    .filter(Boolean);
+  for (const src of gallery) fileOrigins.add(src);
+
+  const data = await adminGraphQL<{
+    productSet: { product: { id: string } | null; userErrors: { field?: string[] | null; message: string }[] };
+  }>(
+    `mutation ProductSet($input: ProductSetInput!, $synchronous: Boolean!) {
+      productSet(input: $input, synchronous: $synchronous) {
+        product { id }
+        userErrors { field message }
+      }
+    }`,
+    {
+      synchronous: true,
+      input: {
+        title,
+        handle: input.handle,
+        descriptionHtml: String(payload.body_html || ""),
+        vendor: String(payload.vendor || ""),
+        productType: String(payload.product_type || ""),
+        status: String(payload.status || "active").toUpperCase(),
+        tags: String(payload.tags || "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        productOptions,
+        variants,
+        files: [...fileOrigins].map((src) => ({ originalSource: src, alt: title })),
+      },
+    },
+    { timeoutMs: 90_000 },
+  );
+
+  const errors = data?.productSet?.userErrors || [];
+  if (errors.length) {
+    throw new Error(
+      `productSet: ${errors.map((e) => `${(e.field || []).join(".")} ${e.message}`).join("; ")}`,
+    );
+  }
+  const gid = data?.productSet?.product?.id;
+  if (!gid) throw new Error("productSet tidak mengembalikan produk.");
+  const productId = Number(gid.split("/").pop());
+
+  const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+  if (metafields.length) {
+    await ensureMetafieldTypes(productId, metafields);
+    await setMetafields(`gid://shopify/Product/${productId}`, metafields);
+  }
+  await publishToHeadless(productId, publicationId);
+
+  warnings.push(
+    `Produk dibuat via GraphQL productSet (${payloadVariants.length} varian, >100).`,
+  );
+  return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
+}
+
+// Reconcile variant price/compare-at/images for products with >100 variants via
+// GraphQL (REST variant writes are rejected above the 100-variant threshold).
+async function applyVariantsGraphQL(
+  productId: number | string,
+  existing: any,
+  payloadVariants: Record<string, any>[],
+  payloadOptions: { name: string }[] | undefined,
+  colorImages: Record<string, string> | undefined,
+  warnings: string[],
+): Promise<void> {
+  const productGid = `gid://shopify/Product/${productId}`;
+  const index = indexVariants(existing.variants || [], existing.options);
+
+  // Shopify rewrites media src to cdn.shopify.com, so map by file basename.
+  const mediaByBasename = new Map<string, string>();
+  try {
+    const mediaData = await adminGraphQL<{ product: { media: { nodes: any[] } } | null }>(
+      `query Media($id: ID!) { product(id: $id) { media(first: 250) { nodes { id ... on MediaImage { image { url } } } } } }`,
+      { id: productGid },
+      { timeoutMs: 30_000 },
+    );
+    for (const node of mediaData?.product?.media?.nodes || []) {
+      const key = imageBasename(node?.image?.url);
+      if (key) mediaByBasename.set(key, node.id);
+    }
+  } catch {
+    // media mapping is best-effort
+  }
+
+  const colorIdx = (payloadOptions || []).findIndex((o) =>
+    /^colou?r$/i.test(String(o?.name || "")),
+  );
+  const mediaIdFor = (color: string | undefined): string | undefined => {
+    if (!color || !colorImages) return undefined;
+    const src = colorImages[color.trim().toLowerCase()];
+    if (!src) return undefined;
+    return mediaByBasename.get(imageBasename(src));
+  };
+
+  const updates: Record<string, any>[] = [];
+  const creates: Record<string, any>[] = [];
+  for (const incoming of payloadVariants) {
+    const signature = `sig:${payloadVariantSignature(incoming, payloadOptions)}`;
+    const match = index.get(signature);
+    const color = colorIdx >= 0 ? String(incoming[`option${colorIdx + 1}`] || "") : "";
+    const mediaId = mediaIdFor(color);
+
+    if (match?.id) {
+      const input: Record<string, any> = {
+        id: `gid://shopify/ProductVariant/${match.id}`,
+      };
+      if (incoming.price != null && incoming.price !== "") input.price = Number(incoming.price);
+      input.compareAtPrice =
+        incoming.compare_at_price != null && incoming.compare_at_price !== ""
+          ? Number(incoming.compare_at_price)
+          : null;
+      if (mediaId) input.mediaId = mediaId;
+      updates.push(input);
+    } else {
+      const input: Record<string, any> = {
+        price: Number(incoming.price) || 0,
+        optionValues: (payloadOptions || []).map((opt, idx) => ({
+          optionName: opt.name,
+          name: String(incoming[`option${idx + 1}`] ?? "Default"),
+        })),
+      };
+      if (incoming.compare_at_price != null && incoming.compare_at_price !== "") {
+        input.compareAtPrice = Number(incoming.compare_at_price);
+      }
+      if (mediaId) input.mediaId = mediaId;
+      creates.push(input);
+    }
+  }
+
+  const chunk = <T>(items: T[], size: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
+  };
+
+  for (const batch of chunk(updates, 100)) {
+    try {
+      const data = await adminGraphQL<any>(
+        `mutation UpdateVariants($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+          productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+            userErrors { field message }
+          }
+        }`,
+        { productId: productGid, variants: batch },
+        { timeoutMs: 60_000 },
+      );
+      const errors = data?.productVariantsBulkUpdate?.userErrors || [];
+      if (errors.length) {
+        warnings.push(`Update varian gagal: ${errors.map((e: any) => e.message).join("; ")}`);
+      }
+    } catch (e: any) {
+      warnings.push(`Update varian gagal: ${e?.message || e}`);
+    }
+  }
+
+  for (const batch of chunk(creates, 100)) {
+    try {
+      const data = await adminGraphQL<any>(
+        `mutation CreateVariants($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+          productVariantsBulkCreate(productId: $productId, variants: $variants) {
+            userErrors { field message }
+          }
+        }`,
+        { productId: productGid, variants: batch },
+        { timeoutMs: 60_000 },
+      );
+      const errors = data?.productVariantsBulkCreate?.userErrors || [];
+      if (errors.length) {
+        warnings.push(`Varian baru gagal dibuat: ${errors.map((e: any) => e.message).join("; ")}`);
+      }
+    } catch (e: any) {
+      warnings.push(`Varian baru gagal dibuat: ${e?.message || e}`);
+    }
+  }
 }
 
 async function updateProductPush(
@@ -685,6 +1018,35 @@ async function updateProductPush(
 
   const payloadVariants = (payload.variants as Record<string, any>[]) || [];
   const payloadOptions = payload.options as { name: string }[] | undefined;
+
+  // REST rejects ANY variant write on products with >100 variants ("Please use
+  // GraphQL 2024-04 or later"), so reconcile those through the bulk mutations.
+  if (payloadVariants.length > 100) {
+    // The gallery must exist before we can attach variant media by id.
+    await addMissingImages(
+      productId,
+      existing.images || [],
+      (payload.images as Record<string, any>[]) || [],
+      warnings,
+    );
+    await applyVariantsGraphQL(
+      productId,
+      existing,
+      payloadVariants,
+      payloadOptions,
+      input.colorImages,
+      warnings,
+    );
+    const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+    if (metafields.length) {
+      await ensureMetafieldTypes(productId, metafields);
+      await setMetafields(`gid://shopify/Product/${productId}`, metafields);
+    }
+    await applyInventory(productId, payloadVariants, payloadOptions, warnings);
+    await publishToHeadless(productId, publicationId);
+    return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
+  }
+
   const index = indexVariants(existing.variants || [], existing.options);
 
   // Batch updates for variants that already exist (one request instead of N),
@@ -782,7 +1144,12 @@ export async function pushProductToShopify(
 
   let existing: any = null;
   if (options.existingId) existing = await getProductById(options.existingId);
-  if (!existing && input.handle) existing = await findProductByHandleFull(input.handle);
+  if (!existing && input.handle) {
+    existing = await findProductByHandleFull(input.handle);
+    // The handle lookup uses REST, which truncates at 100 variants. Re-fetch
+    // via getProductById so >100-variant products reconcile against all of them.
+    if (existing) existing = (await getProductById(existing.id)) || existing;
+  }
 
   if (existing) {
     if (options.sourceUrl) {

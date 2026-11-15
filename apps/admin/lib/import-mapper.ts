@@ -106,7 +106,7 @@ export function buildShopifyPushInput(
     sizeOf(v) || (sizeKey ? firstSize : undefined);
 
   const productCompareAt = np.compareAtPrice;
-  const baseVariants = np.variants.slice(0, 100);
+  const baseVariants = np.variants;
   const variants =
     baseVariants.length > 0
       ? baseVariants.map((v) => {
@@ -220,10 +220,10 @@ export function buildShopifyPushInput(
     options.push({ name: "Size", values: sizeValues.length ? sizeValues : ["Default"] });
 
   if (np.variants.length > 100) {
-    // Shopify accepts more than 100 variants via GraphQL, but the REST create
-    // path does not — surface it instead of silently dropping combinations.
+    // REST product creation caps at 100 variants; the Shopify push uses the
+    // GraphQL productSet path for these so every colour × size survives.
     console.warn(
-      `[import] ${np.variants.length} varian melebihi batas 100 — sebagian tidak ikut terbuat.`,
+      `[import] ${np.variants.length} varian — push lewat GraphQL productSet (tanpa batas 100).`,
     );
   }
 

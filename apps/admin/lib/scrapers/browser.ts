@@ -90,10 +90,30 @@ export async function withPage<T>(
   }
 
   if (opts.url) {
-    await page.goto(opts.url, {
-      waitUntil: "domcontentloaded",
-      timeout: opts.timeoutMs ?? 45000,
-    });
+    let lastError: unknown;
+    // Marketplace PDPs are heavy and short/affiliate links add a redirect hop,
+    // so a single navigation can time out on a cold browser. Retry once, and if
+    // the page still rendered something usable, continue with what we have.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await page.goto(opts.url, {
+          waitUntil: "domcontentloaded",
+          timeout: opts.timeoutMs ?? 60000,
+        });
+        lastError = undefined;
+        break;
+      } catch (e) {
+        lastError = e;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    if (lastError) {
+      const current = page.url();
+      // `chrome-error://` is Chromium's error interstitial — not a real page.
+      const usable =
+        current && current !== "about:blank" && !current.startsWith("chrome-error");
+      if (!usable) throw lastError;
+    }
     // Let client hydration / lazy state settle (marketplaces need ~3s).
     await new Promise((r) => setTimeout(r, opts.waitMs ?? 3000));
   }
