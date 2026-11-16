@@ -8,6 +8,7 @@
 // Pluggable: swap the provider in `aiEnrich` without touching the queue/routes.
 
 import type { NormalizedProduct } from "../scrapers/base";
+import { normaliseAudience } from "../audience";
 import {
   colorOptionOf,
   colorsFromVariants,
@@ -113,7 +114,7 @@ Description: ${(np.description || "").slice(0, 2000)}
 Sizes: ${sizeValues.join(", ") || "-"}
 Colors: ${colorValues.join(", ") || "-"}
 
-Return JSON: {"title_en": clean English title (keep the colourway, no marketing fluff), "description_en": detailed English product description (translate, keep ALL real details from the source: design, material, features, fit, size notes; use short paragraphs or dash bullets separated by newlines; 3-8 sentences; never invent facts), "category": one of ["BUSY-BOOK","TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "" (use "BUSY-BOOK" for busy/quiet/soft/activity/cloth books — even if the title mentions babies or ages), "material_care": "Material: ... Care: ... (use the material stated in the source; care instructions may be standard kids clothing care)", "size_guide": "ONLY format the size/age/height data that is present in the source (one line per size, e.g. 'S — 1–2 yrs'). NEVER invent measurements. Use an empty string if no size data exists.", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data or title to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","baby","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys, "bayi"=baby), "fibre": "short material tag from the source (e.g. 100% Cotton, Ribbed cotton), empty string if unknown"}`;
+Return JSON: {"title_en": clean English title (keep the colourway, no marketing fluff), "description_en": detailed English product description (translate, keep ALL real details from the source: design, material, features, fit, size notes; use short paragraphs or dash bullets separated by newlines; 3-8 sentences; never invent facts), "category": one of ["BUSY-BOOK","TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "" (use "BUSY-BOOK" for busy/quiet/soft/activity/cloth books — even if the title mentions babies or ages), "material_care": "Material: ... Care: ... (use the material stated in the source; care instructions may be standard kids clothing care)", "size_guide": "ONLY format the size/age/height data that is present in the source (one line per size, e.g. 'S — 1–2 yrs'). NEVER invent measurements. Use an empty string if no size data exists.", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data or title to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys; use "unisex" when the item is for babies or the audience is unclear, there is no Baby category), "fibre": "short material tag from the source (e.g. 100% Cotton, Ribbed cotton), empty string if unknown"}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -161,7 +162,9 @@ Return JSON: {"title_en": clean English title (keep the colourway, no marketing 
   }
   if (parsed.fibre) product.fibre = String(parsed.fibre);
   if (parsed.audience) {
-    product.specs = { ...(product.specs || {}), audience: String(parsed.audience).toLowerCase() };
+    // The model may still answer "baby" on an older prompt; normalise so only
+    // the three real audiences ever reach Shopify.
+    product.specs = { ...(product.specs || {}), audience: normaliseAudience(parsed.audience) };
   }
   // Colors: translate names to English AND infer a hex per color. The hex is
   // essential — Tokopedia often ships color names (OCEAN, MAHESA, …) with an

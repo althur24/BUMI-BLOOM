@@ -66,27 +66,39 @@ export function inferCategory(...texts: (string | undefined | null)[]): StoreCat
 // usable value: "unisex" when the source text does not say who the product is
 // for, so a pushed product can never end up missing from both collections.
 //
+// The storefront has no Baby collection any more, so baby/infant wording does
+// not produce a "baby" audience — those pieces are simply unisex. Gender terms
+// still win over baby terms when both appear.
+//
 // Colour words shadow audience words in real titles ("Baby Blue Stripe Shirt",
 // "Girls' Pink Tee" is fine but "Boyfriend Jeans" is not a boys item), so known
 // colourways are blanked out before matching.
 const AUDIENCE_COLOR_NOISE =
   /\b(baby blue|baby pink|boy blue|boy friend|girl power)\b/gi;
 
-const AUDIENCE_PATTERNS: { audience: "unisex" | "baby" | "girls" | "boys"; re: RegExp }[] = [
+// Baby-only wording: recognised so it is not mistaken for a gender, but it
+// resolves to "unisex" rather than a separate audience.
+const AUDIENCE_BABY_NOISE =
+  /\b(baby|bayi|newborn|infant|balita|bblr)\b/gi;
+
+const AUDIENCE_PATTERNS: { audience: "unisex" | "girls" | "boys"; re: RegExp }[] = [
   // "unisex" wins first: it is explicit and matches both collections.
   { audience: "unisex", re: /\b(unisex|all[- ]gender)\b/i },
   // Indonesian marketplace titles use "anak perempuan"/"anak laki-laki"; the
   // short forms ("perempuan"/"laki-laki") are checked too but only when they
   // are not describing a colour or material, so long forms come first.
-  { audience: "baby", re: /\b(baby|bayi|newborn|infant|balita|bblr)\b/i },
   { audience: "girls", re: /\b(girls?|anak perempuan|perempuan|wanita)\b/i },
   { audience: "boys", re: /\b(boys?|anak laki[- ]?laki|laki[- ]?laki|pria)\b/i },
 ];
 
 export function inferAudience(
   ...texts: (string | undefined | null)[]
-): "girls" | "boys" | "baby" | "unisex" {
-  const text = texts.filter(Boolean).join(" ").replace(AUDIENCE_COLOR_NOISE, " ");
+): "girls" | "boys" | "unisex" {
+  const text = texts
+    .filter(Boolean)
+    .join(" ")
+    .replace(AUDIENCE_COLOR_NOISE, " ")
+    .replace(AUDIENCE_BABY_NOISE, " ");
   if (!text.trim()) return "unisex";
   for (const rule of AUDIENCE_PATTERNS) {
     if (rule.re.test(text)) return rule.audience;

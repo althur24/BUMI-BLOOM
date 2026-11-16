@@ -57,6 +57,9 @@ interface Color {
   fromVariant?: boolean;
 }
 
+// Storefront product types. "baby" stays selectable: there is no Baby
+// collection any more, but infant garments still carry it as a type and keep
+// showing on /products.
 const CATEGORIES = [
   "tshirts",
   "shorts",
@@ -85,7 +88,6 @@ const AUDIENCE_OPTIONS = [
   { value: "unisex", label: "Unisex", hint: "Tampil di Girls dan Boys." },
   { value: "girls", label: "Girls", hint: "Tampil di Girls saja." },
   { value: "boys", label: "Boys", hint: "Tampil di Boys saja." },
-  { value: "baby", label: "Baby", hint: "Tampil di koleksi Baby." },
 ] as const;
 
 type AudienceValue = (typeof AUDIENCE_OPTIONS)[number]["value"];

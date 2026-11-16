@@ -45,7 +45,6 @@ const AUDIENCE_LABELS: Record<ProductAudience, string> = {
   unisex: "Unisex",
   girls: "Girls",
   boys: "Boys",
-  baby: "Baby",
 };
 
 const AUDIENCE_OPTIONS = PRODUCT_AUDIENCES.map((value) => ({
@@ -546,7 +545,6 @@ export default function ImportPage() {
                     <option value="dresses">Dresses</option>
                     <option value="outerwear">Outerwear</option>
                     <option value="accessories">Accessories</option>
-                    <option value="baby">Baby</option>
                   </select>
                 </div>
                 <div className="field" style={{ flex: 1, minWidth: 120 }}>

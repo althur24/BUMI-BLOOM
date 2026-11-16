@@ -150,6 +150,10 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   no_color: "boolean",
 };
 
+// Storefront product types. "baby" is kept as a *valid type* even though the
+// Baby collection is gone: the scrapper still infers it for infant garments and
+// those products keep showing on /products. Dropping it here would flag every
+// one of them as "Kategori tidak standar" for no reason.
 const STORE_CATEGORIES = new Set([
   "tshirts",
   "shorts",

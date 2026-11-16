@@ -277,8 +277,11 @@ export async function ensureBrandMetaobject(
   if (!key) return { created: false };
 
   const wanted: Record<string, string> = { name: cleanName };
-  const aud = String(audience || "").toLowerCase();
-  if (["girls", "boys", "baby", "unisex"].includes(aud)) wanted.audience = aud;
+  // Only the three real audiences exist now; a legacy "baby" value would put a
+  // label on /brands that the storefront no longer renders.
+  const aud = String(audience || "").trim().toLowerCase();
+  if (["girls", "boys", "unisex"].includes(aud)) wanted.audience = aud;
+  else if (aud === "baby") wanted.audience = "unisex";
 
   try {
     const existing = (await fetchBrandMetaobjects()).find(
