@@ -240,8 +240,8 @@ body {
   pointer-events: none;
 }
 
-/* ---- Shop by Family: 4 tiles (Girls, Boys, Baby, Busy Book) ---- */
-.age-tiles { grid-template-columns: repeat(4, 1fr); }
+/* ---- Shop by Family: 3 tiles (Girls, Boys, Busy Book) ---- */
+.age-tiles { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 1024px) {
   .age-tiles { grid-template-columns: repeat(2, 1fr); }
 }
