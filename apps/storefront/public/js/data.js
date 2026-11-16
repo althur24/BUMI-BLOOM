@@ -318,7 +318,7 @@ function mapBrand(b) {
     name,
     key: normalizeBrandKey(b.vendorKey || name),
     city: b.city || 'Indonesia',
-    audience: (b.audience || '').toLowerCase(),
+    audience: normalizeBrandAudience(b.audience),
     website: b.website || '',
     desc: b.shortDesc || '',
     // Brand artwork uploaded to Shopify (metaobject "logo" file field). Empty
@@ -333,11 +333,18 @@ function mapBrand(b) {
 
 // Audience of a brand, derived from its products: a brand whose products are
 // all girls is a girls brand, a mixed catalogue is unisex.
-const BRAND_AUDIENCES = ['girls', 'boys', 'baby'];
+// The storefront no longer has a Baby category, so a brand whose only products
+// are tagged baby is presented as unisex rather than surfacing the label.
+function normalizeBrandAudience(audience) {
+  const value = String(audience || '').toLowerCase();
+  return value === 'baby' ? 'unisex' : value;
+}
+
+const BRAND_AUDIENCES = ['girls', 'boys'];
 function deriveBrandAudience(products) {
   const found = new Set();
   for (const p of products) {
-    const a = String(p && p.audience || '').toLowerCase();
+    const a = normalizeBrandAudience(p.audience);
     if (BRAND_AUDIENCES.includes(a)) found.add(a);
   }
   if (found.size === 1) return [...found][0];
@@ -568,7 +575,7 @@ const BumiData = {
     if (category === 'new') return this.PRODUCTS.filter(p => p.isNew);
     if (category === 'sale') return this.PRODUCTS.filter(p => p.compareAt && p.compareAt > p.price);
     if (category === 'bestsellers') return this.PRODUCTS.filter(p => p.isBestseller);
-    if (['girls', 'boys', 'baby'].includes(category)) {
+    if (['girls', 'boys'].includes(category)) {
       return this.PRODUCTS.filter(p => p.audience === category || p.audience === 'unisex');
     }
     // otherwise treat as a product category (tshirts, dresses, ...)
@@ -580,7 +587,6 @@ const BumiData = {
     const map = {
       girls:      { title: "Girls' Collection",  subtitle: 'Twirl-ready dresses, soft tees and playful layers for every adventure.' },
       boys:       { title: "Boys' Collection",   subtitle: 'Tough-but-comfy basics built for climbing, running and exploring.' },
-      baby:       { title: 'Baby Collection',    subtitle: 'Gentle, soft pieces for the littlest members of the family.' },
       'busy-book': { title: 'The Busy Book',    subtitle: 'Soft, reusable activity books for screen-free, quiet-time play — handmade in Indonesia.' },
       new:        { title: 'New This Week',      subtitle: 'Fresh drops from our favourite Indonesian kids brands.' },
       sale:       { title: 'On Sale',            subtitle: 'Loved pieces at joyful prices — grab them before they grow out!' },

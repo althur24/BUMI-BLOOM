@@ -59,7 +59,7 @@
     }
 
     function card(brand) {
-      const audienceLabel = { girls: 'Girls', boys: 'Boys', baby: 'Baby', unisex: 'Unisex' }[brand.audience] || 'Unisex';
+      const audienceLabel = { girls: 'Girls', boys: 'Boys', unisex: 'Unisex' }[brand.audience] || 'Unisex';
       const audience = brand.audience || 'unisex';
       const count = Number(brand.productCount) || 0;
       const countLabel = count === 1 ? '1 piece' : count + ' pieces';
