@@ -289,6 +289,14 @@
     ['empty', 'ready', 'stripeSection', 'processing', 'failed'].forEach((key) => {
       if (els[key]) els[key].hidden = key !== name;
     });
+    // While payment is being confirmed the whole checkout becomes one calm
+    // screen: the order summary and the page heading step aside.
+    const layout = document.querySelector('.checkout-layout');
+    if (layout) layout.classList.toggle('is-processing', name === 'processing');
+    if (els.processing) {
+      if (name === 'processing') els.processing.setAttribute('aria-busy', 'true');
+      else els.processing.removeAttribute('aria-busy');
+    }
   }
 
   function showError(message) {
@@ -705,11 +713,11 @@
       ? '/checkout/success?checkoutId=' + encodeURIComponent(checkoutId)
       : '/cart';
 
-    // Let the progress bar finish animating to 100% and the final checkmarks
-    // land before leaving the page. Reduced-motion users skip the wait.
+    // Let the connector fill, the three ticks pop in and the closing headline
+    // be read before leaving the page. Reduced-motion users skip the wait.
     const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? 0
-      : 700;
+      : 1050;
     window.setTimeout(() => {
       window.location.replace(target);
     }, delay);
@@ -802,62 +810,103 @@
     );
   }
 
-  function updateProcessingStep(step, data) {
-    if (els.processingSteps) {
-      const steps = els.processingSteps.querySelectorAll('[data-step]');
-      for (const el of steps) {
-        const name = el.dataset.step;
-        const spinner = el.querySelector('.checkout-step__spinner');
-        const check = el.querySelector('.checkout-step__check');
-        if (name === step) {
-          el.classList.add('is-active');
-          if (spinner) spinner.hidden = false;
-          if (check) check.hidden = true;
-        } else if (el.classList.contains('is-active')) {
-          el.classList.remove('is-active');
-          el.classList.add('is-done');
-          if (spinner) spinner.hidden = true;
-          if (check) check.hidden = false;
-        }
-      }
+  // One source of truth for the waiting screen: dot state, connecting line,
+  // headline, note and the polite screen-reader announcement. The steps follow
+  // real server status from polling — nothing here invents progress timings.
+  const PROCESSING_COPY = {
+    payment: {
+      title: 'We\u2019re confirming your payment',
+      note: 'Thank you for your patience \u2014 this only takes a moment.',
+      sr: 'Step 1 of 3 \u2014 confirming your payment.',
+      pct: 18,
+    },
+    order: {
+      title: 'Setting up your order',
+      note: 'Payment confirmed. We\u2019re preparing your order details now.',
+      sr: 'Step 2 of 3 \u2014 creating your order.',
+      pct: 58,
+    },
+    email: {
+      title: 'Nearly there',
+      note: 'Your order is created. We\u2019re finishing the confirmation.',
+      sr: 'Step 3 of 3 \u2014 confirming your order.',
+      pct: 87,
+    },
+    done: {
+      title: 'All done \u2014 thank you!',
+      note: 'Taking you to your order summary\u2026',
+      sr: 'Complete \u2014 your order is confirmed.',
+      pct: 100,
+    },
+  };
+
+  function setStepperState(step) {
+    if (!els.processingSteps) return;
+    const order = ['payment', 'order', 'email'];
+    const current = order.indexOf(step);
+    const allDone = step === 'done';
+
+    els.processingSteps.querySelectorAll('[data-step]').forEach((el) => {
+      const index = order.indexOf(el.dataset.step);
+      const isDone = allDone || index < current;
+      const isActive = !allDone && index === current;
+      el.classList.toggle('is-done', isDone);
+      el.classList.toggle('is-active', isActive);
+      el.classList.toggle('is-upcoming', !isDone && !isActive);
+    });
+
+    // Fill the connector: up to the active dot, or fully when finished.
+    const fill = document.getElementById('checkout-stepper-fill');
+    if (fill) {
+      // Two connectors sit between the three dots; fill up to the active dot.
+      const pct = allDone ? 100 : current <= 0 ? 0 : current === 1 ? 50 : 100;
+      fill.style.width = pct + '%';
     }
+  }
+
+  function updateProcessingStep(step) {
+    setStepperState(step);
+
+    const copy = PROCESSING_COPY[step] || PROCESSING_COPY.payment;
 
     const bar = document.getElementById('checkout-processing-bar');
-    if (bar) {
-      const pct = { payment: 20, order: 60, email: 88, done: 100 };
-      bar.style.width = (pct[step] || 10) + '%';
+    if (bar) bar.style.width = copy.pct + '%';
+
+    const title = document.getElementById('checkout-processing-title');
+    if (title && title.textContent !== copy.title) {
+      title.classList.add('is-fading');
+      window.setTimeout(() => {
+        title.textContent = copy.title;
+        title.classList.remove('is-fading');
+      }, 140);
     }
 
-    if (els.processingNote) {
-      const messages = {
-        payment: 'Confirming your payment with Stripe…',
-        order: 'Creating your order…',
-        email: 'Finalising your order…',
-        done: 'All done! Redirecting…',
-      };
-      const next = messages[step] || 'Processing…';
-      // Swap the copy while it is faded out so the text does not snap between
-      // states. Skipped when the message is unchanged to avoid a pointless blink.
-      if (els.processingNote.textContent !== next) {
-        els.processingNote.classList.add('is-fading');
-        window.setTimeout(() => {
-          els.processingNote.textContent = next;
-          els.processingNote.classList.remove('is-fading');
-        }, 150);
-      }
+    if (els.processingNote && els.processingNote.textContent !== copy.note) {
+      // Swap the copy while it is faded out so the text does not snap.
+      els.processingNote.classList.add('is-fading');
+      window.setTimeout(() => {
+        els.processingNote.textContent = copy.note;
+        els.processingNote.classList.remove('is-fading');
+      }, 140);
+    }
+
+    const sr = document.getElementById('checkout-stepper-status');
+    if (sr) sr.textContent = copy.sr;
+
+    // The page is about to change — let assistive tech know it is expected.
+    if (step === 'done') {
+      els.processing && els.processing.setAttribute('aria-busy', 'false');
     }
   }
 
   function markAllStepsDone() {
     if (!els.processingSteps) return;
     els.processingSteps.querySelectorAll('[data-step]').forEach((el) => {
-      el.classList.remove('is-active');
+      el.classList.remove('is-active', 'is-upcoming');
       el.classList.add('is-done');
-      const spinner = el.querySelector('.checkout-step__spinner');
-      const check = el.querySelector('.checkout-step__check');
-      if (spinner) spinner.hidden = true;
-      if (check) check.hidden = false;
     });
+    const fill = document.getElementById('checkout-stepper-fill');
+    if (fill) fill.style.width = '100%';
     const bar = document.getElementById('checkout-processing-bar');
     if (bar) bar.style.width = '100%';
   }

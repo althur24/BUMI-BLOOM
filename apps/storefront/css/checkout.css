@@ -433,111 +433,213 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Processing stepper ──────────────────────────────────────────────────── */
-.checkout-processing__steps {
+/* ── Processing: one calm screen ────────────────────────────────────────────
+   While Stripe confirms the payment the whole checkout becomes a single
+   centred panel — the order summary and page heading step aside so nothing
+   competes for attention. */
+.checkout-layout.is-processing {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.checkout-layout.is-processing .checkout-summary,
+.checkout-layout.is-processing .checkout-head {
+  display: none;
+}
+
+.checkout-layout.is-processing .checkout-main {
+  max-width: 560px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+#checkout-processing {
+  position: relative;
+  overflow: hidden;
+  padding: var(--space-12) var(--space-6);
+  animation: checkout-processing-in 420ms var(--ease-smooth) both;
+}
+
+/* Soft breathing halo behind the content — slow and low-contrast so it reads
+   as "working", not as a siren. */
+#checkout-processing::before {
+  content: '';
+  position: absolute;
+  top: -140px;
+  left: 50%;
+  width: 320px;
+  height: 320px;
+  margin-left: -160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-blue-light) 0%, transparent 70%);
+  opacity: 0.7;
+  animation: checkout-breathe 5.5s var(--ease-smooth) infinite;
+  pointer-events: none;
+}
+
+#checkout-processing > * {
+  position: relative;
+}
+
+@keyframes checkout-processing-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes checkout-breathe {
+  0%, 100% { transform: scale(0.92); opacity: 0.55; }
+  50%      { transform: scale(1.06); opacity: 0.8; }
+}
+
+/* Horizontal stepper: ●───●───●  left → right */
+.checkout-stepper {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: start;
+  margin: var(--space-10) auto var(--space-6);
+  max-width: 400px;
+}
+
+.checkout-stepper__track {
+  position: absolute;
+  top: 20px;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: var(--color-cream-dark);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.checkout-stepper__fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-blue) 0%, var(--color-dark) 100%);
+  transition: width 900ms var(--ease-smooth);
+}
+
+/* Dots settle in one after another as the processing screen appears, so the
+   stepper reads as "starting" rather than already finished. The track element
+   is child 1, so the three dots are children 2–4. */
+.checkout-stepper > .checkout-stepper__dot:nth-child(2) { animation: checkout-dot-in 420ms var(--ease-smooth) 60ms both; }
+.checkout-stepper > .checkout-stepper__dot:nth-child(3) { animation: checkout-dot-in 420ms var(--ease-smooth) 140ms both; }
+.checkout-stepper > .checkout-stepper__dot:nth-child(4) { animation: checkout-dot-in 420ms var(--ease-smooth) 220ms both; }
+
+@keyframes checkout-dot-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.checkout-stepper__dot {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  max-width: 320px;
-  margin: 0 auto var(--space-5);
-  text-align: left;
+  align-items: center;
+  gap: var(--space-2);
+  z-index: 1;
 }
 
-.checkout-step {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  opacity: 1;
-  transform: translateX(0);
+.checkout-stepper__mark {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-surface);
+  border: 2px solid var(--color-cream-dark);
+  color: transparent;
   transition:
     background var(--duration-normal) var(--ease-smooth),
-    opacity var(--duration-slow) var(--ease-smooth),
-    transform var(--duration-slow) var(--ease-smooth);
+    border-color var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-normal) var(--ease-bounce),
+    box-shadow var(--duration-normal) var(--ease-smooth);
 }
 
-.checkout-step.is-active {
-  background: var(--color-cream-light);
-  transform: translateX(2px);
+.checkout-stepper__tick {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity var(--duration-normal) var(--ease-smooth),
+    transform 420ms var(--ease-bounce);
 }
 
-.checkout-step.is-done {
+.checkout-stepper__tick svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Active dot: soft, slow pulse ring — no spinning. */
+.checkout-stepper__pulse {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--color-blue);
+  opacity: 0;
+}
+
+.checkout-stepper__dot.is-active .checkout-stepper__mark {
+  border-color: var(--color-dark);
+  background: var(--color-blue-light);
+  box-shadow: 0 0 0 6px rgba(150, 173, 214, 0.18);
+}
+
+.checkout-stepper__dot.is-active .checkout-stepper__pulse {
+  animation: checkout-dot-pulse 2.4s var(--ease-smooth) infinite;
+}
+
+.checkout-stepper__dot.is-done .checkout-stepper__mark {
+  border-color: var(--color-dark);
+  background: var(--color-dark);
+  color: var(--color-cream);
+}
+
+.checkout-stepper__dot.is-done .checkout-stepper__tick {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkout-stepper__dot.is-upcoming .checkout-stepper__mark {
   opacity: 0.55;
 }
 
-/* Check and spinner occupy the same 22px box so swapping between them never
-   reflows the row. The outgoing element fades, the incoming one scales in. */
-.checkout-step__check,
-.checkout-step__spinner {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-}
-
-.checkout-step__check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--color-blue-light);
-  color: var(--color-dark);
-  font-size: 13px;
-  font-weight: 700;
-  opacity: 1;
-  transform: scale(1);
-  transition:
-    opacity var(--duration-normal) var(--ease-smooth),
-    transform var(--duration-normal) var(--ease-smooth);
-}
-
-.checkout-step__check svg {
-  width: 13px;
-  height: 13px;
-}
-
-/* [hidden] is display:none globally, which would kill the fade. Keep these two
-   in the flow and only animate their opacity/scale so the hand-off is smooth. */
-.checkout-step__check[hidden] {
-  display: inline-flex !important;
-  opacity: 0;
-  transform: scale(0.7);
-  pointer-events: none;
-}
-
-.checkout-step__spinner {
-  border: 2px solid var(--color-blue-light);
-  border-top-color: var(--color-dark);
-  border-radius: 50%;
-  animation: checkout-spin 0.7s linear infinite;
-  opacity: 1;
-  transition: opacity var(--duration-normal) var(--ease-smooth);
-}
-
-.checkout-step__spinner[hidden] {
-  display: block !important;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.checkout-step__label {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
+.checkout-stepper__label {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
   transition: color var(--duration-normal) var(--ease-smooth);
+  text-align: center;
 }
 
-.checkout-step.is-active .checkout-step__label {
+.checkout-stepper__dot.is-active .checkout-stepper__label {
   color: var(--color-dark);
+}
+
+.checkout-stepper__dot.is-done .checkout-stepper__label {
+  color: var(--text-primary);
+}
+
+@keyframes checkout-dot-pulse {
+  0%   { transform: scale(1);    opacity: 0.55; }
+  70%  { transform: scale(1.75); opacity: 0; }
+  100% { transform: scale(1.75); opacity: 0; }
 }
 
 .checkout-processing__bar {
   width: 100%;
   max-width: 320px;
-  height: 4px;
+  height: 3px;
   background: var(--color-cream-dark);
   border-radius: 999px;
-  margin: 0 auto var(--space-4);
+  margin: 0 auto var(--space-6);
   overflow: hidden;
 }
 
@@ -549,11 +651,25 @@
   transition: width var(--duration-slower) var(--ease-smooth);
 }
 
+.checkout-processing__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  transition: opacity var(--duration-fast) var(--ease-smooth);
+}
+
+.checkout-processing__title.is-fading {
+  opacity: 0;
+}
+
 .checkout-processing__note {
   font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-dark);
-  margin-bottom: var(--space-2);
+  color: var(--text-secondary);
+  max-width: 40ch;
+  margin: 0 auto calc(-1 * var(--space-1));
+  line-height: var(--lh-relaxed);
   transition: opacity var(--duration-fast) var(--ease-smooth);
 }
 
@@ -564,14 +680,23 @@
 }
 
 .checkout-processing__hint {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  max-width: 40ch;
+  margin: 0 auto;
+  line-height: var(--lh-relaxed);
 }
 
 .checkout-processing__help {
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-color);
   font-size: var(--text-xs);
   color: var(--text-muted);
+  max-width: 44ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: var(--lh-relaxed);
 }
 
 .checkout-processing__help a {
@@ -581,23 +706,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .checkout-spinner,
-  .checkout-step__spinner {
+  .checkout-spinner {
     animation: none;
   }
 
-  .checkout-step,
-  .checkout-step__check,
-  .checkout-step__spinner,
-  .checkout-step__label,
+  #checkout-processing,
+  #checkout-processing::before,
+  .checkout-stepper__dot,
+  .checkout-stepper__pulse,
+  .checkout-stepper__mark,
+  .checkout-stepper__tick,
+  .checkout-stepper__fill,
+  .checkout-stepper__label,
   .checkout-processing__bar-fill,
-  .checkout-processing__note {
-    transition: none;
-  }
-
-  .checkout-step,
-  .checkout-step.is-active {
-    transform: none;
+  .checkout-processing__note,
+  .checkout-processing__title {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

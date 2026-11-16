@@ -19,8 +19,10 @@
   <div class="container">
     <div class="checkout-layout">
       <section class="checkout-main" aria-labelledby="checkout-title">
-        <p class="checkout-eyebrow">Almost yours</p>
-        <h1 class="checkout-title" id="checkout-title">Checkout</h1>
+        <div class="checkout-head" id="checkout-head">
+          <p class="checkout-eyebrow">Almost yours</p>
+          <h1 class="checkout-title" id="checkout-title">Checkout</h1>
+        </div>
 
         <div id="checkout-empty" class="checkout-empty" hidden>
           <h2>Your bag is empty.</h2>
@@ -105,34 +107,51 @@
         </div>
 
         <div id="checkout-processing" class="checkout-state" hidden aria-live="polite">
-          <div class="checkout-processing__steps" id="checkout-processing-steps">
-            <div class="checkout-step is-active" data-step="payment">
-              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
-              <span class="checkout-step__spinner" aria-hidden="true"></span>
-              <span class="checkout-step__label">Payment received</span>
+          <h2 class="checkout-processing__title" id="checkout-processing-title">We&rsquo;re confirming your payment</h2>
+          <p class="checkout-processing__note" id="checkout-processing-note">
+            Thank you for your patience — this only takes a moment.
+          </p>
+          <div class="checkout-stepper" id="checkout-processing-steps" role="group" aria-label="Order progress">
+            <div class="checkout-stepper__track" aria-hidden="true">
+              <span class="checkout-stepper__fill" id="checkout-stepper-fill"></span>
             </div>
-            <div class="checkout-step" data-step="order">
-              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
-              <span class="checkout-step__spinner" aria-hidden="true"></span>
-              <span class="checkout-step__label">Creating your order</span>
+            <div class="checkout-stepper__dot is-active" data-step="payment">
+              <span class="checkout-stepper__mark" aria-hidden="true">
+                <span class="checkout-stepper__pulse"></span>
+                <span class="checkout-stepper__tick">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+              </span>
+              <span class="checkout-stepper__label">Payment</span>
             </div>
-            <div class="checkout-step" data-step="email">
-              <span class="checkout-step__check" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
-              <span class="checkout-step__spinner" aria-hidden="true"></span>
-              <span class="checkout-step__label">Sending confirmation</span>
+            <div class="checkout-stepper__dot" data-step="order">
+              <span class="checkout-stepper__mark" aria-hidden="true">
+                <span class="checkout-stepper__pulse"></span>
+                <span class="checkout-stepper__tick">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+              </span>
+              <span class="checkout-stepper__label">Order</span>
             </div>
+            <div class="checkout-stepper__dot" data-step="email">
+              <span class="checkout-stepper__mark" aria-hidden="true">
+                <span class="checkout-stepper__pulse"></span>
+                <span class="checkout-stepper__tick">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+              </span>
+              <span class="checkout-stepper__label">Confirmation</span>
+            </div>
+            <p class="sr-only" id="checkout-stepper-status" aria-live="polite">Step 1 of 3 — confirming your payment.</p>
           </div>
           <div class="checkout-processing__bar">
             <div class="checkout-processing__bar-fill" id="checkout-processing-bar"></div>
           </div>
-          <p class="checkout-processing__note" id="checkout-processing-note">
-            Confirming your payment with Stripe…
-          </p>
           <p class="checkout-processing__hint">
-            This usually takes 5–10 seconds. Please keep this page open.
+            Please keep this page open. Your payment is already secure with Stripe — your order is safe either way.
           </p>
           <p class="checkout-processing__help">
-            Need help? Email <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a>
+            Taking longer than expected? Email <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a>
           </p>
         </div>
 
