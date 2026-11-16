@@ -124,17 +124,39 @@
       ? '<div class="pdp-option"><p class="pdp-option__label">Size</p><div class="pdp-sizes">' + sizeButtons + '</div></div>'
       : '';
 
-    const thumbs = gallery.map((g, i) =>
-      '<button class="pdp-gallery__thumb' + (i === 0 ? ' is-active' : '') + '" data-src="' + g + '" type="button" aria-label="View image ' + (i + 1) + '"><img src="' + g + '" alt="' + product.name + '" loading="lazy"></button>'
+    const hasMultiple = gallery.length > 1;
+    const altFor = (i) => escapeHtml(product.name) + (hasMultiple ? ' — image ' + (i + 1) + ' of ' + gallery.length : '');
+
+    const slides = gallery.map((g, i) =>
+      '<div class="pdp-gallery__slide" role="group" aria-roledescription="slide" aria-label="' + (i + 1) + ' of ' + gallery.length + '">' +
+        '<img src="' + g + '" alt="' + altFor(i) + '"' + (i === 0 ? '' : ' loading="lazy"') + ' draggable="false">' +
+      '</div>'
     ).join('');
+
+    const thumbs = gallery.map((g, i) =>
+      '<button class="pdp-gallery__thumb' + (i === 0 ? ' is-active' : '') + '" data-index="' + i + '" type="button" aria-label="View image ' + (i + 1) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"><img src="' + g + '" alt="" loading="lazy"></button>'
+    ).join('');
+
+    const navHTML = (dir) =>
+      '<button class="pdp-gallery__nav pdp-gallery__nav--' + dir + '" type="button" data-dir="' + (dir === 'prev' ? -1 : 1) + '" aria-label="' + (dir === 'prev' ? 'Previous image' : 'Next image') + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (dir === 'prev' ? 'M15 5 L8 12 L15 19' : 'M9 5 L16 12 L9 19') + '"/></svg>' +
+      '</button>';
+
+    const counterHTML = hasMultiple
+      ? '<span class="pdp-gallery__counter"><span id="pdp-gallery-current">1</span> / ' + gallery.length + '</span>'
+      : '';
 
     const wished = BumiWishlist.isWishlisted(product.id);
 
     root.innerHTML =
       '<div class="container"><div class="pdp-layout">' +
-        '<div class="pdp-gallery">' +
-          '<div class="pdp-gallery__main"><img src="' + gallery[0] + '" alt="' + product.name + '" id="pdp-main-image"></div>' +
-          (gallery.length > 1 ? '<div class="pdp-gallery__thumbs">' + thumbs + '</div>' : '') +
+        '<div class="pdp-gallery" role="region" aria-roledescription="carousel" aria-label="' + escapeHtml(product.name) + ' images">' +
+          '<div class="pdp-gallery__main" id="pdp-gallery-viewport"' + (hasMultiple ? ' tabindex="0"' : '') + '>' +
+            '<div class="pdp-gallery__track" id="pdp-gallery-track">' + slides + '</div>' +
+            (hasMultiple ? navHTML('prev') + navHTML('next') : '') +
+            counterHTML +
+          '</div>' +
+          (hasMultiple ? '<div class="pdp-gallery__thumbs" role="group" aria-label="Product image thumbnails">' + thumbs + '</div>' : '') +
         '</div>' +
         '<div class="pdp-info">' +
           '<p class="pdp-brand">' + product.brand + '</p>' +
@@ -156,15 +178,95 @@
       '</div></div>' +
       '<div class="pdp-sticky-bar"><div class="container"><div class="pdp-sticky-bar__inner"><span class="pdp-sticky-bar__price">' + BumiData.formatPrice(product.price) + '</span><button class="btn btn--primary" id="add-to-bag-sticky" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button></div></div></div>';
 
-    // Gallery
-    root.querySelectorAll('.pdp-gallery__thumb').forEach(thumb => {
-      thumb.addEventListener('click', () => {
-        root.querySelectorAll('.pdp-gallery__thumb').forEach(t => t.classList.remove('is-active'));
-        thumb.classList.add('is-active');
-        const main = document.getElementById('pdp-main-image');
-        main.src = thumb.dataset.src;
+    // Gallery — swipeable, scroll-snapping carousel with arrows, thumbnail
+    // strip, counter and keyboard support. All navigation funnels through
+    // goTo() so the track, thumbnails and counter never fall out of sync.
+    const galleryTrack = document.getElementById('pdp-gallery-track');
+    const galleryViewport = document.getElementById('pdp-gallery-viewport');
+    const galleryCounter = document.getElementById('pdp-gallery-current');
+    let galleryIndex = 0;
+
+    function setActiveIndex(index) {
+      galleryIndex = Math.max(0, Math.min(index, gallery.length - 1));
+      if (galleryCounter) galleryCounter.textContent = String(galleryIndex + 1);
+      root.querySelectorAll('.pdp-gallery__thumb').forEach((t) => {
+        const active = Number(t.dataset.index) === galleryIndex;
+        t.classList.toggle('is-active', active);
+        t.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
-    });
+      const prev = root.querySelector('.pdp-gallery__nav--prev');
+      const next = root.querySelector('.pdp-gallery__nav--next');
+      if (prev) prev.disabled = galleryIndex === 0;
+      if (next) next.disabled = galleryIndex === gallery.length - 1;
+
+      const activeThumb = root.querySelector('.pdp-gallery__thumb.is-active');
+      if (activeThumb && activeThumb.scrollIntoView) {
+        activeThumb.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    }
+
+    function goTo(index, opts) {
+      if (!galleryTrack) return;
+      const target = Math.max(0, Math.min(index, gallery.length - 1));
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      galleryTrack.scrollTo({
+        left: galleryTrack.clientWidth * target,
+        behavior: (opts && opts.instant) || reduce ? 'auto' : 'smooth'
+      });
+      setActiveIndex(target);
+    }
+
+    if (galleryTrack) {
+      setActiveIndex(0);
+
+      if (!('onscrollend' in window)) {
+        let scrollTimer = null;
+        galleryTrack.addEventListener('scroll', () => {
+          clearTimeout(scrollTimer);
+          scrollTimer = setTimeout(() => {
+            if (!galleryTrack.clientWidth) return;
+            setActiveIndex(Math.round(galleryTrack.scrollLeft / galleryTrack.clientWidth));
+          }, 120);
+        }, { passive: true });
+      } else {
+        galleryTrack.addEventListener('scrollend', () => {
+          if (!galleryTrack.clientWidth) return;
+          setActiveIndex(Math.round(galleryTrack.scrollLeft / galleryTrack.clientWidth));
+        });
+      }
+
+      root.querySelectorAll('.pdp-gallery__thumb').forEach(thumb => {
+        thumb.addEventListener('click', () => goTo(Number(thumb.dataset.index)));
+      });
+
+      root.querySelectorAll('.pdp-gallery__nav').forEach(btn => {
+        btn.addEventListener('click', () => goTo(galleryIndex + Number(btn.dataset.dir)));
+      });
+
+      galleryViewport.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(galleryIndex - 1); }
+        else if (event.key === 'ArrowRight') { event.preventDefault(); goTo(galleryIndex + 1); }
+      });
+
+      // Re-snap the active slide when the viewport width changes (rotation,
+      // responsive breakpoints) — clientWidth changed too so offsets are stale.
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => goTo(galleryIndex, { instant: true }), 150);
+      });
+
+      // Colour → gallery image (from Shopify variant images) so the gallery
+      // follows the selected colour.
+      root.querySelectorAll('.pdp-color-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+          if (sw.disabled) return;
+          const nextImage = colorImage(sw.dataset.color);
+          const targetIndex = nextImage ? gallery.indexOf(nextImage) : -1;
+          if (targetIndex !== -1) goTo(targetIndex);
+        });
+      });
+    }
 
     // Colour
     root.querySelectorAll('.pdp-color-swatch').forEach(sw => {
@@ -172,14 +274,6 @@
         if (sw.disabled) return;
         selectedColor = sw.dataset.color;
         document.getElementById('selected-colour').textContent = selectedColor || '—';
-        const nextImage = colorImage(selectedColor);
-        if (nextImage) {
-          const mainImg = document.getElementById('pdp-main-image');
-          if (mainImg) mainImg.src = nextImage;
-          root.querySelectorAll('.pdp-gallery__thumb').forEach((t) => {
-            t.classList.toggle('is-active', t.dataset.src === nextImage);
-          });
-        }
         if (!sizeAvailable(selectedColor, selectedSize)) {
           selectedSize = firstAvailableSize(selectedColor);
         }
