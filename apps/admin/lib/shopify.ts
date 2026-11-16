@@ -232,6 +232,127 @@ export function resolveVendorSimple(
   return brand; // no match → new vendor
 }
 
+// ── Brand metaobjects ───────────────────────────────────────────────────────
+// The storefront /brands page derives its list from the catalogue, but the
+// metaobject is where a brand's description, city, website and logo live. Keep
+// it in step with imports: create it when a new vendor appears, and only fill
+// blank fields on existing brands so hand-written copy is never overwritten.
+
+type BrandMetaobject = {
+  id: string;
+  handle: string;
+  fields: { key: string; value: string | null }[];
+};
+
+// MetaobjectFieldInput only accepts { key, value } — the field *type* lives on
+// the metaobject definition, sending it here is rejected by the API.
+const BRAND_FIELDS = ["name", "audience", "desc", "city", "website"];
+
+function brandHandle(name: string): string {
+  return normalizeVendor(name).slice(0, 250) ||
+    String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 250);
+}
+
+export async function fetchBrandMetaobjects(): Promise<BrandMetaobject[]> {
+  const data = await adminGraphQL<{ metaobjects: { edges: { node: BrandMetaobject }[] } }>(
+    `query {
+      metaobjects(type: "brand", first: 250) {
+        edges { node { id handle fields { key value } } }
+      }
+    }`,
+  );
+  return (data.metaobjects?.edges || []).map((e) => e.node);
+}
+
+// Ensure a "brand" metaobject exists for the given vendor name. Returns a
+// human-readable warning when the metaobject could not be created/updated —
+// callers append it to the push warnings, never fail the push.
+export async function ensureBrandMetaobject(
+  name: string,
+  audience?: string,
+): Promise<{ created: boolean; warning?: string }> {
+  const cleanName = String(name || "").trim();
+  if (!cleanName) return { created: false };
+  const key = normalizeVendor(cleanName);
+  if (!key) return { created: false };
+
+  const wanted: Record<string, string> = { name: cleanName };
+  const aud = String(audience || "").toLowerCase();
+  if (["girls", "boys", "baby", "unisex"].includes(aud)) wanted.audience = aud;
+
+  try {
+    const existing = (await fetchBrandMetaobjects()).find(
+      (m) =>
+        normalizeVendor(
+          (m.fields || []).find((f) => f.key === "name")?.value || m.handle,
+        ) === key,
+    );
+
+    if (!existing) {
+      const fields = BRAND_FIELDS
+        .filter((key) => wanted[key] != null)
+        .map((key) => ({ key, value: wanted[key] }));
+      const res = await adminGraphQL<{
+        metaobjectCreate: {
+          metaobject: { id: string } | null;
+          userErrors: { message: string; code: string }[];
+        };
+      }>(
+        `mutation($input: MetaobjectCreateInput!) {
+          metaobjectCreate(metaobject: $input) {
+            metaobject { id }
+            userErrors { message code }
+          }
+        }`,
+        { input: { type: "brand", handle: brandHandle(cleanName), fields } },
+      );
+      const err = res.metaobjectCreate?.userErrors?.[0];
+      // "TAKEN" means the handle already exists (another brand owns it) — the
+      // metaobject list was read a moment ago, so this is a race, not a bug.
+      if (err && err.code !== "TAKEN") {
+        return { created: false, warning: `Brand metaobject "${cleanName}" gagal dibuat: ${err.message}` };
+      }
+      return { created: !err };
+    }
+
+    // Brand exists: only fill fields that are still blank.
+    const current = new Map((existing.fields || []).map((f) => [f.key, f.value || ""]));
+    const patch = BRAND_FIELDS.filter(
+      (key) => wanted[key] != null && !current.get(key),
+    );
+    if (!patch.length) return { created: false };
+
+    const res = await adminGraphQL<{
+      metaobjectUpdate: {
+        metaobject: { id: string } | null;
+        userErrors: { message: string; code: string }[];
+      };
+    }>(
+      `mutation($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+        metaobjectUpdate(id: $id, metaobject: $metaobject) {
+          metaobject { id }
+          userErrors { message code }
+        }
+      }`,
+      {
+        id: existing.id,
+        metaobject: {
+          fields: patch.map((key) => ({ key, value: wanted[key] })),
+        },
+      },
+    );
+    const err = res.metaobjectUpdate?.userErrors?.[0];
+    if (err) {
+      return { created: false, warning: `Brand metaobject "${cleanName}" gagal dilengkapi: ${err.message}` };
+    }
+    return { created: false };
+  } catch (e: any) {
+    // Missing metaobject definition / scope is not fatal — the storefront
+    // builds brands from products anyway.
+    return { created: false, warning: `Brand metaobject "${cleanName}" tidak tersinkron: ${e?.message || e}` };
+  }
+}
+
 export async function setMetafields(
   ownerId: string,
   metafields: { namespace: string; key: string; value: string; type: string }[],

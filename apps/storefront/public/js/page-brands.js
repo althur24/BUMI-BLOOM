@@ -37,22 +37,40 @@
       '</div>';
     }
 
+    // Card artwork priority: a brand logo uploaded to Shopify → a collage of
+    // the brand's own products → a monogram for brands with no products yet.
+    function collage(images) {
+      const srcs = images.slice(0, 4);
+      if (!srcs.length) return '';
+      const cls = 'brand-card__collage brand-card__collage--' + srcs.length;
+      return '<div class="' + cls + '">' + srcs.map((src, i) =>
+        '<img src="' + esc(src) + '" alt="" loading="lazy"' + (i === 0 ? '' : ' aria-hidden="true"') + '>'
+      ).join('') + '</div>';
+    }
+
     function media(brand) {
-      const src = String(brand.image || '').trim();
-      if (!src) return monogram(brand);
-      return '<img src="' + esc(src) + '" alt="' + esc(brand.name) + ' — kids wear from ' + esc(brand.city) + '" loading="lazy">';
+      const logo = String(brand.image || '').trim();
+      if (logo) {
+        return '<img src="' + esc(logo) + '" alt="' + esc(brand.name) + ' — kids wear from ' + esc(brand.city) + '" loading="lazy">';
+      }
+      const images = Array.isArray(brand.productImages) ? brand.productImages.filter(Boolean) : [];
+      if (images.length) return collage(images);
+      return monogram(brand);
     }
 
     function card(brand) {
       const audienceLabel = { girls: 'Girls', boys: 'Boys', baby: 'Baby', unisex: 'Unisex' }[brand.audience] || 'Unisex';
-      const category = brand.audience || 'unisex';
-      return '<a href="/products?category=' + esc(category) + '" class="brand-card brand-card--animated" data-category="' + esc(category) + '">' +
+      const audience = brand.audience || 'unisex';
+      const count = Number(brand.productCount) || 0;
+      const countLabel = count === 1 ? '1 piece' : count + ' pieces';
+      return '<a href="/products?brand=' + esc(brand.slug) + '" class="brand-card brand-card--animated" data-category="' + esc(audience) + '">' +
         '<div class="brand-card__image">' + media(brand) + '</div>' +
         '<div class="brand-card__info">' +
           '<h2 class="brand-card__name">' + esc(brand.name) + '</h2>' +
           '<p class="brand-card__desc">' + esc(brand.desc) + '</p>' +
           '<div class="brand-card__meta">' +
             '<span class="badge badge--soft">' + audienceLabel + '</span>' +
+            (count ? '<span class="badge badge--green">' + esc(countLabel) + '</span>' : '') +
             '<span class="badge badge--green">Made in Indonesia</span>' +
           '</div>' +
         '</div>' +
@@ -60,7 +78,11 @@
     }
 
     function render() {
-      const brands = BumiData.BRANDS || [];
+      // Brands with products first, then those still waiting for their first
+      // import, so the grid always leads with shoppable labels.
+      const brands = (BumiData.BRANDS || []).slice().sort((a, b) =>
+        (b.productCount > 0) - (a.productCount > 0) || String(a.name).localeCompare(String(b.name))
+      );
       if (!brands.length) {
         grid.innerHTML = '<p class="brand-empty">Our brand list is loading — please refresh in a moment.</p>';
         return;

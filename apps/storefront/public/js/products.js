@@ -281,16 +281,54 @@ function initPLP() {
 
   renderDynamicFilters();
 
+  // Brand pages link here as /products?brand=<slug>. Resolve the slug back to
+  // the exact vendor string the catalogue uses and pre-check that filter box.
+  // A brand param replaces the category (it is the more specific route).
+  // Brand values are normalised keys so a metaobject name ("Sabine & Heem")
+  // and a product vendor ("Sabine and Heem") still match.
+  const brandParam = params.get('brand');
+  const activeBrand = brandParam ? BumiData.resolveBrand(brandParam) : null;
+  if (activeBrand) {
+    state.brands.add(activeBrand.key);
+    state.category = 'all';
+    document.querySelectorAll('input[name="brand"]').forEach((input) => {
+      if (BumiData.brandKey(input.value) === activeBrand.key) input.checked = true;
+    });
+  }
+
   // Heading reflects the route
   if (state.search) {
     titleEl.textContent = `Search: "${state.search}"`;
     subtitleEl.textContent = 'Results from across our kids’ collection.';
     if (breadcrumbCurrent) breadcrumbCurrent.textContent = 'Search';
+  } else if (activeBrand) {
+    const count = activeBrand.productCount;
+    titleEl.textContent = activeBrand.name;
+    subtitleEl.textContent = activeBrand.desc
+      || (count === 1 ? '1 piece from this label.' : count + ' pieces from this label.');
+    if (breadcrumbCurrent) breadcrumbCurrent.textContent = activeBrand.name;
+    document.title = activeBrand.name + " — BUMI / BLOOM";
   } else {
     const meta = BumiData.categoryMeta(state.category);
     titleEl.textContent = meta.title;
     subtitleEl.textContent = meta.subtitle;
     if (breadcrumbCurrent) breadcrumbCurrent.textContent = meta.title;
+  }
+
+  // Keep the brand filter shareable: rewrite the URL as boxes change without
+  // a full navigation, so the page never reloads while filtering.
+  function syncBrandParam() {
+    const picked = [...state.brands];
+    const next = new URL(window.location.href);
+    if (picked.length === 1) {
+      const brand = BumiData.resolveBrand(picked[0]);
+      if (brand) next.searchParams.set('brand', brand.slug);
+      else next.searchParams.delete('brand');
+    } else {
+      next.searchParams.delete('brand');
+    }
+    const query = next.searchParams.toString();
+    window.history.replaceState({}, '', next.pathname + (query ? '?' + query : ''));
   }
 
   function getFiltered() {
@@ -306,7 +344,7 @@ function initPLP() {
       );
     }
     if (state.types.size) list = list.filter(p => state.types.has(p.category));
-    if (state.brands.size) list = list.filter(p => state.brands.has(p.brand));
+    if (state.brands.size) list = list.filter(p => state.brands.has(BumiData.brandKey(p.brand)));
     if (state.sizes.size) list = list.filter(p => p.sizes.some(s => state.sizes.has(s)));
     if (state.colors.size) list = list.filter(p => (p.colors || []).some(c => state.colors.has(c.hex.toLowerCase())));
     if (state.prices.size) {
@@ -361,7 +399,9 @@ function initPLP() {
   document.querySelectorAll('input[name="brand"]').forEach(input => {
     input.addEventListener('change', () => {
       state.visible = PAGE_SIZE;
-      if (input.checked) state.brands.add(input.value); else state.brands.delete(input.value);
+      const key = BumiData.brandKey(input.value);
+      if (input.checked) state.brands.add(key); else state.brands.delete(key);
+      syncBrandParam();
       render();
     });
   });

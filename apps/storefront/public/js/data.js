@@ -284,19 +284,144 @@ function mapShopifyProduct(node) {
   };
 }
 
+// ── Brand identity helpers ──────────────────────────────────────────────────
+// Products carry a Shopify `vendor` string, while brand metaobjects carry a
+// hand-written `name`. The two rarely match exactly ("Sabine and Heem" vs
+// "Sabine & Heem"), so everything brand-related is keyed through this single
+// normaliser. It mirrors normalizeVendor() in apps/admin/lib/shopify.ts so the
+// storefront and the import pipeline agree on what "the same brand" means.
+function normalizeBrandKey(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/officialshop|official|shop|store/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// Human-readable URL slug: "Sabine & Heem" → "sabine-heem". Falls back to the
+// normalised key when the name has no usable words (e.g. punctuation only).
+function brandSlug(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\bofficialshop\b|\bofficial\b|\bshop\b|\bstore\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || normalizeBrandKey(name);
+}
+
 // Brand shape converter (sama dengan konsumen lama: slug/name/city/audience/website/desc).
 function mapBrand(b) {
+  const name = b.name || '';
   return {
-    slug: b.slug,
-    name: b.name,
+    slug: b.slug || brandSlug(name),
+    name,
+    key: normalizeBrandKey(b.vendorKey || name),
     city: b.city || 'Indonesia',
     audience: (b.audience || '').toLowerCase(),
     website: b.website || '',
     desc: b.shortDesc || '',
     // Brand artwork uploaded to Shopify (metaobject "logo" file field). Empty
-    // when not set — the storefront then renders a monogram instead.
+    // when not set — the storefront then renders product artwork or a monogram.
     image: b.image || '',
+    // Filled in by buildBrands(): how many products this brand has and a few
+    // product images used to build the card collage.
+    productCount: 0,
+    productImages: [],
   };
+}
+
+// Audience of a brand, derived from its products: a brand whose products are
+// all girls is a girls brand, a mixed catalogue is unisex.
+const BRAND_AUDIENCES = ['girls', 'boys', 'baby'];
+function deriveBrandAudience(products) {
+  const found = new Set();
+  for (const p of products) {
+    const a = String(p && p.audience || '').toLowerCase();
+    if (BRAND_AUDIENCES.includes(a)) found.add(a);
+  }
+  if (found.size === 1) return [...found][0];
+  return 'unisex';
+}
+
+// Merge the catalogue with the brand metaobjects:
+//   - every vendor in PRODUCTS becomes a brand (new imports appear instantly)
+//   - metaobject values (name/desc/city/website/logo) win when present
+//   - metaobject brands with no products stay visible (monogram card)
+function buildBrands(products, metaBrands) {
+  // Products are grouped first so a metaobject can always be attached to the
+  // vendor it describes — even when its name differs from the vendor string
+  // (which would otherwise produce a duplicate, product-less brand card).
+  const productGroups = new Map();
+  for (const p of (products || [])) {
+    const key = normalizeBrandKey(p.brand);
+    if (!key) continue;
+    if (!productGroups.has(key)) productGroups.set(key, []);
+    productGroups.get(key).push(p);
+  }
+
+  const byKey = new Map();
+  const order = [];
+
+  for (const meta of (metaBrands || [])) {
+    // Match on the display name first, then on the handle — owners sometimes
+    // rename a brand ("Anakmu Kids") while the metaobject handle stays the
+    // vendor slug ("anakmu").
+    const byName = normalizeBrandKey(meta.name);
+    const byHandle = normalizeBrandKey(meta.slug);
+    const key = (byName && productGroups.has(byName)) ? byName
+      : (byHandle && productGroups.has(byHandle)) ? byHandle
+      : (byName || byHandle);
+    if (!key || byKey.has(key)) continue;
+    byKey.set(key, { ...meta, key });
+    order.push(key);
+  }
+
+  for (const [key, group] of productGroups) {
+    if (byKey.has(key)) continue;
+    const preview = group[0] || {};
+    byKey.set(key, mapBrand({ name: String(preview.brand || '').trim(), vendorKey: key }));
+    order.push(key);
+  }
+
+  const usedSlugs = new Set();
+  return order.map((key) => {
+    const brand = byKey.get(key);
+    const group = productGroups.get(key) || [];
+
+    const images = [];
+    for (const p of group) {
+      if (!p.image || p.image === PLACEHOLDER_IMG || images.includes(p.image)) continue;
+      images.push(p.image);
+      if (images.length >= 4) break;
+    }
+
+    const vendors = [];
+    for (const p of group) {
+      const vendor = String(p.brand || '').trim();
+      if (vendor && !vendors.includes(vendor)) vendors.push(vendor);
+    }
+
+    // Slugs must be unique for /products?brand=<slug> to resolve one brand.
+    let slug = brand.slug || brandSlug(brand.name);
+    if (usedSlugs.has(slug)) {
+      const base = slug;
+      let n = 2;
+      while (usedSlugs.has(slug)) slug = base + '-' + n++;
+    }
+    usedSlugs.add(slug);
+
+    return {
+      ...brand,
+      slug,
+      audience: brand.audience || deriveBrandAudience(group),
+      productCount: group.length,
+      productImages: images,
+      // Exact `vendor` strings as they appear on products — PLP filters match
+      // on the normalised key, so a metaobject name may differ from these.
+      vendors,
+    };
+  });
 }
 
 // Shopify brand metaobject node → brand shape.
@@ -312,6 +437,7 @@ function mapShopifyBrand(node) {
   return mapBrand({
     slug: node.handle,
     name: f.name || '',
+    vendorKey: f.vendor || f.name || '',
     city: f.city || 'Indonesia',
     audience: f.audience || '',
     website: f.website || '',
@@ -351,6 +477,7 @@ const BumiData = {
   BRANDS: [],
   loadError: false,
   _readyPromise: null,
+  _metaBrands: [],
 
   // Resolves once the catalog fetch completes (or fails). Safe to call repeatedly.
   ready() {
@@ -375,11 +502,14 @@ const BumiData = {
       this.loadError = true;
     }
     if (brandRes.status === 'fulfilled') {
-      this.BRANDS = brandRes.value;
+      this._metaBrands = brandRes.value;
     } else {
       console.error('BumiData: failed to load brands from Shopify', brandRes.reason);
-      this.BRANDS = [];
+      this._metaBrands = [];
     }
+    // Brands are rebuilt from the catalogue on every load so a newly imported
+    // vendor shows up on /brands without anyone touching the metaobjects.
+    this.BRANDS = buildBrands(this.PRODUCTS, this._metaBrands);
   },
 
   /* ── Lookup helpers ── */
@@ -389,6 +519,34 @@ const BumiData = {
 
   getBrand(slug) {
     return this.BRANDS.find(b => b.slug === slug) || null;
+  },
+
+  /* Normalised brand identity — lets PLP match a checkbox (vendor name)
+     against products without caring about "&" vs "and". */
+  brandKey(name) {
+    return normalizeBrandKey(name);
+  },
+
+  /* Brand lookup used by /products?brand=<slug>. Accepts a slug, a brand
+     name, or a raw vendor string (all normalised through the same key). */
+  resolveBrand(param) {
+    const raw = String(param || '').trim();
+    if (!raw) return null;
+    const bySlug = this.BRANDS.find(b => b.slug === raw);
+    if (bySlug) return bySlug;
+    const key = normalizeBrandKey(raw);
+    if (!key) return null;
+    return this.BRANDS.find(b => b.key === key) || null;
+  },
+
+  /* Vendor names present in the catalogue with their product counts. */
+  brandsFromProducts() {
+    const counts = new Map();
+    for (const p of this.PRODUCTS) {
+      if (!p.brand) continue;
+      counts.set(p.brand, (counts.get(p.brand) || 0) + 1);
+    }
+    return [...counts.entries()].map(([name, count]) => ({ name, count }));
   },
 
   /* Homepage "Collections" grid: newest first (by addedAt rank). */

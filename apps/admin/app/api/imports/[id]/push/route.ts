@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@bumi/db";
 import { ImportStatus } from "@prisma/client";
 import { requireAdmin, jsonError } from "@/lib/auth";
-import { pushProductToShopify, fetchExistingVendors, resolveVendorSimple } from "@/lib/shopify";
+import {
+  pushProductToShopify,
+  fetchExistingVendors,
+  resolveVendorSimple,
+  ensureBrandMetaobject,
+} from "@/lib/shopify";
 import { buildShopifyPushInput } from "@/lib/import-mapper";
 import { rehostImages } from "@/lib/storage";
 import { aiMatchVendor } from "@/lib/ai/enrich";
@@ -152,11 +157,20 @@ export async function POST(
       }
     }
 
+    // Keep the "brand" metaobject in step so /brands has a card (and a place
+    // for the owner to add a description/logo) for every new vendor.
+    let brandWarning: string | undefined;
+    if (np.brand) {
+      const brand = await ensureBrandMetaobject(np.brand, np.specs?.audience);
+      brandWarning = brand.warning;
+    }
+
     const input = buildShopifyPushInput(np, { handle: job.shopifyHandle || undefined });
     const res = await pushProductToShopify(input, {
       existingId: job.shopifyProductId,
       sourceUrl: job.sourceKey || canonicalizeUrl(job.sourceUrl),
     });
+    if (brandWarning) res.warnings.push(brandWarning);
     await prisma.importJob.update({
       where: { id: job.id },
       data: {

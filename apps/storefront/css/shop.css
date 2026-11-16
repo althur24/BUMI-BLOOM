@@ -819,6 +819,57 @@ textarea.input {
   transform: translateY(-5px);
 }
 
+/* Collage of the brand's own products (up to 4 images) when no logo is set. */
+.brand-card__collage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 2px;
+  background: var(--color-cream);
+  width: 100%;
+  height: 100%;
+}
+
+.brand-card__collage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.brand-card__collage--1 {
+  grid-template-columns: 1fr;
+}
+
+.brand-card__collage--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.brand-card__collage--3,
+.brand-card__collage--4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+/* Three images: the first one takes the full left half, the other two stack. */
+.brand-card__collage--3 img:first-child {
+  grid-row: span 2;
+}
+
+.brand-card--animated .brand-card__collage {
+  animation: brand-drift 14s var(--ease-smooth) infinite alternate;
+  animation-play-state: paused;
+}
+
+.brand-card--animated.is-in-view .brand-card__collage {
+  animation-play-state: running;
+}
+
+.brand-card--animated.is-in-view:hover .brand-card__collage {
+  animation-play-state: paused;
+  transform: scale(1.07) translate3d(-1.5%, -1%, 0);
+}
+
 /* No logo yet? Show a coloured monogram instead of another brand's artwork. */
 .brand-card__monogram {
   position: absolute;
@@ -853,6 +904,7 @@ textarea.input {
   .brand-card--animated,
   .brand-card--animated .brand-card__image img,
   .brand-card--animated .brand-card__monogram,
+  .brand-card--animated .brand-card__collage,
   .brand-card__image img {
     animation: none;
     transition: none;
@@ -862,7 +914,8 @@ textarea.input {
 
   .brand-card--animated.is-in-view:hover,
   .brand-card--animated.is-in-view:hover .brand-card__image img,
-  .brand-card--animated.is-in-view:hover .brand-card__monogram {
+  .brand-card--animated.is-in-view:hover .brand-card__monogram,
+  .brand-card--animated.is-in-view:hover .brand-card__collage {
     transform: none;
   }
 }
