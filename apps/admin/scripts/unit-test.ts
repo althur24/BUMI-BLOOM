@@ -13,6 +13,7 @@ import {
 } from "../lib/image-utils";
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
+import { normaliseAudience, parseAudience } from "../lib/audience";
 import { canonicalizeUrl } from "../lib/urls";
 import { brandFromOgTitle, extractPdpStructured } from "../lib/scrapers/tokopedia-pdp";
 
@@ -187,6 +188,32 @@ test("category and audience inference", () => {
   assert.equal(inferCategory("Baby Romper"), "baby");
   assert.equal(inferAudience("Unisex kids longsleeved top"), "unisex");
   assert.equal(inferAudience("Dress untuk anak perempuan"), "girls");
+  assert.equal(inferAudience("Kaos anak laki-laki"), "boys");
+  assert.equal(inferAudience("Anak Perempuan Set"), "girls");
+  assert.equal(inferAudience("Baju bayi newborn set"), "baby");
+  // Colour words must not be mistaken for an audience.
+  assert.equal(inferAudience("Baby Blue Stripe Shirt"), "unisex");
+  assert.equal(inferAudience("Baby Pink Tee"), "unisex");
+  assert.equal(inferAudience("Boyfriend Jeans"), "unisex");
+  assert.equal(inferAudience("Baby Romper"), "baby");
+});
+
+// Audience is mandatory on the storefront: Girls/Boys routing depends on it and
+// a blank value would hide the product from both collections. These guard the
+// fallbacks used by the editor, the importer and the storefront reader.
+test("audience normalisation never yields a blank value", () => {
+  assert.equal(normaliseAudience(""), "unisex");
+  assert.equal(normaliseAudience(null), "unisex");
+  assert.equal(normaliseAudience(undefined), "unisex");
+  assert.equal(normaliseAudience("unknown"), "unisex");
+  assert.equal(normaliseAudience("  GIRLS "), "girls");
+  assert.equal(normaliseAudience("Boys"), "boys");
+  assert.equal(normaliseAudience("baby"), "baby");
+  assert.equal(parseAudience(""), null);
+  assert.equal(parseAudience("girls"), "girls");
+  // Text with no gender/baby hint still resolves to a usable value.
+  assert.equal(inferAudience("Striped Daily Set for Kids"), "unisex");
+  assert.equal(inferAudience(undefined, null, ""), "unisex");
 });
 
 // ── Tokopedia PDP structured extraction ─────────────────────────────────────

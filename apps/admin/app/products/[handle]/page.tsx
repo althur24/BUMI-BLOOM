@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { ImagePicker } from "@/components/ImagePicker";
 import { hexForColorName } from "@/lib/colors";
+import { normaliseAudience } from "@/lib/audience";
 
 interface Variant {
   id: number;
@@ -75,6 +76,19 @@ const BUMI_TEXT_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: "rating", label: "Rating" },
   { key: "sold_count", label: "Jumlah terjual" },
 ];
+
+// `bumi.audience` drives the Girls and Boys collections on the storefront:
+// a product shows under a gender when its audience matches it or is "unisex".
+// Empty is not a valid storefront state (the product would disappear from both
+// collections), so imports and the editor both force one of these values.
+const AUDIENCE_OPTIONS = [
+  { value: "unisex", label: "Unisex", hint: "Tampil di Girls dan Boys." },
+  { value: "girls", label: "Girls", hint: "Tampil di Girls saja." },
+  { value: "boys", label: "Boys", hint: "Tampil di Boys saja." },
+  { value: "baby", label: "Baby", hint: "Tampil di koleksi Baby." },
+] as const;
+
+type AudienceValue = (typeof AUDIENCE_OPTIONS)[number]["value"];
 
 // Storefront labels. "New" drives both `bumi.badge` and `bumi.is_new` so the
 // card badge and the "New In" filter never disagree. Sale is not a label:
@@ -147,6 +161,8 @@ export default function ProductEditorPage() {
   const [meta, setMeta] = useState<Record<string, string>>({});
   // "" | "new" | "bestseller" — kept in sync with bumi.badge + bumi.is_*
   const [badgeValue, setBadgeValue] = useState("");
+  // bumi.audience — Girls/Boys collection routing on the storefront.
+  const [audience, setAudience] = useState<AudienceValue>("unisex");
   const [variantEdits, setVariantEdits] = useState<Record<number, Partial<Variant>>>({});
   const [removedImages, setRemovedImages] = useState<Set<number>>(new Set());
   const [uploading, setUploading] = useState(false);
@@ -193,6 +209,7 @@ export default function ProductEditorPage() {
         setBadgeValue(
           loadedBadge === "new" || loadedBadge === "bestseller" ? loadedBadge : "",
         );
+        setAudience(normaliseAudience(p.metafields.audience));
         setVariantEdits({});
         setRemovedImages(new Set());
       } catch (e: any) {
@@ -465,6 +482,9 @@ export default function ProductEditorPage() {
         metafields: {
           material: meta.material || "",
           fibre: meta.fibre || "",
+          // Always send a concrete value: Girls/Boys filtering on the storefront
+          // depends on it and an empty audience hides the product from both.
+          audience: normaliseAudience(audience),
           size_guide: meta.size_guide || "",
           size_chart_image: meta.size_chart_image || "",
           shipping_returns: meta.shipping_returns || "",
@@ -546,6 +566,7 @@ export default function ProductEditorPage() {
       setBadgeValue(
         freshBadge === "new" || freshBadge === "bestseller" ? freshBadge : "",
       );
+      setAudience(normaliseAudience(refreshed.product.metafields.audience));
     } catch (e: any) {
       if (e.message === "NO_SESSION") router.replace("/login");
       else setError(e.message);
@@ -930,6 +951,34 @@ export default function ProductEditorPage() {
             </span>
           </p>
         )}
+      </div>
+
+      <div className="card">
+        <h3>Koleksi (Girls / Boys)</h3>
+        <p className="hint">
+          Menentukan produk ini muncul di koleksi <strong>Girls</strong> dan{" "}
+          <strong>Boys</strong> di storefront. Produk <strong>Unisex</strong> tampil di
+          keduanya. Wajib dipilih — kalau dikosongkan storefront tidak bisa menempatkan
+          produk ini.
+        </p>
+        <div className="badge-options" role="radiogroup" aria-label="Audience produk">
+          {AUDIENCE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={"badge-option" + (audience === option.value ? " is-active" : "")}
+            >
+              <input
+                type="radio"
+                name="audience"
+                value={option.value}
+                checked={audience === option.value}
+                onChange={() => setAudience(option.value)}
+              />
+              <span className="badge-option__label">{option.label}</span>
+              <span className="badge-option__hint">{option.hint}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="card">

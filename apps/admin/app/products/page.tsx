@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import type { ProductAudience } from "@/lib/audience";
 
 interface ProductSummary {
   id: number;
@@ -22,6 +23,7 @@ interface ProductSummary {
   colorOptionCount: number;
   sizeGuide: boolean;
   badge: string | null;
+  audience: ProductAudience | null;
   sourceUrl: string | null;
   sourcePlatform: string | null;
   issues: string[];
@@ -233,6 +235,13 @@ export default function ProductsPage() {
                 )}
                 {p.badge === "new" && <span className="badge badge--green">New</span>}
                 {p.badge === "bestseller" && <span className="badge badge--yellow">Bestseller</span>}
+                {p.audience ? (
+                  <span className="badge badge--dark">
+                    {p.audience === "unisex" ? "Unisex" : p.audience === "girls" ? "Girls" : p.audience === "boys" ? "Boys" : "Baby"}
+                  </span>
+                ) : (
+                  <span className="badge badge--coral">Audience kosong</span>
+                )}
               </div>
               <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
                 {p.vendor || "—"} · {p.variantCount} varian · {p.imageCount} gambar · ${p.price}

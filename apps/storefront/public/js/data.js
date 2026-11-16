@@ -198,6 +198,16 @@ function safeParseJSON(s, fallback) {
   try { return JSON.parse(s); } catch { return fallback; }
 }
 
+// Audience drives the Girls / Boys collections. Shopify stores it in the
+// `bumi.audience` metafield; anything unexpected (empty, legacy values, a
+// metafield without storefront access) falls back to "unisex" so the product
+// still shows up instead of silently disappearing from both collections.
+const PRODUCT_AUDIENCES = ['girls', 'boys', 'unisex', 'baby'];
+function normalizeAudience(value) {
+  const v = String(value == null ? '' : value).trim().toLowerCase();
+  return PRODUCT_AUDIENCES.includes(v) ? v : 'unisex';
+}
+
 // Shopify Storefront product node → data.js product shape.
 function mapShopifyProduct(node) {
   const meta = {};
@@ -253,7 +263,7 @@ function mapShopifyProduct(node) {
     id: node.handle,
     name: node.title || '',
     brand: node.vendor || '',
-    audience: (meta.audience || '').toLowerCase(),
+    audience: normalizeAudience(meta.audience),
     // Shopify product types are free text ("Busy Book", "busy_book") —
     // normalise to the storefront slug taxonomy (busy-book) so manually
     // edited products still match the category filters.

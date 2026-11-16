@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { PRODUCT_AUDIENCES, parseAudience, type ProductAudience } from "@/lib/audience";
 import type { NormalizedColor, NormalizedProduct, ScraperVariant } from "@/lib/scrapers/base";
 import {
   addColorToVariants,
@@ -36,6 +37,21 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const POLL_TIMEOUT_MS = 90_000;
+
+// Audience selection is mandatory: a blank audience would hide the product
+// from both the Girls and Boys collections. Labels live next to the values so
+// the dropdown can never drift from what the importer writes to Shopify.
+const AUDIENCE_LABELS: Record<ProductAudience, string> = {
+  unisex: "Unisex",
+  girls: "Girls",
+  boys: "Boys",
+  baby: "Baby",
+};
+
+const AUDIENCE_OPTIONS = PRODUCT_AUDIENCES.map((value) => ({
+  value,
+  label: AUDIENCE_LABELS[value],
+}));
 
 async function api(path: string, method = "GET", body?: unknown) {
   const res = await fetch(path, {
@@ -534,14 +550,18 @@ export default function ImportPage() {
                   </select>
                 </div>
                 <div className="field" style={{ flex: 1, minWidth: 120 }}>
-                  <label>Audience</label>
-                  <select className="input" value={preview.specs?.audience || "unisex"}
-                    onChange={(e) => setEdits((d) => ({ ...d, specs: { ...(d.specs || preview.specs || {}), audience: e.target.value } }))}>
-                    <option value="unisex">Unisex</option>
-                    <option value="girls">Girls</option>
-                    <option value="boys">Boys</option>
-                    <option value="baby">Baby</option>
+                  <label>Audience *</label>
+                  <select
+                    className="input"
+                    required
+                    value={parseAudience(preview.specs?.audience) ?? "unisex"}
+                    onChange={(e) => setEdits((d) => ({ ...d, specs: { ...(d.specs || preview.specs || {}), audience: e.target.value } }))}
+                  >
+                    {AUDIENCE_OPTIONS.map((a) => (
+                      <option key={a.value} value={a.value}>{a.label}</option>
+                    ))}
                   </select>
+                  <p className="hint">Wajib — menentukan produk muncul di Girls/Boys.</p>
                 </div>
                 <div className="field" style={{ flex: 1, minWidth: 120 }}>
                   <label>Fibre</label>

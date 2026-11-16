@@ -62,14 +62,35 @@ export function inferCategory(...texts: (string | undefined | null)[]): StoreCat
   return "";
 }
 
+// Audience for the storefront Girls / Boys collections. Always returns a
+// usable value: "unisex" when the source text does not say who the product is
+// for, so a pushed product can never end up missing from both collections.
+//
+// Colour words shadow audience words in real titles ("Baby Blue Stripe Shirt",
+// "Girls' Pink Tee" is fine but "Boyfriend Jeans" is not a boys item), so known
+// colourways are blanked out before matching.
+const AUDIENCE_COLOR_NOISE =
+  /\b(baby blue|baby pink|boy blue|boy friend|girl power)\b/gi;
+
+const AUDIENCE_PATTERNS: { audience: "unisex" | "baby" | "girls" | "boys"; re: RegExp }[] = [
+  // "unisex" wins first: it is explicit and matches both collections.
+  { audience: "unisex", re: /\b(unisex|all[- ]gender)\b/i },
+  // Indonesian marketplace titles use "anak perempuan"/"anak laki-laki"; the
+  // short forms ("perempuan"/"laki-laki") are checked too but only when they
+  // are not describing a colour or material, so long forms come first.
+  { audience: "baby", re: /\b(baby|bayi|newborn|infant|balita|bblr)\b/i },
+  { audience: "girls", re: /\b(girls?|anak perempuan|perempuan|wanita)\b/i },
+  { audience: "boys", re: /\b(boys?|anak laki[- ]?laki|laki[- ]?laki|pria)\b/i },
+];
+
 export function inferAudience(
   ...texts: (string | undefined | null)[]
 ): "girls" | "boys" | "baby" | "unisex" {
-  const text = texts.filter(Boolean).join(" ");
-  if (/\bunisex\b/i.test(text)) return "unisex";
-  if (/\b(baby|bayi|newborn|infant)\b/i.test(text)) return "baby";
-  if (/\b(girl|girls|perempuan|anak perempuan)\b/i.test(text)) return "girls";
-  if (/\b(boy|boys|laki-?laki|anak laki)\b/i.test(text)) return "boys";
+  const text = texts.filter(Boolean).join(" ").replace(AUDIENCE_COLOR_NOISE, " ");
+  if (!text.trim()) return "unisex";
+  for (const rule of AUDIENCE_PATTERNS) {
+    if (rule.re.test(text)) return rule.audience;
+  }
   return "unisex";
 }
 

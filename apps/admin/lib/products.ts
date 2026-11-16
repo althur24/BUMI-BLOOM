@@ -6,6 +6,7 @@
 
 import { adminRest, setMetafields } from "./shopify";
 import { colorsFromVariants, normalizeHex, resolveColorHex } from "./colors";
+import { normaliseAudience, parseAudience, type ProductAudience } from "./audience";
 
 export type BumiMetafieldKey =
   | "colors"
@@ -53,6 +54,8 @@ export interface AdminProductSummary {
   sizeGuide: boolean;
   // Storefront label: "new" | "bestseller" | null
   badge: string | null;
+  // bumi.audience — drives the Girls/Boys collections. null when unset.
+  audience: ProductAudience | null;
   sourceUrl: string | null;
   sourcePlatform: string | null;
   issues: string[];
@@ -246,6 +249,8 @@ export async function listProducts(opts: {
     if (colorValues.size > 0 && colors.length === 0 && !noColor) issues.push("Warna varian belum tersimpan");
     if (variants.length > 1 && variantsWithImage === 0) issues.push("Varian tanpa gambar");
     if (!metafieldValue(metafields, "size_guide")) issues.push("Size guide kosong");
+    const audience = parseAudience(metafieldValue(metafields, "audience"));
+    if (!audience) issues.push("Audience (Girls/Boys) belum di-set");
     if (String(p.product_type || "").trim() && !STORE_CATEGORIES.has(String(p.product_type).toLowerCase())) {
       issues.push("Kategori tidak standar");
     }
@@ -273,6 +278,7 @@ export async function listProducts(opts: {
         const value = metafieldValue(metafields, "badge").trim().toLowerCase();
         return value === "new" || value === "bestseller" ? value : null;
       })(),
+      audience,
       sourceUrl: metafieldValue(metafields, "source_url") || null,
       sourcePlatform: metafieldValue(metafields, "source_platform") || null,
       issues,
@@ -547,6 +553,13 @@ export async function updateProduct(
   }
 
   const metaPatch: Partial<Record<BumiMetafieldKey, string>> = { ...(patch.metafields || {}) };
+
+  // `bumi.audience` must never be blank. A product without it would be
+  // missing from both the Girls and Boys collections, so an unspecified value
+  // is written back as "unisex" rather than sent as an empty string.
+  if ("audience" in metaPatch) {
+    metaPatch.audience = normaliseAudience(metaPatch.audience);
+  }
 
   // A colour's image lives in bumi.colors so the editor can show it next time
   // and the storefront can optionally use it later (it does not today).

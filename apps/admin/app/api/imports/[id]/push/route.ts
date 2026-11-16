@@ -9,12 +9,16 @@ import {
   ensureBrandMetaobject,
 } from "@/lib/shopify";
 import { buildShopifyPushInput } from "@/lib/import-mapper";
+import { inferAudience } from "@/lib/categorize";
+import { PRODUCT_AUDIENCES } from "@/lib/audience";
 import { rehostImages } from "@/lib/storage";
 import { aiMatchVendor } from "@/lib/ai/enrich";
 import { canonicalizeUrl } from "@/lib/urls";
 import type { NormalizedProduct } from "@/lib/scrapers/base";
 
 export const dynamic = "force-dynamic";
+
+const AUDIENCE_VALUES: string[] = PRODUCT_AUDIENCES;
 
 // POST → push an EXTRACTED job's product to Shopify (create + metafields +
 // publish to Headless). Optional JSON body overrides fields (admin edits from
@@ -58,6 +62,16 @@ export async function POST(
   if (np.variants.some((v) => v.price != null && !(v.price > 0))) {
     return jsonError(400, "Ada varian dengan harga 0 — perbaiki harga sebelum push.");
   }
+
+  // Audience (Girls / Boys / Unisex / Baby) decides which collections the
+  // product shows up in on the storefront. It is mandatory: never push a
+  // product with a blank audience. An explicit valid choice wins; otherwise
+  // inferAudience() falls back to "unisex", which matches both collections.
+  const requestedAudience = String((np.specs || {}).audience || "").trim().toLowerCase();
+  const resolvedAudience = AUDIENCE_VALUES.includes(requestedAudience)
+    ? requestedAudience
+    : inferAudience(np.title, np.description);
+  np.specs = { ...(np.specs || {}), audience: resolvedAudience };
 
   // If the user edited the product price, propagate it to ALL variants so the
   // edited price is what Shopify receives (not the auto-converted AUD price).

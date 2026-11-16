@@ -5,6 +5,7 @@
 import type { NormalizedProduct, ScraperVariant } from "./scrapers/base";
 import { colorsFromVariants } from "./colors";
 import { inferCategory } from "./categorize";
+import { normaliseAudience } from "./audience";
 import { imageIdentity } from "./image-utils";
 
 export interface ShopifyPushInput {
@@ -187,7 +188,9 @@ export function buildShopifyPushInput(
     position: i + 1,
   }));
 
-  const audience = (np.specs?.audience || "unisex").toLowerCase();
+  // Audience is mandatory: never let a blank/unknown value reach Shopify,
+  // otherwise the product would be missing from both Girls and Boys.
+  const audience = normaliseAudience(np.specs?.audience);
   const tags = [
     np.platform.toLowerCase(),
     np.brand,
