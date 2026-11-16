@@ -49,6 +49,17 @@
             </div>
             <p class="checkout-promo__msg" id="checkout-promo-msg" hidden></p>
             <p class="checkout-help">Have a code? Enter it above and we'll apply your discount right away.</p>
+
+            <div class="welcome-inline">
+              <p class="welcome-inline__title">First order? Get 10% off</p>
+              <p class="welcome-inline__text">Pop in your email and we'll apply your welcome discount straight away — no spam, unsubscribe anytime.</p>
+              <form class="welcome-inline__form" data-welcome-form="CHECKOUT" novalidate>
+                <label class="sr-only" for="checkout-welcome-email">Email address</label>
+                <input class="input" id="checkout-welcome-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Your email address" required>
+                <button class="btn btn--primary btn--sm" type="submit">Apply 10% off</button>
+              </form>
+              <p class="welcome-inline__msg" data-welcome-inline-msg role="status" aria-live="polite"></p>
+            </div>
           </div>
 
           <label class="checkout-consent">

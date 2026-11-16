@@ -74,8 +74,16 @@ const BUMI_TEXT_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: "shipping_returns", label: "Shipping & Returns" },
   { key: "rating", label: "Rating" },
   { key: "sold_count", label: "Jumlah terjual" },
-  { key: "badge", label: "Badge (new / bestseller)" },
 ];
+
+// Storefront labels. "New" drives both `bumi.badge` and `bumi.is_new` so the
+// card badge and the "New In" filter never disagree. Sale is not a label:
+// it is derived from the compare-at price on the variants.
+const BADGE_OPTIONS = [
+  { value: "", label: "Tanpa label", hint: "Tidak ada badge di storefront." },
+  { value: "new", label: "New", hint: "Badge “New” + produk masuk halaman New In." },
+  { value: "bestseller", label: "Bestseller", hint: "Badge “Bestseller” + masuk halaman Bestsellers." },
+] as const;
 
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(path, init);
@@ -137,6 +145,8 @@ export default function ProductEditorPage() {
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
 
   const [meta, setMeta] = useState<Record<string, string>>({});
+  // "" | "new" | "bestseller" — kept in sync with bumi.badge + bumi.is_*
+  const [badgeValue, setBadgeValue] = useState("");
   const [variantEdits, setVariantEdits] = useState<Record<number, Partial<Variant>>>({});
   const [removedImages, setRemovedImages] = useState<Set<number>>(new Set());
   const [uploading, setUploading] = useState(false);
@@ -179,6 +189,10 @@ export default function ProductEditorPage() {
         );
         setNoColor(String(p.metafields.no_color || "") === "true");
         setMeta(p.metafields || {});
+        const loadedBadge = String(p.metafields.badge || "").trim().toLowerCase();
+        setBadgeValue(
+          loadedBadge === "new" || loadedBadge === "bestseller" ? loadedBadge : "",
+        );
         setVariantEdits({});
         setRemovedImages(new Set());
       } catch (e: any) {
@@ -456,7 +470,11 @@ export default function ProductEditorPage() {
           shipping_returns: meta.shipping_returns || "",
           rating: meta.rating || "",
           sold_count: meta.sold_count || "",
-          badge: meta.badge || "",
+          badge: badgeValue,
+          // `is_new` / `is_bestseller` power the New In and Bestsellers
+          // listings; they must never drift from `badge`.
+          is_new: badgeValue === "new" ? "true" : "",
+          is_bestseller: badgeValue === "bestseller" ? "true" : "",
         },
       };
 
@@ -524,6 +542,10 @@ export default function ProductEditorPage() {
       );
       setNoColor(String(refreshed.product.metafields.no_color || "") === "true");
       setMeta(refreshed.product.metafields || {});
+      const freshBadge = String(refreshed.product.metafields.badge || "").trim().toLowerCase();
+      setBadgeValue(
+        freshBadge === "new" || freshBadge === "bestseller" ? freshBadge : "",
+      );
     } catch (e: any) {
       if (e.message === "NO_SESSION") router.replace("/login");
       else setError(e.message);
@@ -871,6 +893,43 @@ export default function ProductEditorPage() {
         >
           {uploading ? "Mengupload…" : "+ Upload gambar"}
         </button>
+      </div>
+
+      <div className="card">
+        <h3>Label produk</h3>
+        <p className="hint">
+          Badge yang tampil di kartu produk &amp; halaman produk. Satu label aktif pada satu waktu.
+          Label <strong>Sale</strong> tidak perlu dipilih — produk otomatis masuk Sale saat punya
+          harga coret, dan otomatis keluar lagi saat harga coretnya dihapus.
+        </p>
+        <div className="badge-options" role="radiogroup" aria-label="Label produk">
+          {BADGE_OPTIONS.map((option) => (
+            <label
+              key={option.value || "none"}
+              className={
+                "badge-option" + (badgeValue === option.value ? " is-active" : "")
+              }
+            >
+              <input
+                type="radio"
+                name="badge"
+                value={option.value}
+                checked={badgeValue === option.value}
+                onChange={() => setBadgeValue(option.value)}
+              />
+              <span className="badge-option__label">{option.label}</span>
+              <span className="badge-option__hint">{option.hint}</span>
+            </label>
+          ))}
+        </div>
+        {badgeValue && (
+          <p className="badge-preview" aria-live="polite">
+            Preview:{" "}
+            <span className={"badge badge--" + (badgeValue === "new" ? "green" : "yellow")}>
+              {badgeValue === "new" ? "New" : "Bestseller"}
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="card">

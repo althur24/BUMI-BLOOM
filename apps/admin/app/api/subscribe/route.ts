@@ -63,7 +63,15 @@ export async function POST(request: Request) {
   }
 
   // Validate source (optional)
-  const validSources = ["HOMEPAGE", "BRANDS", "JOURNAL", "BUSY_BOOK"];
+  const validSources = [
+    "HOMEPAGE",
+    "BRANDS",
+    "JOURNAL",
+    "BUSY_BOOK",
+    "POPUP",
+    "CHECKOUT",
+    "CART",
+  ];
   const source =
     typeof body?.source === "string" && validSources.includes(body.source)
       ? body.source
@@ -81,8 +89,15 @@ export async function POST(request: Request) {
       },
     });
 
+    // The welcome code is only revealed after a successful signup — it is not
+    // printed anywhere on the storefront before this point.
     return NextResponse.json(
-      { ok: true, code: "WELCOME10" },
+      {
+        ok: true,
+        code: "WELCOME10",
+        label: "Welcome — 10% off",
+        rate: 0.1,
+      },
       { status: 200, headers },
     );
   } catch (err: any) {

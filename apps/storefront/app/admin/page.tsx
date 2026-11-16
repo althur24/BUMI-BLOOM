@@ -7,6 +7,7 @@ import { ADMIN_CHAIN } from '@/lib/scripts';
 export const metadata = {
   title: 'Admin',
   description: 'BUMI / BLOOM admin — manage products, stock, brands and promotions.',
+  robots: { index: false, follow: false },
 };
 
 export default function Page() {

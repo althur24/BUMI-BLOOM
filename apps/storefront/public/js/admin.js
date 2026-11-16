@@ -1591,7 +1591,7 @@
       '<h3 class="modal__title">' + (p ? 'Edit promotion' : 'New promotion') + '</h3>' +
       '<form id="promo-form"><div class="form-grid">' +
         '<div class="field"><label class="field__label">Code <span class="req">*</span></label>' +
-          '<input class="input" name="code" required value="' + esc(p ? p.code : '') + '" placeholder="WELCOME10" style="text-transform:uppercase;">' +
+          '<input class="input" name="code" required value="' + esc(p ? p.code : '') + '" placeholder="e.g. SPRING20" style="text-transform:uppercase;">' +
           '<p class="form-grid__hint">Stored uppercase — this is what shoppers type at checkout.</p></div>' +
         '<div class="field"><label class="field__label">Label <span class="req">*</span></label>' +
           '<input class="input" name="label" required value="' + esc(p ? p.label : '') + '" placeholder="10% off your first order"></div>' +

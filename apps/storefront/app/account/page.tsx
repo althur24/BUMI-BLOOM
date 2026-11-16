@@ -4,15 +4,15 @@ import { Scripts } from '@/components/Scripts';
 import { STOREFRONT_CHAIN } from '@/lib/scripts';
 
 export const metadata = {
-  title: 'My Account',
-  description: "Your account at BUMI / BLOOM — orders, addresses and settings.",
+  title: 'Your Orders',
+  description: 'BUMI / BLOOM is guest checkout — no account needed. Find your order in your confirmation email.',
 };
 
 export default function Page() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: body }} />
-      <Scripts srcs={[...STOREFRONT_CHAIN, '/js/page-account.js']} />
+      <Scripts srcs={STOREFRONT_CHAIN} />
     </>
   );
 }

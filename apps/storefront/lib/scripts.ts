@@ -4,11 +4,10 @@ export const STOREFRONT_CHAIN = [
   '/js/analytics.js',
   '/js/app.js',
   '/js/cart.js',
-  SUPABASE_CDN,
-  '/js/supabase.js',
   '/js/currency.js',
   '/js/data.js',
   '/js/wishlist.js',
+  '/js/welcome-popup.js',
 ];
 
 export const ADMIN_CHAIN = [

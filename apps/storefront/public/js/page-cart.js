@@ -1,6 +1,6 @@
   (function () {
     'use strict';
-    // Shipping & promo handled by BumiCart (AU rates / WELCOME10)
+    // Shipping & promo handled by BumiCart (AU rates / server-validated codes)
     const cartFilled = document.getElementById('cart-filled');
     const cartEmpty = document.getElementById('cart-empty');
     const cartItems = document.querySelector('.cart-items');

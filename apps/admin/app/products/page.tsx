@@ -21,6 +21,7 @@ interface ProductSummary {
   noColor: boolean;
   colorOptionCount: number;
   sizeGuide: boolean;
+  badge: string | null;
   sourceUrl: string | null;
   sourcePlatform: string | null;
   issues: string[];
@@ -230,6 +231,8 @@ export default function ProductsPage() {
                 {p.colors.length === 0 && p.noColor && (
                   <span className="badge badge--dark">Tanpa warna</span>
                 )}
+                {p.badge === "new" && <span className="badge badge--green">New</span>}
+                {p.badge === "bestseller" && <span className="badge badge--yellow">Bestseller</span>}
               </div>
               <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
                 {p.vendor || "—"} · {p.variantCount} varian · {p.imageCount} gambar · ${p.price}

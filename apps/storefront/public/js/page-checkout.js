@@ -1142,6 +1142,16 @@
     });
   }
 
+  // A promo applied elsewhere (welcome popup / inline email offer) is picked
+  // up here and validated so the summary and payment amount stay in sync.
+  window.addEventListener('promo-updated', () => {
+    const promo = window.BumiCart ? window.BumiCart.getPromo() : null;
+    const code = promo && promo.code ? String(promo.code).toUpperCase() : '';
+    if (!code || code === state.promoCode || state.busy) return;
+    if (els.promoInput) els.promoInput.value = code;
+    applyPromo();
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

@@ -93,6 +93,18 @@
       ? '<span class="badge badge--' + (product.badge === 'new' ? 'green' : 'yellow') + '" style="margin-bottom:var(--space-4);display:inline-block;">' + badges[product.badge] + '</span>'
       : '<span class="badge badge--soft" style="margin-bottom:var(--space-4);display:inline-block;">Designed in Indonesia</span>';
 
+    // Rating / social proof — only shown when we actually have real numbers,
+    // so a product without reviews never reads as a fake "5.0 · 0 reviews".
+    const rating = Number(product.rating) || 0;
+    const reviewCount = Number(product.reviews) || 0;
+    const ratingParts = [];
+    if (rating > 0) ratingParts.push('⭐ ' + rating.toFixed(1));
+    if (reviewCount > 0) ratingParts.push(reviewCount + (reviewCount === 1 ? ' review' : ' reviews'));
+    if (product.soldCount) ratingParts.push(product.soldCount + ' sold');
+    const ratingHTML = ratingParts.length
+      ? '<div class="pdp-rating">' + ratingParts[0] + (ratingParts.length > 1 ? ' <span>· ' + ratingParts.slice(1).join(' · ') + '</span>' : '') + '</div>'
+      : '';
+
     const colorSwatches = productColors.map((c) => {
       const name = escapeHtml(c.name);
       const soldOutColor = !colorAvailable(c.name);
@@ -132,7 +144,7 @@
           '<p class="pdp-availability" id="pdp-availability" style="display:none;"></p>' +
           '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
           '<div>' + badgeHTML + '</div>' +
-          '<div class="pdp-rating">⭐ ' + (product.rating || '5.0') + ' <span>· ' + (product.reviews || 0) + ' reviews' + (product.soldCount ? ' · ' + product.soldCount + ' sold' : '') + '</span></div>' +
+          ratingHTML +
           colorOptionHTML +
           sizeOptionHTML +
           '<div class="pdp-actions">' +
@@ -244,12 +256,8 @@
       saveBtn.querySelector('svg').replaceWith(wishlistIconSvg(added));
     });
 
-    // Accordion
-    root.querySelectorAll('.accordion__trigger').forEach(trigger => {
-      trigger.addEventListener('click', () => {
-        trigger.closest('.accordion__item').classList.toggle('is-active');
-      });
-    });
+    // Accordion toggling is handled by the delegated handler in app.js so it
+    // also works for accordions rendered after load (like this one).
 
     // Related
     const related = BumiData.getRelated(product, 4);

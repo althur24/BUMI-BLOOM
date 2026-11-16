@@ -18,21 +18,76 @@
   `;
   document.head.appendChild(styleSheet);
 
+  // ─── Scroll lock (shared by the mobile drawer + search modal) ─────────
+  // A counter avoids one overlay releasing the lock while another is open.
+  let scrollLocks = 0;
+  function lockScroll() {
+    scrollLocks += 1;
+    document.body.style.overflow = 'hidden';
+  }
+  function unlockScroll() {
+    scrollLocks = Math.max(0, scrollLocks - 1);
+    if (scrollLocks === 0) document.body.style.overflow = '';
+  }
+
+  const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+    'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function focusFirst(container) {
+    if (!container) return;
+    const first = container.querySelector(FOCUSABLE_SELECTOR);
+    if (first) first.focus();
+  }
+
   // ─── Announcement Bar ────────────────────────────────────────────────
+  // Dismissals are remembered for 30 days so the bar does not pop back on
+  // every navigation.
+  const ANNOUNCEMENT_KEY = 'bb-announcement-closed';
+  const ANNOUNCEMENT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   const announcementBar = document.getElementById('announcement-bar');
   const closeAnnouncement = document.getElementById('close-announcement');
+
+  function announcementDismissed() {
+    try {
+      const at = Number(localStorage.getItem(ANNOUNCEMENT_KEY) || 0);
+      return at > 0 && Date.now() - at < ANNOUNCEMENT_TTL_MS;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if (announcementBar && announcementDismissed()) {
+    announcementBar.style.display = 'none';
+  }
 
   if (closeAnnouncement && announcementBar) {
     closeAnnouncement.addEventListener('click', () => {
       announcementBar.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
       announcementBar.style.transform = 'translateY(-100%)';
       announcementBar.style.opacity = '0';
+      try {
+        localStorage.setItem(ANNOUNCEMENT_KEY, String(Date.now()));
+      } catch (e) {
+        /* storage unavailable — dismiss for this page view only */
+      }
       setTimeout(() => {
         announcementBar.style.display = 'none';
-        document.body.style.paddingTop = '0';
       }, 300);
     });
   }
+
+  // ─── Skip to content (keyboard users) ────────────────────────────────
+  (function addSkipLink() {
+    const main = document.querySelector('main');
+    if (!main || document.querySelector('.skip-link')) return;
+    if (!main.id) main.id = 'main-content';
+    const skip = document.createElement('a');
+    skip.className = 'skip-link';
+    skip.href = '#' + main.id;
+    skip.textContent = 'Skip to content';
+    document.body.insertBefore(skip, document.body.firstChild);
+  })();
 
   // ─── Sticky Header (transparent over hero → solid on scroll) ─────────
   const header = document.getElementById('header');
@@ -78,30 +133,75 @@
   const mobileNav = document.getElementById('mobile-nav');
   const mobileNavClose = document.getElementById('mobile-nav-close');
   const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
+  let mobileNavLocked = false;
+  let mobileNavReturnFocus = null;
+
+  if (menuToggle && mobileNav) {
+    menuToggle.setAttribute('aria-controls', 'mobile-nav');
+    menuToggle.setAttribute('aria-expanded', 'false');
+    menuToggle.setAttribute('aria-haspopup', 'dialog');
+  }
+  if (mobileNav) {
+    mobileNav.setAttribute('role', 'dialog');
+    mobileNav.setAttribute('aria-modal', 'true');
+    mobileNav.setAttribute('aria-label', 'Menu');
+  }
 
   function openMobileNav() {
-    if (mobileNav) {
-      mobileNav.classList.add('is-open');
-      document.body.style.overflow = 'hidden';
+    if (!mobileNav || mobileNav.classList.contains('is-open')) return;
+    mobileNavReturnFocus = document.activeElement;
+    mobileNav.classList.add('is-open');
+    if (menuToggle) menuToggle.setAttribute('aria-expanded', 'true');
+    if (!mobileNavLocked) {
+      lockScroll();
+      mobileNavLocked = true;
     }
+    focusFirst(mobileNav);
   }
 
   function closeMobileNav() {
-    if (mobileNav) {
-      mobileNav.classList.remove('is-open');
-      document.body.style.overflow = '';
+    if (!mobileNav || !mobileNav.classList.contains('is-open')) return;
+    mobileNav.classList.remove('is-open');
+    if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+    if (mobileNavLocked) {
+      unlockScroll();
+      mobileNavLocked = false;
     }
+    if (mobileNavReturnFocus && typeof mobileNavReturnFocus.focus === 'function') {
+      mobileNavReturnFocus.focus();
+    }
+    mobileNavReturnFocus = null;
   }
 
   if (menuToggle) menuToggle.addEventListener('click', openMobileNav);
   if (mobileNavClose) mobileNavClose.addEventListener('click', closeMobileNav);
   if (mobileNavOverlay) mobileNavOverlay.addEventListener('click', closeMobileNav);
 
-  // Close mobile nav on Escape key
+  // Escape closes the open overlay; Tab stays inside it while open.
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeMobileNav();
       closeSearchModal();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+
+    const openOverlay =
+      mobileNav && mobileNav.classList.contains('is-open') ? mobileNav :
+      searchModal && searchModal.classList.contains('is-open') ? searchModal :
+      null;
+    if (!openOverlay) return;
+
+    const items = openOverlay.querySelectorAll(FOCUSABLE_SELECTOR);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   });
 
@@ -111,22 +211,46 @@
   const searchClose = document.getElementById('search-close');
   const searchModalOverlay = document.getElementById('search-modal-overlay');
   const searchInput = document.getElementById('search-input');
+  let searchLocked = false;
+  let searchReturnFocus = null;
+
+  if (searchToggle && searchModal) {
+    searchToggle.setAttribute('aria-controls', 'search-modal');
+    searchToggle.setAttribute('aria-expanded', 'false');
+    searchToggle.setAttribute('aria-haspopup', 'dialog');
+  }
+  if (searchModal) {
+    searchModal.setAttribute('role', 'dialog');
+    searchModal.setAttribute('aria-modal', 'true');
+    searchModal.setAttribute('aria-label', 'Search products');
+  }
 
   function openSearchModal() {
-    if (searchModal) {
-      searchModal.classList.add('is-open');
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => {
-        if (searchInput) searchInput.focus();
-      }, 200);
+    if (!searchModal || searchModal.classList.contains('is-open')) return;
+    searchReturnFocus = document.activeElement;
+    searchModal.classList.add('is-open');
+    if (searchToggle) searchToggle.setAttribute('aria-expanded', 'true');
+    if (!searchLocked) {
+      lockScroll();
+      searchLocked = true;
     }
+    setTimeout(() => {
+      if (searchInput) searchInput.focus();
+    }, 200);
   }
 
   function closeSearchModal() {
-    if (searchModal) {
-      searchModal.classList.remove('is-open');
-      document.body.style.overflow = '';
+    if (!searchModal || !searchModal.classList.contains('is-open')) return;
+    searchModal.classList.remove('is-open');
+    if (searchToggle) searchToggle.setAttribute('aria-expanded', 'false');
+    if (searchLocked) {
+      unlockScroll();
+      searchLocked = false;
     }
+    if (searchReturnFocus && typeof searchReturnFocus.focus === 'function') {
+      searchReturnFocus.focus();
+    }
+    searchReturnFocus = null;
   }
 
   if (searchToggle) searchToggle.addEventListener('click', openSearchModal);
@@ -233,12 +357,15 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to subscribe');
 
-        const code = data.code || 'WELCOME10';
+        // The code is revealed only after a successful signup.
+        const code = String(data.code || '').trim();
+        if (!code) throw new Error('No code returned');
         submitBtn.textContent = 'Your code: ' + code + ' ✓';
         emailInput.disabled = true;
         emailInput.value = '';
         hint.textContent = 'Use ' + code + ' at checkout for 10% off your first order.';
         hint.style.display = 'block';
+        if (window.BumiWelcomePopup) BumiWelcomePopup.remember(data);
         if (window.BumiTrack) BumiTrack.event('generate_lead', { currency: 'AUD', value: 0 });
       } catch (err) {
         submitBtn.disabled = false;
@@ -332,6 +459,14 @@
         item.classList.add('is-open');
       }
     });
+  });
+
+  // Delegated so it also covers accordions rendered later (product pages).
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('.accordion__trigger');
+    if (!trigger) return;
+    const item = trigger.closest('.accordion__item');
+    if (item) item.classList.toggle('is-active');
   });
 
   // ─── Product Card Swatch Click ───────────────────────────────────────
@@ -436,12 +571,14 @@
 
   (function () {
     var here = location.pathname + location.search;
-    document.querySelectorAll('.header__nav-link').forEach(function (link) {
+    document.querySelectorAll('.header__nav-link, .mobile-nav__link').forEach(function (link) {
       var u;
       try { u = new URL(link.href); } catch (e) { return; }
-      if (u.pathname + u.search === here) link.classList.add('is-active');
-      else link.classList.remove('is-active');
+      var active = u.pathname + u.search === here;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
     });
-  });
+  })();
 
 })();

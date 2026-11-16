@@ -43,6 +43,9 @@ function wishlisted(id) {
   return window.BumiWishlist ? BumiWishlist.isWishlisted(id) : false;
 }
 
+// Priority: Sold Out > New > Bestseller > discount %.
+// The percentage badge is derived from the compare-at price alone, so removing
+// the markdown in Shopify removes the badge (and the Sale listing) with it.
 function badgeHTML(product) {
   let cls = null;
   let label = '';
@@ -51,11 +54,12 @@ function badgeHTML(product) {
   }
   if (product.badge === 'new') { cls = 'product-card__badge--new'; label = 'New'; }
   else if (product.badge === 'bestseller') { cls = 'product-card__badge--bestseller'; label = 'Bestseller'; }
-  else if (product.badge === 'sale' && product.compareAt) {
+  else if (product.badge === 'low-stock') { cls = 'product-card__badge--bestseller'; label = 'Low Stock'; }
+  if (!cls && product.compareAt && product.compareAt > product.price) {
     cls = 'product-card__badge--sale';
-    const pct = Math.round((1 - product.price / product.compareAt) * 100);
+    const pct = Math.max(1, Math.round((1 - product.price / product.compareAt) * 100));
     label = '-' + pct + '%';
-  } else if (product.badge === 'low-stock') { cls = 'product-card__badge--bestseller'; label = 'Low Stock'; }
+  }
   if (!cls) return '';
   return `<span class="product-card__badge ${cls}">${label}</span>`;
 }

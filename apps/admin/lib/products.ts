@@ -16,6 +16,8 @@ export type BumiMetafieldKey =
   | "size_chart_image"
   | "shipping_returns"
   | "badge"
+  | "is_new"
+  | "is_bestseller"
   | "rating"
   | "reviews_count"
   | "sold_count"
@@ -49,6 +51,8 @@ export interface AdminProductSummary {
   noColor: boolean;
   colorOptionCount: number;
   sizeGuide: boolean;
+  // Storefront label: "new" | "bestseller" | null
+  badge: string | null;
   sourceUrl: string | null;
   sourcePlatform: string | null;
   issues: string[];
@@ -112,6 +116,8 @@ const BUMI_FIELDS: BumiMetafieldKey[] = [
   "size_chart_image",
   "shipping_returns",
   "badge",
+  "is_new",
+  "is_bestseller",
   "rating",
   "reviews_count",
   "sold_count",
@@ -130,6 +136,8 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   size_chart_image: "url",
   shipping_returns: "single_line_text_field",
   badge: "single_line_text_field",
+  is_new: "single_line_text_field",
+  is_bestseller: "single_line_text_field",
   rating: "number_decimal",
   reviews_count: "number_integer",
   sold_count: "number_integer",
@@ -261,6 +269,10 @@ export async function listProducts(opts: {
       noColor,
       colorOptionCount: colorValues.size,
       sizeGuide: Boolean(metafieldValue(metafields, "size_guide")),
+      badge: (() => {
+        const value = metafieldValue(metafields, "badge").trim().toLowerCase();
+        return value === "new" || value === "bestseller" ? value : null;
+      })(),
       sourceUrl: metafieldValue(metafields, "source_url") || null,
       sourcePlatform: metafieldValue(metafields, "source_platform") || null,
       issues,
@@ -334,6 +346,32 @@ function sanitizeHtml(html: string): string {
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+="[^"]*"/gi, "")
     .replace(/\son\w+='[^']*'/gi, "");
+}
+
+// `setMetafields` deliberately drops blank values, so switching a product
+// label OFF needs the metafield deleted instead. This clears every key the
+// caller passed as an empty string (only when it currently exists).
+async function clearMetafields(
+  productId: number | string,
+  keys: string[],
+): Promise<string[]> {
+  if (!keys.length) return [];
+  const existing = await fetchMetafields(productId);
+  const byKey = new Map(
+    existing.filter((m) => m && keys.includes(String(m.key))).map((m) => [String(m.key), m.id]),
+  );
+  const cleared: string[] = [];
+  for (const key of keys) {
+    const id = byKey.get(key);
+    if (!id) continue;
+    try {
+      await adminRest("DELETE", `/metafields/${id}.json`);
+      cleared.push(key);
+    } catch (e: any) {
+      throw new Error(`Metafield ${key} gagal dihapus: ${e?.message || e}`);
+    }
+  }
+  return cleared;
 }
 
 async function upsertMetafields(
@@ -538,6 +576,21 @@ export async function updateProduct(
 
   if (patch.noColor !== undefined) {
     metaPatch.no_color = patch.noColor ? "true" : "false";
+  }
+
+  // Labels are the one place where "empty" means "switch it off", so those
+  // keys are deleted rather than skipped by the blank-value filter.
+  const LABEL_KEYS: BumiMetafieldKey[] = ["badge", "is_new", "is_bestseller"];
+  const labelPatch: Partial<Record<BumiMetafieldKey, string>> = {};
+  for (const key of LABEL_KEYS) {
+    if (key in metaPatch) labelPatch[key] = metaPatch[key];
+  }
+  const blankLabels = LABEL_KEYS.filter(
+    (key) => key in labelPatch && !String(labelPatch[key] || "").trim(),
+  );
+  if (blankLabels.length) {
+    const cleared = await clearMetafields(productId, blankLabels);
+    if (cleared.length) updated.push(...cleared);
   }
 
   if (Object.keys(metaPatch).length) {

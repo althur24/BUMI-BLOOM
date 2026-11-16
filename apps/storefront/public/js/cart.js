@@ -1,7 +1,7 @@
 /* ============================================
    BUMI / BLOOM — Cart Management (AU / AUD)
    - localStorage persistence
-   - AU shipping + working promo (WELCOME10)
+   - AU shipping + server-validated promo codes
    - fires add_to_cart analytics
    ============================================ */
 
@@ -36,12 +36,9 @@ const BumiCart = {
   /* AU shipping (AUD). freeThreshold applies to the post-discount subtotal. */
   SHIPPING: { flat: 15, express: 14.95, freeThreshold: 99 },
 
-  /* Promo codes — kini dikelola sebagai Shopify discount codes (Fase 6).
-     Local config ini hanya untuk tampilan ringkasan cart; validasi nyata
-     dilakukan Shopify saat checkout. */
-  PROMOS: {
-    WELCOME10: { rate: 0.10, label: 'Welcome — 10% off' },
-  },
+  /* Promo codes are validated server-side at checkout. The cart only keeps the
+     code, plus an estimate when the server has told us the rate (e.g. after the
+     welcome-offer signup). No discount codes live in this file. */
 
   _drawer: {
     root: null,
@@ -236,19 +233,21 @@ const BumiCart = {
   },
 
   /* ── Promo codes ──
-     The checkout API is the source of truth. Known codes get a local estimate
-     for the cart summary; any other code is stored and validated server-side
-     when the checkout session is created. */
-  async applyPromo(code) {
-    const key = String(code || '').trim().toUpperCase();
+     The checkout API is the source of truth. A code entered manually stays
+     pending until the server validates it; codes returned by the welcome
+     signup arrive with their rate so the cart can show the estimate. */
+  async applyPromo(code, meta) {
+    const key = String((meta && meta.code) || code || '').trim().toUpperCase();
     if (!key) {
       this.clearPromo();
       return { valid: false };
     }
-    const known = this.PROMOS[key];
-    const stored = known
-      ? { code: key, ...known }
-      : { code: key, label: 'Discount code', pending: true };
+    const rate = meta && Number.isFinite(Number(meta.rate)) ? Number(meta.rate) : null;
+    const stored = {
+      code: key,
+      label: (meta && meta.label) || 'Discount code',
+      ...(rate != null ? { rate } : { pending: true }),
+    };
     localStorage.setItem(this.PROMO_KEY, JSON.stringify(stored));
     window.dispatchEvent(new CustomEvent('promo-updated'));
     return { valid: true, ...stored };

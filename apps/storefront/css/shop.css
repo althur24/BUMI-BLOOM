@@ -651,6 +651,98 @@ textarea.input {
   gap: var(--space-2);
 }
 
+/* ── Brand artwork ──────────────────────────────────────────────────────
+   Cards animate gently while visible: the artwork drifts and the card lifts
+   on hover. Everything is disabled for prefers-reduced-motion below. */
+.brand-card__image {
+  position: relative;
+}
+
+.brand-card__image img {
+  transition: transform var(--duration-slow) var(--ease-smooth);
+  will-change: transform;
+}
+
+.brand-card--animated .brand-card__image img,
+.brand-card--animated .brand-card__monogram {
+  animation: brand-drift 14s var(--ease-smooth) infinite alternate;
+  animation-play-state: paused;
+}
+
+.brand-card--animated.is-in-view .brand-card__image img,
+.brand-card--animated.is-in-view .brand-card__monogram {
+  animation-play-state: running;
+}
+
+.brand-card--animated.is-in-view:hover .brand-card__image img,
+.brand-card--animated.is-in-view:hover .brand-card__monogram {
+  animation-play-state: paused;
+  transform: scale(1.07) translate3d(-1.5%, -1%, 0);
+}
+
+@keyframes brand-drift {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.07) translate3d(-1.6%, -1.2%, 0);
+  }
+}
+
+/* Cards stay visible even if the observer never fires — only the artwork
+   drifts, so a partially visible grid never looks blank. */
+.brand-card--animated.is-in-view:hover {
+  transform: translateY(-5px);
+}
+
+/* No logo yet? Show a coloured monogram instead of another brand's artwork. */
+.brand-card__monogram {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: 0.04em;
+  color: var(--color-dark);
+  user-select: none;
+}
+
+.brand-card__monogram--yellow { background: var(--color-yellow-light); }
+.brand-card__monogram--green { background: var(--color-green-light); }
+.brand-card__monogram--pink { background: var(--color-pink-light); }
+.brand-card__monogram--blue { background: var(--color-blue-light); }
+.brand-card__monogram--orange { background: var(--color-orange-light); }
+.brand-card__monogram--purple { background: var(--color-purple-light); }
+
+.brand-empty {
+  padding: var(--space-8) 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-card--animated,
+  .brand-card--animated .brand-card__image img,
+  .brand-card--animated .brand-card__monogram,
+  .brand-card__image img {
+    animation: none;
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .brand-card--animated.is-in-view:hover,
+  .brand-card--animated.is-in-view:hover .brand-card__image img,
+  .brand-card--animated.is-in-view:hover .brand-card__monogram {
+    transform: none;
+  }
+}
+
 /* ============================================
    JOURNAL
    ============================================ */
@@ -687,6 +779,10 @@ textarea.input {
 .journal-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-lg);
+}
+article.journal-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 .journal-card__image {
   aspect-ratio: 16 / 10;
@@ -1093,4 +1189,25 @@ textarea.input {
   padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-pill);
   margin: var(--space-4) 0 var(--space-6);
+}
+
+/* Busy Book — compact "why" row in the hero (replaces the old 4-card section) */
+.busy-book-why {
+  padding-top: var(--space-5);
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--border-color);
+  gap: var(--space-2) var(--space-5);
+}
+
+.busy-book-why li {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+@media (max-width: 560px) {
+  .busy-book-why {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
 }

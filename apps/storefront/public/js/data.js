@@ -173,10 +173,23 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
   }
 }`;
 
-// Query brand metaobjects.
+// Query brand metaobjects. `logo` is an optional file reference: when a brand
+// has one set in Shopify Admin it becomes the card image, otherwise the
+// storefront falls back to a generated monogram (no hardcoded images).
 const BRANDS_QUERY = `{
   metaobjects(type: "brand", first: 50) {
-    edges { node { handle fields { key value } } }
+    edges {
+      node {
+        handle
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage { image { url } }
+          }
+        }
+      }
+    }
   }
 }`;
 
@@ -208,6 +221,7 @@ function mapShopifyProduct(node) {
       color,
       size,
       price: parseFloat(v.price.amount),
+      compareAt: v.compareAtPrice ? parseFloat(v.compareAtPrice.amount) : undefined,
       available: typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true,
       image: (v.image && v.image.url) || '',
     };
@@ -227,7 +241,13 @@ function mapShopifyProduct(node) {
   const gallery = images.length ? images : [image];
 
   const priceAmt = variants.length ? parseFloat(variants[0].price.amount) : 0;
-  const compareAt = variants.length && variants[0].compareAtPrice ? parseFloat(variants[0].compareAtPrice.amount) : undefined;
+  // Sale is defined purely by the compare-at price, so look at every variant:
+  // a markdown on any size makes the product a sale item, even when the first
+  // variant is full price. Removing the compare-at price takes it out of Sale.
+  const discounted = variantList.find(
+    (v) => Number.isFinite(v.compareAt) && v.compareAt > v.price,
+  );
+  const compareAt = discounted ? discounted.compareAt : undefined;
 
   return {
     id: node.handle,
@@ -273,13 +293,22 @@ function mapBrand(b) {
     audience: (b.audience || '').toLowerCase(),
     website: b.website || '',
     desc: b.shortDesc || '',
+    // Brand artwork uploaded to Shopify (metaobject "logo" file field). Empty
+    // when not set — the storefront then renders a monogram instead.
+    image: b.image || '',
   };
 }
 
 // Shopify brand metaobject node → brand shape.
 function mapShopifyBrand(node) {
   const f = {};
-  for (const field of (node.fields || [])) if (field && field.key) f[field.key] = field.value;
+  let image = '';
+  for (const field of (node.fields || [])) {
+    if (!field || !field.key) continue;
+    f[field.key] = field.value;
+    const url = field.reference && field.reference.image && field.reference.image.url;
+    if (url && /^(logo|image|photo|picture)$/i.test(field.key)) image = url;
+  }
   return mapBrand({
     slug: node.handle,
     name: f.name || '',
@@ -287,6 +316,7 @@ function mapShopifyBrand(node) {
     audience: f.audience || '',
     website: f.website || '',
     shortDesc: f.desc || '',
+    image,
   });
 }
 

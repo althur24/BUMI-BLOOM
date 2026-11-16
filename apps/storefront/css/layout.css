@@ -115,10 +115,6 @@
   border-bottom-color: rgba(45, 45, 45, 0.05);
 }
 
-.header.is-hidden {
-  transform: translateY(-100%);
-}
-
 .header__inner {
   display: flex;
   align-items: center;
@@ -242,42 +238,6 @@
 .header__action-btn svg {
   width: 22px;
   height: 22px;
-}
-
-/* Currency switch (AUD only) */
-.currency-switch {
-  display: flex;
-  align-items: center;
-  margin-right: var(--space-2);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.currency-switch__btn {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  transition: background var(--duration-fast) var(--ease-smooth),
-              color var(--duration-fast) var(--ease-smooth);
-}
-
-.currency-switch__btn.is-active {
-  background: var(--color-dark);
-  color: var(--color-cream);
-}
-
-@media (max-width: 480px) {
-  .currency-switch {
-    margin-right: var(--space-1);
-  }
-
-  .currency-switch__btn {
-    padding: 2px var(--space-1);
-  }
 }
 
 .header__cart-count {
@@ -412,6 +372,31 @@
   color: var(--color-coral);
 }
 
+.mobile-nav__link.is-active {
+  background: var(--color-cream-light);
+  color: var(--color-coral);
+}
+
+/* Keyboard-only skip link (injected by app.js) */
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-dark);
+  color: var(--color-cream);
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-pill);
+  transform: translateY(-200%);
+  transition: transform var(--duration-fast) var(--ease-smooth);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  color: var(--color-cream);
+}
+
 .mobile-nav__footer {
   padding: var(--space-6);
   border-top: 1px solid rgba(45, 45, 45, 0.1);
@@ -452,6 +437,25 @@
   margin-top: var(--space-4);
   max-width: 30ch;
   color: inherit;
+}
+
+.footer__sell {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  opacity: 0.8;
+  line-height: var(--lh-relaxed);
+  max-width: 34ch;
+}
+
+.footer__sell a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: var(--fw-semibold);
+}
+
+.footer__sell a:hover {
+  color: var(--color-coral);
 }
 
 .footer__nav-title {
@@ -621,16 +625,6 @@
   .header__action-btn {
     width: 40px;
     height: 40px;
-  }
-
-  .header__actions .currency-switch,
-  .header__action-btn--account {
-    display: none;
-  }
-
-  .mobile-nav__footer .currency-switch {
-    margin-right: 0;
-    align-self: flex-start;
   }
 }
 

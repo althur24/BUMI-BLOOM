@@ -1,0 +1,234 @@
+<div class="announcement-bar" id="announcement-bar">
+    <span>🇦🇺 Free AU shipping over $99 · Secure checkout by Stripe ✦ <a href="/products?category=kids">Shop Now</a></span>
+    <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="/" class="header__logo">BUMI / BLOOM</a>
+      <nav class="header__nav" id="main-nav">
+        <ul class="header__nav-list">
+          <li><a href="/products?category=new" class="header__nav-link">New In</a></li>
+          <li><a href="/products?category=girls" class="header__nav-link">Girls</a></li>
+          <li><a href="/products?category=boys" class="header__nav-link">Boys</a></li>
+          <li><a href="/products?category=baby" class="header__nav-link">Baby</a></li>
+          <li><a href="/busy-book" class="header__nav-link">Busy Book</a></li>
+          <li><a href="/brands" class="header__nav-link">Brands</a></li>
+          <li><a href="/products?category=sale" class="header__nav-link header__nav-link--sale">Sale</a></li>
+          <li><a href="/journal" class="header__nav-link">Journal</a></li>
+        </ul>
+      </nav>
+      <div class="header__actions">
+        <button class="header__action-btn" id="search-toggle" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <a href="/wishlist" class="header__action-btn" aria-label="Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <span class="header__cart-count" id="wishlist-count">0</span>
+        </a>
+        <a href="/cart" class="header__action-btn header__cart-btn" id="cart-toggle" aria-label="Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+          <span class="header__cart-count" id="cart-count">0</span>
+        </a>
+        <button class="header__action-btn header__menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav__overlay" id="mobile-nav-overlay"></div>
+    <div class="mobile-nav__drawer">
+      <div class="mobile-nav__header">
+        <span class="header__logo">BUMI / BLOOM</span>
+        <button class="mobile-nav__close" id="mobile-nav-close" aria-label="Close menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <nav class="mobile-nav__links">
+        <a href="/products?category=new" class="mobile-nav__link">New In</a>
+        <a href="/products?category=girls" class="mobile-nav__link">Girls</a>
+        <a href="/products?category=boys" class="mobile-nav__link">Boys</a>
+        <a href="/products?category=baby" class="mobile-nav__link">Baby</a>
+        <a href="/busy-book" class="mobile-nav__link">Busy Book</a>
+        <a href="/brands" class="mobile-nav__link">Brands</a>
+        <a href="/products?category=sale" class="mobile-nav__link mobile-nav__link--sale">Sale</a>
+        <a href="/journal" class="mobile-nav__link">Journal</a>
+      </nav>
+      <div class="mobile-nav__footer">
+        <a href="/wishlist" class="mobile-nav__footer-link">Wishlist</a>
+        <a href="/cart" class="mobile-nav__footer-link">Cart</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal__overlay" id="search-modal-overlay"></div>
+    <div class="search-modal__content">
+      <form class="search-modal__form" id="search-form">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" class="search-modal__input" id="search-input" placeholder="Search for kids' clothing..." aria-label="Search products">
+        <button type="button" class="search-modal__close" id="search-close" aria-label="Close search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <main>
+    <section class="section" style="padding-bottom: 0;">
+      <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/">Home</a>
+          <span class="breadcrumb__separator" aria-hidden="true">›</span>
+          <span class="breadcrumb__current">Help &amp; Info</span>
+        </nav>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top: var(--space-4);">
+      <div class="container">
+        <div class="page-header">
+          <h1 class="page-header__title">Help &amp; <span class="script-accent">Info</span></h1>
+          <p class="page-header__subtitle">Sizing, shipping, returns — and how to reach a real person.</p>
+        </div>
+
+        <div class="info-page">
+          <nav class="info-nav" aria-label="Help topics">
+            <a href="#size-guide">Size guide</a>
+            <a href="#shipping-returns">Shipping &amp; returns</a>
+            <a href="#faqs">FAQs</a>
+            <a href="#contact">Contact us</a>
+            <a href="#privacy">Privacy</a>
+            <a href="#terms">Terms</a>
+          </nav>
+
+          <section class="info-block" id="size-guide">
+            <h2>Size guide</h2>
+            <p>Every product page has its own <strong>Size Guide</strong> tab listing the sizes we stock for that piece. Many styles also show an age hint in the size options (for example “M (3–4 YO)”).</p>
+            <ul>
+              <li>Measure your child’s chest and height, then match it to the closest size.</li>
+              <li>Children grow at different speeds, so age is only a guide — chest width matters most.</li>
+              <li>Between two sizes? We recommend sizing up for room to grow.</li>
+            </ul>
+            <p>Still unsure? Email us the product name plus your child’s measurements and we’ll help you choose.</p>
+          </section>
+
+          <section class="info-block" id="shipping-returns">
+            <h2>Shipping &amp; returns</h2>
+            <ul>
+              <li><strong>Free AU shipping</strong> on orders over $99.</li>
+              <li><strong>Standard delivery</strong> 5–8 business days across Australia.</li>
+              <li><strong>30-day returns</strong> on unworn pieces in their original condition.</li>
+              <li><strong>Faulty or damaged on arrival?</strong> Tell us within 14 days for a refund or replacement.</li>
+            </ul>
+            <p>Shipping is calculated at checkout and confirmed before you pay. All prices are in AUD.</p>
+          </section>
+
+          <section class="info-block" id="faqs">
+            <h2>FAQs</h2>
+            <div class="accordion">
+              <div class="accordion__item is-active">
+                <button class="accordion__trigger" type="button">Where do you deliver?<span class="accordion__icon">+</span></button>
+                <div class="accordion__content"><p>We deliver Australia-wide. Standard delivery takes 5–8 business days, and shipping is free on orders over $99.</p></div>
+              </div>
+              <div class="accordion__item">
+                <button class="accordion__trigger" type="button">How do I track my order?<span class="accordion__icon">+</span></button>
+                <div class="accordion__content"><p>Your confirmation email includes a tracking link. You can also open it any time — it shows your order status, items and delivery progress.</p></div>
+              </div>
+              <div class="accordion__item">
+                <button class="accordion__trigger" type="button">Can I change or cancel my order?<span class="accordion__icon">+</span></button>
+                <div class="accordion__content"><p>Email us as soon as you can. If your order hasn’t been packed yet we’ll do our best to change or cancel it.</p></div>
+              </div>
+              <div class="accordion__item">
+                <button class="accordion__trigger" type="button">How do returns work?<span class="accordion__icon">+</span></button>
+                <div class="accordion__content"><p>Unworn pieces can be returned within 30 days. If something arrives faulty or damaged, tell us within 14 days and we’ll refund or replace it.</p></div>
+              </div>
+              <div class="accordion__item">
+                <button class="accordion__trigger" type="button">How do I get the 10% welcome discount?<span class="accordion__icon">+</span></button>
+                <div class="accordion__content"><p>Join our list — you’ll see your welcome code on screen straight away, and it can be entered in the discount field at checkout. It works on your first order, alongside free AU shipping over $99.</p></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="info-block" id="contact">
+            <h2>Contact us</h2>
+            <p>Questions about an order, a size or a return? Email <a href="mailto:hello@bumibloom.com">hello@bumibloom.com</a> and we’ll get back to you. We aim to reply within one business day.</p>
+            <p>For anything about a placed order, include your order number so we can help faster.</p>
+          </section>
+
+          <section class="info-block" id="privacy">
+            <h2>Privacy</h2>
+            <p>This is a plain-language summary of how we handle your information.</p>
+            <ul>
+              <li><strong>Newsletter:</strong> if you join our list we store your email address so we can send occasional updates. Every message includes an unsubscribe link, and you can also email us to be removed at any time.</li>
+              <li><strong>Orders:</strong> shipping details and order information are shared with our store and payment partners (Shopify and Stripe) only to process and deliver your order. Card details are handled by Stripe — we never see your full card number.</li>
+              <li><strong>Your choices:</strong> email us any time to ask what we hold about you, or to have it deleted.</li>
+            </ul>
+          </section>
+
+          <section class="info-block" id="terms">
+            <h2>Terms</h2>
+            <p>Plain-language summary — for anything you need in writing, email us.</p>
+            <ul>
+              <li>All prices are in Australian dollars (AUD) and include any applicable taxes shown at checkout.</li>
+              <li>Orders are subject to stock availability; if an item sells out we’ll contact you and refund it in full.</li>
+              <li>Colours can look slightly different from screen to screen, and handmade pieces may vary a little — that’s part of their charm.</li>
+              <li>Returns are handled as described in <a href="#shipping-returns">Shipping &amp; returns</a>, in addition to your rights under Australian Consumer Law.</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="/" class="footer__logo">BUMI / BLOOM</a>
+          <p class="footer__desc">Your trusted destination for thoughtfully curated kids' fashion from Indonesia's most exciting local brands. Playful, comfortable, and made to last.</p>
+          <p class="footer__sell">Making thoughtful kids&rsquo; clothing in Indonesia? <a href="mailto:hello@bumibloom.com?subject=Selling%20with%20BUMI%20%2F%20BLOOM">Sell with us</a>.</p>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Shop</h4>
+          <ul class="footer__nav-list">
+            <li><a href="/products?category=new">New In</a></li>
+            <li><a href="/products?category=girls">Girls</a></li>
+            <li><a href="/products?category=boys">Boys</a></li>
+            <li><a href="/products?category=baby">Baby</a></li>
+            <li><a href="/busy-book">Busy Book</a></li>
+            <li><a href="/products?category=sale">Sale</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">Help</h4>
+          <ul class="footer__nav-list">
+            <li><a href="/help#size-guide">Size Guide</a></li>
+            <li><a href="/help#shipping-returns">Shipping &amp; Returns</a></li>
+            <li><a href="/help#faqs">FAQs</a></li>
+            <li><a href="/help#contact">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer__nav">
+          <h4 class="footer__nav-title">About</h4>
+          <ul class="footer__nav-list">
+            <li><a href="/about">Our Story</a></li>
+            <li><a href="/about#sustainability">Sustainability</a></li>
+            <li><a href="/journal">Journal</a></li>
+            <li><a href="/brands">Our Brands</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; 2026 BUMI / BLOOM. All rights reserved.</p>
+        <div class="footer__bottom-links">
+          <a href="/help#privacy">Privacy Policy</a>
+          <a href="/help#terms">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
