@@ -104,10 +104,6 @@
   flex-wrap: wrap;
 }
 
-.hero-playful .hero-chips {
-  justify-content: center;
-}
-
 @media (max-width: 1024px) {
   .hero-playful__title {
     font-size: var(--text-4xl);

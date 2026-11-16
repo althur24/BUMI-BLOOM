@@ -369,19 +369,6 @@
   width: 100%;
 }
 
-/* ── Hero trust chips ── */
-.hero-chips {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
-  padding: 0;
-  margin: var(--space-5) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-.hero-chips li { display: inline-flex; align-items: center; gap: 6px; }
-
 /* ── Trust bar ── */
 .trust-bar {
   background: var(--color-cream-light);
