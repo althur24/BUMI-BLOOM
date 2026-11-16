@@ -189,6 +189,15 @@ body {
   background: transparent;
 }
 
+/* Shop the Family sits right above the collections grid — trim the facing
+   gaps so the two sections read as one block instead of two screens apart. */
+#shop-by-age {
+  padding-bottom: var(--space-6);
+}
+#shop-by-age + .squiggle-divider + .collections-section {
+  padding-top: var(--space-8);
+}
+
 /* Sections that carry margin doodles */
 .collections-section,
 .testimonials-section,
