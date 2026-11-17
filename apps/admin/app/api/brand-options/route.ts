@@ -35,10 +35,12 @@ export async function GET() {
 
   const byKey = new Map<string, BrandOption>();
 
+  // Match the storefront's catalogue fetch (also first: 100, no pagination) so
+  // the admin can only order brands the storefront actually knows about.
   try {
     const data = await adminGraphQL<{
       products: { edges: { node: { vendor: string } }[] };
-    }>(`query { products(first: 250) { edges { node { vendor } } } }`);
+    }>(`query { products(first: 100) { edges { node { vendor } } } }`);
 
     const counts = new Map<string, { name: string; count: number }>();
     for (const edge of data.products?.edges || []) {

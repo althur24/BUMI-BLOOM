@@ -62,6 +62,13 @@ export async function PUT(request: Request) {
     order.push({ brandKey: key, sortOrder: order.length });
   }
 
+  // An empty order would delete every row. That only happens on an empty brand
+  // list (UI disables the button), so reject it rather than silently wiping
+  // the saved order — the client should never send this.
+  if (order.length === 0) {
+    return jsonError(400, "order must contain at least one brand");
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       // Replace the whole ordering: drop rows no longer present, upsert the rest.
