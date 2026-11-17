@@ -19,7 +19,6 @@ function __bbProductsInit() {
       initHomeCollection();
       window.addEventListener('currency-updated', initHomeCollection);
     }
-    if (document.getElementById('home-brand-grid')) initHomeBrands();
   });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __bbProductsInit);
@@ -122,80 +121,6 @@ function initHomeCollection() {
     BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',
       items: featured.map(p => ({ id: p.id, name: p.name, price: p.price })) });
   }
-}
-
-/* ---------- Homepage "Shop by Brand" grid ---------- */
-
-// Reuses the .brand-card markup from /brands (see page-brands.js + shop.css)
-// so the two surfaces look identical. Order comes from BumiData.getBrands()
-// (admin-curated). Shows the first HOME_BRAND_LIMIT brands; the "View all"
-// link leads to /brands for the rest.
-const HOME_BRAND_LIMIT = 8;
-const BB_MONOGRAM_BG = ['yellow', 'green', 'pink', 'blue', 'orange', 'purple'];
-
-function bbHashIndex(text, size) {
-  let hash = 0;
-  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) % 100000;
-  return size ? hash % size : hash;
-}
-
-function bbBrandMonogram(brand) {
-  const name = String(brand.name || brand.slug || '?').trim();
-  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase()).join('');
-  const tone = BB_MONOGRAM_BG[bbHashIndex(brand.slug || name, BB_MONOGRAM_BG.length)];
-  return '<div class="brand-card__monogram brand-card__monogram--' + tone + '" aria-hidden="true">' +
-    '<span>' + bbEscapeHtml(initials || '?') + '</span></div>';
-}
-
-function bbBrandMedia(brand) {
-  const logo = String(brand.image || '').trim();
-  if (logo) {
-    return '<img src="' + bbEscapeHtml(logo) + '" alt="' + bbEscapeHtml(brand.name) + '" loading="lazy">';
-  }
-  const images = Array.isArray(brand.productImages) ? brand.productImages.filter(Boolean) : [];
-  if (images.length) {
-    const srcs = images.slice(0, 4);
-    const cls = 'brand-card__collage brand-card__collage--' + srcs.length;
-    return '<div class="' + cls + '">' + srcs.map((src, i) =>
-      '<img src="' + bbEscapeHtml(src) + '" alt="" loading="lazy"' + (i === 0 ? '' : ' aria-hidden="true"') + '>'
-    ).join('') + '</div>';
-  }
-  return bbBrandMonogram(brand);
-}
-
-function bbBrandCardHTML(brand) {
-  const audienceLabel = { girls: 'Girls', boys: 'Boys', unisex: 'Unisex' }[brand.audience] || 'Unisex';
-  const audience = brand.audience || 'unisex';
-  const count = Number(brand.productCount) || 0;
-  const countLabel = count === 1 ? '1 piece' : count + ' pieces';
-  return '<a href="/products?brand=' + encodeURIComponent(brand.slug) + '" class="brand-card" data-category="' + bbEscapeHtml(audience) + '">' +
-    '<div class="brand-card__image">' + bbBrandMedia(brand) + '</div>' +
-    '<div class="brand-card__info">' +
-      '<h2 class="brand-card__name">' + bbEscapeHtml(brand.name) + '</h2>' +
-      '<p class="brand-card__desc">' + bbEscapeHtml(brand.desc) + '</p>' +
-      '<div class="brand-card__meta">' +
-        '<span class="badge badge--soft">' + audienceLabel + '</span>' +
-        (count ? '<span class="badge badge--green">' + bbEscapeHtml(countLabel) + '</span>' : '') +
-      '</div>' +
-    '</div>' +
-  '</a>';
-}
-
-function initHomeBrands() {
-  const grid = document.getElementById('home-brand-grid');
-  if (!grid) return;
-  const section = grid.closest('section');
-
-  const brands = (BumiData.getBrands() || []).filter((b) => b && b.slug);
-  if (!brands.length) {
-    // No brands yet: hide the whole section so the homepage stays tidy.
-    if (section) section.style.display = 'none';
-    return;
-  }
-  if (section) section.style.display = '';
-
-  grid.innerHTML = brands.slice(0, HOME_BRAND_LIMIT).map(bbBrandCardHTML).join('');
 }
 
 /* ---------- Homepage hero arch cards (admin-managed) ---------- */
@@ -325,10 +250,9 @@ function renderDynamicFilters() {
 
   const brandWrap = document.getElementById('plp-brand-options');
   if (brandWrap) {
-    // Order follows the admin-curated brand order (BumiData.getBrands) rather
-    // than alphabetical, so promoted brands lead the filter list too. One
-    // checkbox per brand record; its value is the brand's canonical name, and
-    // the change handler normalises it back to a key — so a name/vendor
+    // Brand filter options are listed alphabetically (BumiData.getBrands).
+    // One checkbox per brand record; its value is the brand's canonical name,
+    // and the change handler normalises it back to a key — so a name/vendor
     // mismatch still matches the products.
     const listed = new Set();
     const entries = [];
@@ -370,7 +294,7 @@ function initPLP() {
     colors: new Set(),
     prices: new Set(),
     brands: new Set(),
-    sort: 'newest',
+    sort: 'brand-priority',
     visible: PAGE_SIZE
   };
 
@@ -455,6 +379,12 @@ function initPLP() {
       case 'price-asc': list.sort((a, b) => a.price - b.price); break;
       case 'price-desc': list.sort((a, b) => b.price - a.price); break;
       case 'bestselling': list.sort((a, b) => (b.isBestseller - a.isBestseller) || (b.rating - a.rating)); break;
+      // Brand priority: products from admin-prioritised brands come first (in
+      // that order), each group then newest-first. Brands with no priority
+      // fall to the end and stay newest-first among themselves.
+      case 'brand-priority':
+        list.sort((a, b) => (BumiData.brandRank(a.brand) - BumiData.brandRank(b.brand)) || (b.addedAt - a.addedAt));
+        break;
       default: list.sort((a, b) => b.addedAt - a.addedAt);
     }
     return list;

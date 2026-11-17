@@ -5,8 +5,9 @@ import { prisma } from "@bumi/db";
 import { requireAdmin, jsonError } from "@/lib/auth";
 import { corsHeaders } from "@/lib/cors";
 
-// Storefront cross-origin read (same pattern as /api/hero-cards). GET is public
-// because it only exposes the order of brand keys — nothing sensitive.
+// Product priority per brand for the Shop All ordering (see the storefront's
+// brandRank / 'brand-priority' sort). GET is public (storefront cross-origin
+// read, same pattern as /api/hero-cards) — it only exposes brand keys.
 
 export async function OPTIONS(request: Request) {
   return new Response(null, { status: 204, headers: corsHeaders(request) });

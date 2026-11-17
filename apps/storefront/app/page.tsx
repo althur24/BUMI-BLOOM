@@ -1,4 +1,3 @@
-import '@/css/shop.css';
 import '@/css/paper.css';
 import body from '@/content/index.html';
 import { Scripts } from '@/components/Scripts';

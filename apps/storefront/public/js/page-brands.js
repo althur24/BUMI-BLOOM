@@ -78,9 +78,8 @@
     }
 
     function render() {
-      // Order is already applied by BumiData (admin-curated first, then the
-      // default has-products-first / alphabetical fallback). Do NOT re-sort
-      // here or the curated order would be lost.
+      // Brand list is alphabetical (BumiData.getBrands). The admin brand order
+      // is a PRODUCT priority for Shop All, not a brand-list order.
       const brands = BumiData.getBrands ? BumiData.getBrands() : (BumiData.BRANDS || []).slice();
       if (!brands.length) {
         grid.innerHTML = '<p class="brand-empty">Our brand list is loading — please refresh in a moment.</p>';

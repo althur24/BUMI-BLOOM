@@ -1,8 +1,10 @@
 "use client";
 
-// Brand Order — atur urutan brand yang dilihat customer. Brand paling atas
-// tampil lebih dulu di section brand homepage, filter Shop All, dan /brands.
-// Urutan disimpan ke /api/brand-order dan dibaca publik oleh storefront.
+// Brand Priority — atur brand mana yang kartu produknya tampil lebih dulu di
+// halaman Shop All (/products). Brand paling atas → produknya muncul duluan;
+// di dalam tiap brand produk tetap terbaru dulu. Daftar brand di filter &
+// /brands tetap alfabetis (tidak terpengaruh). Urutan disimpan ke
+// /api/brand-order dan dibaca publik oleh storefront.
 // Drag-and-drop native (HTML5) + tombol naik/turun untuk aksesibilitas.
 
 import { useEffect, useRef, useState } from "react";
@@ -115,7 +117,7 @@ export default function BrandsPage() {
       await api("/api/brand-order", "PUT", {
         order: order.map((brandKey, i) => ({ brandKey, sortOrder: i })),
       });
-      setMessage("Tersimpan — urutan brand langsung berlaku di storefront.");
+      setMessage("Tersimpan — urutan produk per brand langsung berlaku di Shop All.");
     } catch (e: any) {
       if (e.message === "NO_SESSION") router.replace("/login");
       else setError(e.message);
@@ -135,11 +137,13 @@ export default function BrandsPage() {
   return (
     <main className="admin-shell">
       <div className="admin-header">
-        <h1>Brands</h1>
+        <h1>Prioritas Brand di Shop All</h1>
         <p className="muted">
-          Atur urutan brand yang dilihat customer. Tarik untuk memindahkan, atau pakai tombol panah.
-          Brand paling atas tampil lebih dulu di homepage, filter Shop All, dan halaman /brands.
-          Semua brand tetap tampil — hanya urutannya yang berubah.
+          Tentukan brand mana yang kartu produknya muncul lebih dulu di halaman Shop All.
+          Tarik untuk memindahkan, atau pakai tombol panah. Brand paling atas → produknya
+          tampil paling awal; di dalam tiap brand produk tetap terbaru dulu. Brand yang tak
+          diatur tampil setelahnya. Daftar brand di filter & halaman /brands tetap alfabetis.
+          Tidak ada produk yang disembunyikan — hanya urutan tampilnya yang berubah.
         </p>
       </div>
 

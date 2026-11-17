@@ -689,20 +689,13 @@ async function fetchBrandOrder() {
   }
 }
 
-// Apply the curated order on top of the default one: curated brands first (in
-// their saved order), everything else keeps the default (has products first,
-// then alphabetical). Stable and non-destructive — no brand is ever removed.
-function applyBrandOrder(brands, orderKeys) {
+// Brand priority ranking for the Shop All product order. `orderKeys` is the
+// admin-curated list of normalised brand keys (most-prominent first). Returns
+// a Map from key → rank index. Brands not listed get no entry (→ Infinity).
+function buildBrandRank(orderKeys) {
   const rank = new Map();
   (orderKeys || []).forEach((key, i) => { if (key && !rank.has(key)) rank.set(key, i); });
-  const fallback = (a, b) =>
-    (b.productCount > 0) - (a.productCount > 0) || String(a.name).localeCompare(String(b.name));
-  return brands.slice().sort((a, b) => {
-    const ra = rank.has(a.key) ? rank.get(a.key) : Infinity;
-    const rb = rank.has(b.key) ? rank.get(b.key) : Infinity;
-    if (ra !== rb) return ra - rb;
-    return fallback(a, b);
-  });
+  return rank;
 }
 
 const BumiData = {
@@ -712,6 +705,7 @@ const BumiData = {
   _readyPromise: null,
   _metaBrands: [],
   _brandOrder: [],
+  _brandRank: new Map(),
 
   // Size-label helpers shared with page-pdp.js / cart so display + matching
   // always use the same logic (single source of truth lives above).
@@ -752,14 +746,23 @@ const BumiData = {
     this._brandOrder = orderRes.status === 'fulfilled' ? (orderRes.value || []) : [];
     // Brands are rebuilt from the catalogue on every load so a newly imported
     // vendor shows up on /brands without anyone touching the metaobjects.
-    // The admin-curated order is applied on top (curated first, rest default).
-    this.BRANDS = applyBrandOrder(buildBrands(this.PRODUCTS, this._metaBrands), this._brandOrder);
+    // The brand list itself stays alphabetical (the admin order is a PRODUCT
+    // priority for Shop All, not a brand-list order — see brandRank()).
+    this.BRANDS = buildBrands(this.PRODUCTS, this._metaBrands);
+    this._brandRank = buildBrandRank(this._brandOrder);
   },
 
-  /* Brand list already sorted by the admin-curated order. UI (home section,
-     PLP filter, /brands) should read this rather than re-sorting BRANDS. */
+  /* Brand list in alphabetical order (used by /brands and the PLP filter). */
   getBrands() {
-    return this.BRANDS.slice();
+    return this.BRANDS.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  },
+
+  /* Priority rank of a product's brand for the Shop All order. Accepts a raw
+     vendor string; normalises it to the same key used by the admin order.
+     Returns a small index for prioritised brands, Infinity for the rest. */
+  brandRank(name) {
+    const key = normalizeBrandKey(name);
+    return this._brandRank.has(key) ? this._brandRank.get(key) : Infinity;
   },
 
   /* ── Lookup helpers ── */
