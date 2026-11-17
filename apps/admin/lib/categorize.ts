@@ -3,6 +3,8 @@
 // and audience (girls | boys | baby | unisex). AI enrichment can refine
 // these, but imports must be usable when GEMINI_API_KEY is not configured.
 
+import { parseSizeMeta } from "./size-labels";
+
 export type StoreCategory =
   | "busy-book"
   | "tshirts"
@@ -137,20 +139,25 @@ export function extractMaterialFacts(description?: string): {
   };
 }
 
-// "S (1-2 YO)" → "1–2 yrs"; "12-18M" → "12–18 months"; "2T" → "2–3 yrs".
+// "S (1-2 YO)" → "S — 1–2 yrs"; "12-18M" → "12-18M — 12–18 months"; "2T" → "2T — 2–3 yrs".
+// Also handles Indonesian tokens ("1-2 TAHUN", "S (1-2 Thn BB 5-12 KG)") and
+// bare height codes ("100" → "100 — 3–4 yrs") via the shared size-labels core.
 export function sizeGuideLine(label: string): string | null {
   const s = String(label || "").trim();
   if (!s) return null;
-  const years = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
+  const years = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN|THN)/i);
   if (years) return `${s} — ${years[1]}–${years[2]} yrs`;
-  const singleYear = s.match(/(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
-  if (singleYear) return `${s} — ${singleYear[1]} yrs`;
+  const singleYear = s.match(/(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN|THN)/i);
+  if (singleYear) return `${s} — ${singleYear[1]} ${Number(singleYear[1]) === 1 ? "yr" : "yrs"}`;
   const months = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:M(?:O|ONTHS?)?|BLN|BULAN)\b/i);
   if (months) return `${s} — ${months[1]}–${months[2]} months`;
   const toddler = s.match(/^(\d+)T$/i);
   if (toddler) return `${s} — ${toddler[1]}–${Number(toddler[1]) + 1} yrs`;
   const cm = s.match(/(\d+)\s*cm/i);
   if (cm) return `${s} — ${cm[1]} cm`;
+  // Bare height code or height code with a weight note ("100", "100 (BB …)").
+  const parsed = parseSizeMeta(s);
+  if (parsed.bareHeight && parsed.age) return `${s} — ${parsed.age}`;
   return null;
 }
 

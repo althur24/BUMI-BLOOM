@@ -13,6 +13,7 @@ import {
   normalizeColorName,
   normalizeHex,
 } from "@/lib/colors";
+import { displaySize } from "@/lib/size-labels";
 
 interface ImportJob {
   id: string;
@@ -334,6 +335,37 @@ export default function ImportPage() {
   const originalIDR = preview?.specs?.originalPriceIDR;
   const audRate = preview?.specs?.audRateUsed;
 
+  // Translates every variant's Size/Ukuran option value to English age labels
+  // (and refreshes the editable Size Guide preview). Weight/height stay in the
+  // guide table; the buttons show clean age ranges.
+  function translateSizesToAge() {
+    if (!preview) return;
+    const variants = (preview.variants || []).map((v) => {
+      const sizeKey = Object.keys(v.options || {}).find((k) => /^(size|ukuran)$/i.test(k));
+      if (!sizeKey || !v.options[sizeKey]) return v;
+      const translated = displaySize(String(v.options[sizeKey]), "age");
+      return translated && translated !== v.options[sizeKey]
+        ? { ...v, options: { ...v.options, [sizeKey]: translated } }
+        : v;
+    });
+    const seen = new Set<string>();
+    const lines: string[] = [];
+    for (const v of variants) {
+      const sizeKey = Object.keys(v.options || {}).find((k) => /^(size|ukuran)$/i.test(k));
+      if (!sizeKey) continue;
+      const label = String(v.options[sizeKey] || "").trim();
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      lines.push(label);
+    }
+    setEdits((d) => ({
+      ...d,
+      variants,
+      sizeLabelMode: "age",
+      sizeGuide: lines.length ? lines.join("\n") : d.sizeGuide,
+    }));
+  }
+
   function updateColorAt(index: number, patch: Partial<NormalizedColor>) {
     const current = activeColors[index];
     if (!current) return;
@@ -576,6 +608,30 @@ export default function ImportPage() {
                 <label>Material & Care</label>
                 <textarea className="input" rows={3} value={preview.materialCare || ""}
                   onChange={(e) => setEdits((d) => ({ ...d, materialCare: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Label ukuran</label>
+                <select
+                  className="input"
+                  value={preview.sizeLabelMode || "age"}
+                  onChange={(e) => setEdits((d) => ({ ...d, sizeLabelMode: e.target.value }))}
+                >
+                  <option value="age">Umur — e.g. “S (1–2 yrs)” (default)</option>
+                  <option value="height">Tinggi — e.g. “100 cm”</option>
+                  <option value="manual">Manual — tampilkan apa adanya</option>
+                </select>
+                <button
+                  className="btn btn--ghost btn--sm"
+                  type="button"
+                  style={{ marginTop: 6 }}
+                  onClick={translateSizesToAge}
+                >
+                  Terjemahkan label ukuran ke umur
+                </button>
+                <p className="hint">
+                  Nilai varian dikonversi ke umur saat import (mis. “1-2 TAHUN”
+                  → “S (1–2 yrs)”). Gambar size chart tetap tampil.
+                </p>
               </div>
               <div className="field">
                 <label>Size Guide</label>

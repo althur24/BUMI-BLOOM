@@ -14,6 +14,14 @@ import {
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { normaliseAudience, parseAudience } from "../lib/audience";
+import {
+  buildSizeGuideRows,
+  displaySize,
+  heightToAge,
+  normaliseSizeLabelMode,
+  parseSizeMeta,
+  translateSizeLabel,
+} from "../lib/size-labels";
 import { canonicalizeUrl } from "../lib/urls";
 import { brandFromOgTitle, extractPdpStructured } from "../lib/scrapers/tokopedia-pdp";
 
@@ -279,6 +287,102 @@ test("brand comes from the trailing 'di <shop> | Tokopedia' segment", () => {
   const og =
     "Promo (Bayar di Tempat) Kaos Musim Panas Unisex untuk Anak Laki-laki dan Perempuan, cocok untuk tinggi 90-150cm, usia 3-15 tahun. di 495 Lucu Anak | Tokopedia";
   assert.equal(brandFromOgTitle(og), "495 Lucu Anak");
+});
+
+// ── Size-label normalisation (Indonesian → English age) ─────────────────────
+test("translateSizeLabel converts Indonesian size labels to English age", () => {
+  assert.equal(translateSizeLabel("S (1-2 TAHUN)"), "S (1–2 yrs)");
+  assert.equal(translateSizeLabel("M (2-3 tahun)"), "M (2–3 yrs)");
+  assert.equal(translateSizeLabel("Xl (4-5 tahun)"), "XL (4–5 yrs)");
+  assert.equal(translateSizeLabel("L 4-5 TAHUN"), "L (4–5 yrs)");
+  assert.equal(translateSizeLabel("XXL 9-12 TAHUN"), "XXL (9–12 yrs)");
+});
+
+test("translateSizeLabel drops weight (BB … KG) and keeps the age", () => {
+  assert.equal(translateSizeLabel("S (1-2 Thn BB 5-12 KG)"), "S (1–2 yrs)");
+  assert.equal(translateSizeLabel("XX (9-12 Thn BB 27-35 KG)"), "XX (9–12 yrs)");
+});
+
+test("translateSizeLabel handles height codes, adult and English input", () => {
+  assert.equal(translateSizeLabel("100"), "100 cm (3–4 yrs)");
+  assert.equal(translateSizeLabel("90"), "90 cm (2–3 yrs)");
+  assert.equal(translateSizeLabel("S-ADULT"), "S (Adult)");
+  assert.equal(translateSizeLabel("1 Years"), "1 yr");
+  assert.equal(translateSizeLabel("3-4 Years"), "3–4 yrs");
+  assert.equal(translateSizeLabel("S (1-2 YO)"), "S (1–2 yrs)");
+});
+
+test("translateSizeLabel is idempotent on already-English labels", () => {
+  const once = translateSizeLabel("S (1-2 TAHUN)");
+  assert.equal(translateSizeLabel(once), once);
+  assert.equal(translateSizeLabel("12-18M"), "12–18 months");
+  // "cm" must survive a second pass (height labels stay stable).
+  assert.equal(translateSizeLabel("100 cm (3–4 yrs)"), "100 cm (3–4 yrs)");
+  assert.equal(translateSizeLabel(translateSizeLabel("100")), "100 cm (3–4 yrs)");
+});
+
+test("heightToAge maps AU height codes to age bands", () => {
+  assert.equal(heightToAge(90), "2–3 yrs");
+  assert.equal(heightToAge(100), "3–4 yrs");
+  assert.equal(heightToAge(150), "8–9 yrs");
+  assert.equal(heightToAge(155), "155 cm");
+});
+
+test("parseSizeMeta extracts age/weight/height from a raw label", () => {
+  const p = parseSizeMeta("S (1-2 Thn BB 5-12 KG)");
+  assert.equal(p.age, "1–2 yrs");
+  assert.deepEqual(p.weightKg, { min: 5, max: 12 });
+});
+
+test("displaySize honours height + manual modes", () => {
+  assert.equal(displaySize("S (1-2 TAHUN)", "age"), "S (1–2 yrs)");
+  assert.equal(displaySize("100", "height"), "100 cm");
+  assert.equal(displaySize("S (1-2 TAHUN)", "manual"), "S (1-2 TAHUN)");
+});
+
+test("normaliseSizeLabelMode defaults unknown values to age", () => {
+  assert.equal(normaliseSizeLabelMode("height"), "height");
+  assert.equal(normaliseSizeLabelMode(""), "age");
+  assert.equal(normaliseSizeLabelMode("nonsense"), "age");
+});
+
+test("buildSizeGuideRows yields Size · Age · Weight for the storefront table", () => {
+  const rows = buildSizeGuideRows(["S (1-2 Thn BB 5-12 KG)", "M (3-4 Thn BB 12-17 KG)"], "age");
+  assert.equal(rows[0].size, "S");
+  assert.equal(rows[0].age, "1–2 yrs");
+  assert.equal(rows[0].weight, "5–12 kg");
+});
+
+test("sizeGuideLine handles Indonesian tokens and bare heights", () => {
+  assert.equal(sizeGuideLine("S (1-2 TAHUN)"), "S (1-2 TAHUN) — 1–2 yrs");
+  assert.equal(sizeGuideLine("L 4-5 TAHUN"), "L 4-5 TAHUN — 4–5 yrs");
+  assert.equal(sizeGuideLine("100"), "100 — 3–4 yrs");
+});
+
+test("storefront size-label mirror matches the admin module", async () => {
+  // Guard against drift: the storefront copy lives in data.js so it must
+  // produce exactly the same output as the canonical TS module.
+  const src = readFileSync(
+    join(__dirname, "../../storefront/public/js/data.js"),
+    "utf8",
+  );
+  const start = src.indexOf("const SIZE_LABEL_MODES");
+  const end = src.indexOf("function optionValue(options, names)");
+  assert.ok(start >= 0 && end > start, "storefront size-label block not found");
+  const block = src.slice(start, end);
+  const factory = new Function(
+    block + "\nreturn { translateSizeLabel, displaySize };",
+  ) as () => { translateSizeLabel: (s: string) => string; displaySize: (s: string, m?: string) => string };
+  const mirror = factory();
+  const samples = [
+    "S (1-2 TAHUN)", "M (2-3 tahun)", "Xl (4-5 tahun)", "L 4-5 TAHUN",
+    "S (1-2 Thn BB 5-12 KG)", "XX (9-12 Thn BB 27-35 KG)", "100", "110",
+    "S-ADULT", "1 Years", "3-4 Years", "S (1-2 YO)", "12-18M", "2T",
+  ];
+  for (const s of samples) {
+    assert.equal(mirror.translateSizeLabel(s), translateSizeLabel(s), `drift on "${s}"`);
+  }
+  assert.equal(mirror.displaySize("100", "height"), displaySize("100", "height"));
 });
 
 console.log(`\n${passed} tests passed.`);

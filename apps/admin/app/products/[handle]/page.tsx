@@ -73,7 +73,7 @@ const CATEGORIES = [
 const BUMI_TEXT_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: "material", label: "Material & Care" },
   { key: "fibre", label: "Fibre" },
-  { key: "size_guide", label: "Size Guide", hint: "Satu baris per ukuran, mis. 'S — 1–2 yrs'" },
+  { key: "size_guide", label: "Size Guide", hint: "Satu baris per ukuran, mis. 'S — 1–2 yrs'. Dimensi panjang/lebar taruh di gambar size chart." },
   { key: "size_chart_image", label: "URL gambar size chart" },
   { key: "shipping_returns", label: "Shipping & Returns" },
   { key: "rating", label: "Rating" },
@@ -489,6 +489,7 @@ export default function ProductEditorPage() {
           audience: normaliseAudience(audience),
           size_guide: meta.size_guide || "",
           size_chart_image: meta.size_chart_image || "",
+          size_label_mode: meta.size_label_mode || "age",
           shipping_returns: meta.shipping_returns || "",
           rating: meta.rating || "",
           sold_count: meta.sold_count || "",
@@ -985,6 +986,28 @@ export default function ProductEditorPage() {
 
       <div className="card">
         <h3>Detail produk</h3>
+
+        {/* Size-label display mode. Controls how the storefront renders the
+            size buttons and the Size Guide table. The size chart image below
+            is always shown regardless of mode. */}
+        <div className="field">
+          <label>Label ukuran</label>
+          <select
+            className="input"
+            value={meta.size_label_mode || "age"}
+            onChange={(e) => setMeta((m) => ({ ...m, size_label_mode: e.target.value }))}
+          >
+            <option value="age">Umur — e.g. “S (1–2 yrs)” (default)</option>
+            <option value="height">Tinggi — e.g. “100 cm”</option>
+            <option value="manual">Manual — tampilkan teks apa adanya</option>
+          </select>
+          <p className="hint">
+            Nilai size disimpan dalam bahasa Inggris (mis. “S (1–2 yrs)”); ini
+            hanya cara menampilkannya di storefront. Gambar size chart selalu
+            tampil.
+          </p>
+        </div>
+
         {BUMI_TEXT_FIELDS.map((f) => (
           <div className="field" key={f.key}>
             <label>{f.label}</label>

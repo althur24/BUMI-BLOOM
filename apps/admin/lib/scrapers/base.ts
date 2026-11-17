@@ -64,6 +64,8 @@ export interface NormalizedProduct {
   location?: string;
   materialCare?: string;
   sizeGuide?: string;
+  // How the storefront renders size labels: "age" (default) | "height" | "manual".
+  sizeLabelMode?: string;
   shippingReturns?: string;
   fibre?: string;
 }

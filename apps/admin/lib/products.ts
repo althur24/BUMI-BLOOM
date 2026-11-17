@@ -15,6 +15,7 @@ export type BumiMetafieldKey =
   | "audience"
   | "size_guide"
   | "size_chart_image"
+  | "size_label_mode"
   | "shipping_returns"
   | "badge"
   | "is_new"
@@ -52,6 +53,8 @@ export interface AdminProductSummary {
   noColor: boolean;
   colorOptionCount: number;
   sizeGuide: boolean;
+  // bumi.size_label_mode — "age" | "height" | "manual" ("" when unset).
+  sizeLabelMode: string;
   // Storefront label: "new" | "bestseller" | null
   badge: string | null;
   // bumi.audience — drives the Girls/Boys collections. null when unset.
@@ -117,6 +120,7 @@ const BUMI_FIELDS: BumiMetafieldKey[] = [
   "audience",
   "size_guide",
   "size_chart_image",
+  "size_label_mode",
   "shipping_returns",
   "badge",
   "is_new",
@@ -137,6 +141,7 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   audience: "single_line_text_field",
   size_guide: "single_line_text_field",
   size_chart_image: "url",
+  size_label_mode: "single_line_text_field",
   shipping_returns: "single_line_text_field",
   badge: "single_line_text_field",
   is_new: "single_line_text_field",
@@ -278,6 +283,7 @@ export async function listProducts(opts: {
       noColor,
       colorOptionCount: colorValues.size,
       sizeGuide: Boolean(metafieldValue(metafields, "size_guide")),
+      sizeLabelMode: metafieldValue(metafields, "size_label_mode"),
       badge: (() => {
         const value = metafieldValue(metafields, "badge").trim().toLowerCase();
         return value === "new" || value === "bestseller" ? value : null;

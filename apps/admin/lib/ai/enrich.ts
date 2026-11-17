@@ -16,6 +16,7 @@ import {
   normalizeHex,
   sizeOptionOf,
 } from "../colors";
+import { normaliseSizeLabelMode, translateSizeLabel } from "../size-labels";
 
 export interface EnrichResult {
   enriched: NormalizedProduct;
@@ -114,7 +115,7 @@ Description: ${(np.description || "").slice(0, 2000)}
 Sizes: ${sizeValues.join(", ") || "-"}
 Colors: ${colorValues.join(", ") || "-"}
 
-Return JSON: {"title_en": clean English title (keep the colourway, no marketing fluff), "description_en": detailed English product description (translate, keep ALL real details from the source: design, material, features, fit, size notes; use short paragraphs or dash bullets separated by newlines; 3-8 sentences; never invent facts), "category": one of ["BUSY-BOOK","TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "" (use "BUSY-BOOK" for busy/quiet/soft/activity/cloth books — even if the title mentions babies or ages), "material_care": "Material: ... Care: ... (use the material stated in the source; care instructions may be standard kids clothing care)", "size_guide": "ONLY format the size/age/height data that is present in the source (one line per size, e.g. 'S — 1–2 yrs'). NEVER invent measurements. Use an empty string if no size data exists.", "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data or title to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys; use "unisex" when the item is for babies or the audience is unclear, there is no Baby category), "fibre": "short material tag from the source (e.g. 100% Cotton, Ribbed cotton), empty string if unknown"}`;
+Return JSON: {"title_en": clean English title (keep the colourway, no marketing fluff), "description_en": detailed English product description (translate, keep ALL real details from the source: design, material, features, fit, size notes; use short paragraphs or dash bullets separated by newlines; 3-8 sentences; never invent facts), "category": one of ["BUSY-BOOK","TSHIRTS","SHORTS","DRESSES","OUTERWEAR","ACCESSORIES","BABY"] or "" (use "BUSY-BOOK" for busy/quiet/soft/activity/cloth books — even if the title mentions babies or ages), "material_care": "Material: ... Care: ... (use the material stated in the source; care instructions may be standard kids clothing care)", "size_guide": "ONLY format the size/age/height data that is present in the source (one line per size, e.g. 'S — 1–2 yrs'). NEVER invent measurements. Use an empty string if no size data exists.", "sizes": [{"original":"S (1-2 TAHUN)","name":"S (1–2 yrs)"}] (translate EVERY size/ukuran option value to an English age label in the form 'S (1–2 yrs)' / 'M (3–4 yrs)'; if the source only has a numeric height like '100', convert to an approximate age '100 cm (3–4 yrs)'; translate words tahun/tahun/thn→yrs, bulan/bln→months; if a label is already English return it unchanged; use [] if no sizes), "size_label_mode": one of ["age","height","manual"] (choose "age" when size labels carry ages, "height" when they are numeric heights only, otherwise "age"), "colors": [{"original":"Hitam","name":"Black","hex":"#111111"}] (translate EVERY color name found in the variant data or title to English and infer a representative 6-digit CSS hex for it. Only colors, never sizes. Use [] if no colors), "audience": one of ["girls","boys","unisex"] (infer from title/description — e.g. "anak perempuan"=girls, "anak laki-laki"=boys; use "unisex" when the item is for babies or the audience is unclear, there is no Baby category), "fibre": "short material tag from the source (e.g. 100% Cotton, Ribbed cotton), empty string if unknown"}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -161,6 +162,39 @@ Return JSON: {"title_en": clean English title (keep the colourway, no marketing 
     if (guide && mentionsRealSize) product.sizeGuide = guide;
   }
   if (parsed.fibre) product.fibre = String(parsed.fibre);
+
+  // ── Size labels + display mode ──────────────────────────────────────────
+  // Translate size option values to English age labels so Shopify stores clean
+  // values. Trust the AI mapping but validate it (must still contain a size
+  // token from the source), and fall back to the deterministic translator so a
+  // missing/failed AI response never leaves Indonesian on the product.
+  const aiSizeMap = new Map<string, string>();
+  if (Array.isArray((parsed as any).sizes)) {
+    for (const entry of (parsed as any).sizes) {
+      if (!entry || typeof entry !== "object") continue;
+      const original = String(entry.original || "").trim();
+      const name = String(entry.name || "").trim();
+      if (original && name) aiSizeMap.set(original, name);
+    }
+  }
+  if (np.variants?.length) {
+    const used = new Set<string>();
+    product.variants = np.variants.map((v) => {
+      const sizeOpt = sizeOptionOf(v.options);
+      if (!sizeOpt || !sizeOpt.value) return v;
+      const raw = sizeOpt.value;
+      let label = aiSizeMap.get(raw) || translateSizeLabel(raw);
+      if (!label) label = raw;
+      // Never let two different raw sizes collapse to one Shopify option value.
+      if (used.has(label) && label !== raw) label = `${label} · ${raw}`;
+      used.add(label);
+      return label === raw
+        ? v
+        : { ...v, options: { ...v.options, [sizeOpt.key]: label } };
+    });
+  }
+  product.sizeLabelMode = normaliseSizeLabelMode((parsed as any).size_label_mode);
+
   if (parsed.audience) {
     // The model may still answer "baby" on an older prompt; normalise so only
     // the three real audiences ever reach Shopify.

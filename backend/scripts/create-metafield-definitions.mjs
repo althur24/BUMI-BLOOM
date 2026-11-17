@@ -41,16 +41,21 @@ async function gql(token, query, variables) {
 }
 
 const DEFS = [
-  { key: 'colors',         type: 'json',                  name: 'Colors' },
-  { key: 'fibre',          type: 'single_line_text_field', name: 'Fibre' },
-  { key: 'material',       type: 'single_line_text_field', name: 'Material' },
-  { key: 'audience',       type: 'single_line_text_field', name: 'Audience' },
-  { key: 'badge',          type: 'single_line_text_field', name: 'Badge' },
-  { key: 'is_new',         type: 'boolean',               name: 'Is New' },
-  { key: 'is_bestseller',  type: 'boolean',               name: 'Is Bestseller' },
-  { key: 'rating',         type: 'number_decimal',        name: 'Rating' },
-  { key: 'reviews_count',  type: 'number_integer',        name: 'Reviews Count' },
-  { key: 'added_at_rank',  type: 'number_integer',        name: 'Added At Rank' },
+  { key: 'colors',           type: 'json',                  name: 'Colors' },
+  { key: 'fibre',            type: 'single_line_text_field', name: 'Fibre' },
+  { key: 'material',         type: 'single_line_text_field', name: 'Material' },
+  { key: 'audience',         type: 'single_line_text_field', name: 'Audience' },
+  { key: 'badge',            type: 'single_line_text_field', name: 'Badge' },
+  { key: 'is_new',           type: 'boolean',               name: 'Is New' },
+  { key: 'is_bestseller',    type: 'boolean',               name: 'Is Bestseller' },
+  { key: 'rating',           type: 'number_decimal',        name: 'Rating' },
+  { key: 'reviews_count',    type: 'number_integer',        name: 'Reviews Count' },
+  { key: 'added_at_rank',    type: 'number_integer',        name: 'Added At Rank' },
+  { key: 'size_guide',       type: 'single_line_text_field', name: 'Size Guide' },
+  { key: 'size_chart_image', type: 'url',                   name: 'Size Chart Image' },
+  { key: 'size_label_mode',  type: 'single_line_text_field', name: 'Size Label Mode' },
+  { key: 'shipping_returns', type: 'single_line_text_field', name: 'Shipping & Returns' },
+  { key: 'sold_count',       type: 'number_integer',        name: 'Sold Count' },
 ];
 
 const CREATE = `mutation CreateDef($def: MetafieldDefinitionInput!) {

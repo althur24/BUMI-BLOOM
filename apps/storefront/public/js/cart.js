@@ -18,6 +18,17 @@ function findCartVariant(product, color, size) {
   const exact = variants.find((v) => v.color === c && v.size === s);
   if (exact) return exact;
 
+  // Legacy carts stored the raw (pre-translation) size, e.g. "S (1-2 TAHUN)".
+  // Re-run the display translation on the stored value and retry before giving
+  // up, so an existing bag survives the English size-label rollout.
+  if (s && window.BumiData && BumiData.displaySize) {
+    const translated = BumiData.displaySize(s, product.sizeLabelMode || 'age');
+    if (translated && translated !== s) {
+      const healed = variants.find((v) => v.color === c && v.size === translated);
+      if (healed) return healed;
+    }
+  }
+
   // Match only the dimensions the product actually has. This covers
   // color-only products, size-only products whose colors are cosmetic
   // (metafield-only), and legacy cart lines with "One Size"/"—".

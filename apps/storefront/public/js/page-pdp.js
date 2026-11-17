@@ -538,42 +538,76 @@
         '<button class="accordion__trigger" type="button">' + title + '<span class="accordion__icon">+</span></button>' +
         '<div class="accordion__content">' + body + '</div></div>';
     }
-    function sizeFitLabel(size) {
-      const s = String(size || '').trim();
-      const range = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
-      if (range) return range[1] + '–' + range[2] + ' yrs';
-      const singleYear = s.match(/(\d+)\s*(?:Y|YO|YRS?|YEARS?|TAHUN)/i);
-      if (singleYear) return singleYear[1] + ' yrs';
-      const months = s.match(/(\d+)\s*[-–]\s*(\d+)\s*(?:M(?:O|ONTHS?)?|BLN|BULAN)\b/i);
-      if (months) return months[1] + '–' + months[2] + ' months';
-      const toddler = s.match(/^(\d+)T$/i);
-      if (toddler) return toddler[1] + '–' + (Number(toddler[1]) + 1) + ' yrs';
-      const ageMap = { '5': '5–6 yrs', '6': '6–7 yrs', '7': '7–8 yrs', '8': '8–9 yrs' };
-      const babyMap = { '0-3M': '0–3 months', '3-6M': '3–6 months', '6-12M': '6–12 months', '12-18M': '12–18 months', '18-24M': '18–24 months' };
-      return ageMap[s] || babyMap[s] || '—';
-    }
-
     function sizeGuideHTML(product) {
       const guide = String(product.sizeGuide || '').trim();
       const chartUrl = /^https?:\/\//i.test(String(product.sizeChartImage || '').trim())
         ? String(product.sizeChartImage).trim()
         : '';
+      const mode = product.sizeLabelMode || 'age';
+      const tds = 'padding:var(--space-2) var(--space-3);';
+      const th = (label) => '<th style="text-align:left;' + tds + '">' + label + '</th>';
+      const td = (val, bold) => '<td style="' + tds + (bold ? 'font-weight:var(--fw-bold);' : '') + '">' + escapeHtml(val || '—') + '</td>';
+
+      // Build structured rows from the RAW size values so weight/height columns
+      // survive translation (the translated label drops "BB … KG"). The Size
+      // column still shows the clean display label. Falls back to the manual
+      // `size_guide` text lines when no sizes are present.
       const rows = [];
-      if (guide) {
-        guide.split(/\r?\n|\|/).map((line) => line.trim()).filter(Boolean).forEach((line) => {
+      const rawSizes = Array.isArray(product.sizesRaw) && product.sizesRaw.length
+        ? product.sizesRaw
+        : (product.sizes || []);
+
+      const hasWeight = rawSizes.some((s) => {
+        const meta = BumiData.parseSizeMeta ? BumiData.parseSizeMeta(s) : null;
+        return meta && meta.weightKg;
+      });
+      const hasHeight = rawSizes.some((s) => {
+        const meta = BumiData.parseSizeMeta ? BumiData.parseSizeMeta(s) : null;
+        return meta && meta.heightCm != null;
+      });
+
+      if (rawSizes.length) {
+        rawSizes.forEach((raw) => {
+          const meta = BumiData.parseSizeMeta ? BumiData.parseSizeMeta(raw) : {};
+          const shown = BumiData.displaySize ? BumiData.displaySize(raw, mode) : raw;
+          const prefix = String(shown).replace(/\s*\([^)]*\)\s*$/, '').trim() || shown;
+          const weight = meta.weightKg
+            ? (meta.weightKg.min === meta.weightKg.max
+                ? meta.weightKg.min + ' kg'
+                : meta.weightKg.min + '–' + meta.weightKg.max + ' kg')
+            : '';
+          const height = meta.heightCm != null ? meta.heightCm + ' cm' : '';
+          rows.push({ size: prefix, age: meta.age || '', weight, height });
+        });
+      } else if (guide) {
+        guide.split(/\r?\n|\s·\s|\|/).map((line) => line.trim()).filter(Boolean).forEach((line) => {
           if (/^size chart:/i.test(line)) return;
           const parts = line.split(/\s+[—–-]\s+/);
-          rows.push({ size: parts[0], fit: parts.slice(1).join(' — ') || '—' });
+          rows.push({ size: parts[0], age: parts.slice(1).join(' — ') || '', weight: '', height: '' });
         });
       }
-      if (!rows.length) {
-        (product.sizes || []).forEach((size) => rows.push({ size, fit: sizeFitLabel(size) }));
+
+      let table = '';
+      if (rows.length) {
+        // Mode controls the secondary column label; weight/height stay visible
+        // regardless so the shopper still sees dimensions from the source.
+        const cols = [th('Size')];
+        if (mode === 'height') cols.push(th('Height'));
+        else cols.push(th('Age'));
+        if (hasWeight) cols.push(th('Weight'));
+        if (mode !== 'height' && hasHeight) cols.push(th('Height'));
+        const body = rows.map((r) => {
+          const cells = [td(r.size, true)];
+          if (mode === 'height') cells.push(td(r.height));
+          else cells.push(td(r.age));
+          if (hasWeight) cells.push(td(r.weight));
+          if (mode !== 'height' && hasHeight) cells.push(td(r.height));
+          return '<tr>' + cells.join('') + '</tr>';
+        }).join('');
+        table = '<table style="border-collapse:collapse;font-size:var(--text-sm);"><thead><tr style="border-bottom:1px solid var(--border-color);">' +
+          cols.join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
       }
-      const table = rows.length
-        ? '<table style="border-collapse:collapse;font-size:var(--text-sm);"><thead><tr style="border-bottom:1px solid var(--border-color);"><th style="text-align:left;padding:var(--space-2) var(--space-3);">Size</th><th style="text-align:left;padding:var(--space-2) var(--space-3);">Fit guide</th></tr></thead><tbody>' +
-          rows.map((row) => '<tr><td style="padding:var(--space-2) var(--space-3);font-weight:var(--fw-bold);">' + escapeHtml(row.size) + '</td><td style="padding:var(--space-2) var(--space-3);">' + escapeHtml(row.fit) + '</td></tr>').join('') +
-          '</tbody></table>'
-        : '';
+
       const chart = chartUrl
         ? '<img src="' + escapeHtml(chartUrl) + '" alt="Size chart" loading="lazy" style="max-width:100%;margin-top:var(--space-3);border-radius:var(--radius-md);">'
         : '';

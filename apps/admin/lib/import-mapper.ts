@@ -7,6 +7,7 @@ import { colorsFromVariants } from "./colors";
 import { inferCategory } from "./categorize";
 import { normaliseAudience } from "./audience";
 import { imageIdentity } from "./image-utils";
+import { normaliseSizeLabelMode, translateSizeLabel } from "./size-labels";
 
 export interface ShopifyPushInput {
   handle: string;
@@ -94,6 +95,27 @@ export function buildShopifyPushInput(
   const colorOf = (v: ScraperVariant) => opt(v, "Warna", "Color", "Colour");
   const sizeOf = (v: ScraperVariant) => opt(v, "Ukuran", "Size");
 
+  // Size labels are stored in English on Shopify (the storefront also
+  // translates at render, but storing clean values keeps Admin and checkout
+  // English too). Each raw value is translated once so the option list and the
+  // per-variant option values always agree.
+  const sizeLabelMode = normaliseSizeLabelMode(np.sizeLabelMode);
+  const sizeLabelMap = new Map<string, string>();
+  const sizeLabel = (raw?: string): string | undefined => {
+    const value = String(raw == null ? "" : raw).trim();
+    if (!value) return undefined;
+    if (sizeLabelMap.has(value)) return sizeLabelMap.get(value);
+    let label = sizeLabelMode === "manual" ? value : translateSizeLabel(value);
+    if (!label) label = value;
+    // Disambiguate two raws that collapse to the same English label so
+    // variants never merge.
+    if ([...sizeLabelMap.values()].includes(label) && label !== value) {
+      label = `${label} · ${value}`;
+    }
+    sizeLabelMap.set(value, label);
+    return label;
+  };
+
   const colorKey = np.variants.some((v) => colorOf(v)) ? "Color" : null;
   const sizeKey = np.variants.some((v) => sizeOf(v)) ? "Size" : null;
 
@@ -104,7 +126,7 @@ export function buildShopifyPushInput(
   const variantColor = (v: ScraperVariant) =>
     colorOf(v) || (colorKey ? firstColor : undefined);
   const variantSize = (v: ScraperVariant) =>
-    sizeOf(v) || (sizeKey ? firstSize : undefined);
+    sizeLabel(sizeOf(v) || (sizeKey ? firstSize : undefined));
 
   const productCompareAt = np.compareAtPrice;
   const baseVariants = np.variants;
@@ -323,6 +345,14 @@ export function buildShopifyPushInput(
       value: np.sizeChartImage,
       type: "url",
     });
+  // Always persist a concrete mode so the storefront never has to guess; the
+  // default "age" matches the admin/import default.
+  metafields.push({
+    namespace: "bumi",
+    key: "size_label_mode",
+    value: sizeLabelMode,
+    type: "single_line_text_field",
+  });
   if (np.shippingReturns)
     metafields.push({
       namespace: "bumi",
