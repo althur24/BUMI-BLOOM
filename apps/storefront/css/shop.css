@@ -271,7 +271,10 @@ textarea.input {
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
+  /* Keep horizontal swipes inside the carousel — without contain, a hard swipe
+     at either end chains to the page and feels like it scrolls on its own. */
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -505,8 +508,10 @@ textarea.input {
   .pdp-gallery__thumbs {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     scrollbar-width: none;
     padding-bottom: var(--space-1);
   }

@@ -127,14 +127,32 @@
     const hasMultiple = gallery.length > 1;
     const altFor = (i) => escapeHtml(product.name) + (hasMultiple ? ' — image ' + (i + 1) + ' of ' + gallery.length : '');
 
+    // Shopify's CDN resizes on the fly via `width=`. Requesting a sensible size
+    // instead of the full original keeps mobile data usage and decode time down
+    // while staying sharp on a 2x display. Non-Shopify URLs are left untouched.
+    function sizedSrc(url, width) {
+      const src = String(url || '');
+      if (!/^https?:\/\/cdn\.shopify\.com\//i.test(src) && !/^https?:\/\/cdn\.shopifycdn\.com\//i.test(src)) return src;
+      try {
+        const u = new URL(src);
+        u.searchParams.set('width', String(width));
+        return u.toString();
+      } catch (e) {
+        return src;
+      }
+    }
+
+    const SLIDE_SRC_WIDTH = 1000;
+    const THUMB_SRC_WIDTH = 160;
+
     const slides = gallery.map((g, i) =>
       '<div class="pdp-gallery__slide" role="group" aria-roledescription="slide" aria-label="' + (i + 1) + ' of ' + gallery.length + '">' +
-        '<img src="' + g + '" alt="' + altFor(i) + '"' + (i === 0 ? '' : ' loading="lazy"') + ' draggable="false">' +
+        '<img src="' + sizedSrc(g, SLIDE_SRC_WIDTH) + '" data-full="' + g + '" alt="' + altFor(i) + '"' + (i === 0 ? ' fetchpriority="high" decoding="async"' : ' loading="lazy" decoding="async"') + ' draggable="false">' +
       '</div>'
     ).join('');
 
     const thumbs = gallery.map((g, i) =>
-      '<button class="pdp-gallery__thumb' + (i === 0 ? ' is-active' : '') + '" data-index="' + i + '" type="button" aria-label="View image ' + (i + 1) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"><img src="' + g + '" alt="" loading="lazy"></button>'
+      '<button class="pdp-gallery__thumb' + (i === 0 ? ' is-active' : '') + '" data-index="' + i + '" type="button" aria-label="View image ' + (i + 1) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"><img src="' + sizedSrc(g, THUMB_SRC_WIDTH) + '" alt="" loading="lazy" decoding="async"></button>'
     ).join('');
 
     const navHTML = (dir) =>
@@ -181,13 +199,63 @@
     // Gallery — swipeable, scroll-snapping carousel with arrows, thumbnail
     // strip, counter and keyboard support. All navigation funnels through
     // goTo() so the track, thumbnails and counter never fall out of sync.
+    //
+    // IMPORTANT: nothing in the scroll path may move the *page*. An earlier
+    // version called thumb.scrollIntoView() here, which browsers satisfy by
+    // scrolling every ancestor — so a vertical page scroll that nudged the
+    // track by a sub-pixel would yank the whole product page back up to the
+    // thumbnail strip. Thumbnail reveal now scrolls only the strip itself
+    // (scrollThumbIntoView) and only on explicit navigation.
     const galleryTrack = document.getElementById('pdp-gallery-track');
     const galleryViewport = document.getElementById('pdp-gallery-viewport');
     const galleryCounter = document.getElementById('pdp-gallery-current');
+    const galleryThumbs = root.querySelector('.pdp-gallery__thumbs');
+    const gallerySlides = root.querySelectorAll('.pdp-gallery__slide');
     let galleryIndex = 0;
+    let galleryInitialised = false;
 
-    function setActiveIndex(index) {
-      galleryIndex = Math.max(0, Math.min(index, gallery.length - 1));
+    // Keep the active thumbnail visible without touching the page scroll.
+    function scrollThumbIntoView() {
+      if (!galleryThumbs) return;
+      const active = galleryThumbs.querySelector('.pdp-gallery__thumb.is-active');
+      if (!active) return;
+      // A wrapped (desktop) strip never needs scrolling; bail out so we do not
+      // set scrollLeft on a non-scrollable container.
+      if (galleryThumbs.scrollWidth <= galleryThumbs.clientWidth + 1) return;
+      const thumbLeft = active.offsetLeft;
+      const thumbRight = thumbLeft + active.offsetWidth;
+      const viewLeft = galleryThumbs.scrollLeft;
+      const viewRight = viewLeft + galleryThumbs.clientWidth;
+      let next = viewLeft;
+      if (thumbLeft < viewLeft) next = thumbLeft;
+      else if (thumbRight > viewRight) next = thumbRight - galleryThumbs.clientWidth;
+      if (next !== viewLeft) galleryThumbs.scrollLeft = next;
+    }
+
+    // Eagerly decode the neighbours so a swipe never lands on a blank slide.
+    function preloadNeighbours(index) {
+      [index - 1, index + 1].forEach((i) => {
+        const img = gallerySlides[i] && gallerySlides[i].querySelector('img');
+        if (!img || img.dataset.preloaded) return;
+        img.dataset.preloaded = '1';
+        img.loading = 'eager';
+        const warm = new Image();
+        warm.decoding = 'async';
+        warm.src = img.currentSrc || img.src;
+      });
+    }
+
+    // syncThumb: only true for explicit navigation (arrow/thumbnail/keyboard/
+    // colour). Passive scroll updates the counter and arrow state but never
+    // reveals the strip, so page scroll stays untouched.
+    function setActiveIndex(index, opts) {
+      const target = Math.max(0, Math.min(index, gallery.length - 1));
+      // Nothing to do: a vertical page scroll that merely jiggles the track
+      // must not re-run any of this.
+      if (target === galleryIndex && galleryInitialised) return;
+      galleryIndex = target;
+      galleryInitialised = true;
+
       if (galleryCounter) galleryCounter.textContent = String(galleryIndex + 1);
       root.querySelectorAll('.pdp-gallery__thumb').forEach((t) => {
         const active = Number(t.dataset.index) === galleryIndex;
@@ -199,10 +267,8 @@
       if (prev) prev.disabled = galleryIndex === 0;
       if (next) next.disabled = galleryIndex === gallery.length - 1;
 
-      const activeThumb = root.querySelector('.pdp-gallery__thumb.is-active');
-      if (activeThumb && activeThumb.scrollIntoView) {
-        activeThumb.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      }
+      if (opts && opts.syncThumb) scrollThumbIntoView();
+      preloadNeighbours(galleryIndex);
     }
 
     function goTo(index, opts) {
@@ -213,11 +279,12 @@
         left: galleryTrack.clientWidth * target,
         behavior: (opts && opts.instant) || reduce ? 'auto' : 'smooth'
       });
-      setActiveIndex(target);
+      setActiveIndex(target, { syncThumb: true });
     }
 
     if (galleryTrack) {
-      setActiveIndex(0);
+      setActiveIndex(0, { syncThumb: false });
+      preloadNeighbours(0);
 
       if (!('onscrollend' in window)) {
         let scrollTimer = null;
@@ -225,6 +292,7 @@
           clearTimeout(scrollTimer);
           scrollTimer = setTimeout(() => {
             if (!galleryTrack.clientWidth) return;
+            // Passive: update the counter only. No thumbnail reveal here.
             setActiveIndex(Math.round(galleryTrack.scrollLeft / galleryTrack.clientWidth));
           }, 120);
         }, { passive: true });
@@ -248,10 +316,14 @@
         else if (event.key === 'ArrowRight') { event.preventDefault(); goTo(galleryIndex + 1); }
       });
 
-      // Re-snap the active slide when the viewport width changes (rotation,
-      // responsive breakpoints) — clientWidth changed too so offsets are stale.
+      // Re-snap only when the *width* changes. On phones the address bar
+      // collapses as you scroll, firing resize with a new height every time;
+      // reacting to that used to fight the user's scrolling.
       let resizeTimer = null;
+      let lastWidth = window.innerWidth;
       window.addEventListener('resize', () => {
+        if (window.innerWidth === lastWidth) return;
+        lastWidth = window.innerWidth;
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => goTo(galleryIndex, { instant: true }), 150);
       });
