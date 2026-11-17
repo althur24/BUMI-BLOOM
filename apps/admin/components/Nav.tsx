@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/products", label: "Produk" },
   { href: "/import", label: "Import Produk" },
   { href: "/hero", label: "Hero Homepage" },
+  { href: "/brands", label: "Brands" },
   { href: "/subscribers", label: "Subscribers" },
 ];
 

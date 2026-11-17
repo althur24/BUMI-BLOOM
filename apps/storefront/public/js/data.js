@@ -662,12 +662,56 @@ async function fetchBrands() {
   return (data.metaobjects.edges || []).map((e) => mapShopifyBrand(e.node));
 }
 
+// Admin endpoint host. The storefront calls the admin API cross-origin just
+// like /api/hero-cards (see products.js), so reuse the exact same resolution.
+function adminApiBase() {
+  return (window.BumiConfig && BumiConfig.adminApiUrl)
+    || (window.__BB_PUBLIC_ENV__ && window.__BB_PUBLIC_ENV__.checkoutApiUrl)
+    || 'http://localhost:4001';
+}
+
+// Brand display order curated in the admin (/brands). Returns an array of
+// normalised brand keys, most-prominent first. Any failure (endpoint down,
+// migration not run, empty order) yields [] so the storefront keeps its
+// default ordering — never breaks.
+async function fetchBrandOrder() {
+  try {
+    const res = await fetch(adminApiBase() + '/api/brand-order');
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rows = Array.isArray(json && json.order) ? json.order : [];
+    return rows
+      .filter((r) => r && r.brandKey)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+      .map((r) => normalizeBrandKey(r.brandKey));
+  } catch {
+    return [];
+  }
+}
+
+// Apply the curated order on top of the default one: curated brands first (in
+// their saved order), everything else keeps the default (has products first,
+// then alphabetical). Stable and non-destructive — no brand is ever removed.
+function applyBrandOrder(brands, orderKeys) {
+  const rank = new Map();
+  (orderKeys || []).forEach((key, i) => { if (key && !rank.has(key)) rank.set(key, i); });
+  const fallback = (a, b) =>
+    (b.productCount > 0) - (a.productCount > 0) || String(a.name).localeCompare(String(b.name));
+  return brands.slice().sort((a, b) => {
+    const ra = rank.has(a.key) ? rank.get(a.key) : Infinity;
+    const rb = rank.has(b.key) ? rank.get(b.key) : Infinity;
+    if (ra !== rb) return ra - rb;
+    return fallback(a, b);
+  });
+}
+
 const BumiData = {
   PRODUCTS: [],
   BRANDS: [],
   loadError: false,
   _readyPromise: null,
   _metaBrands: [],
+  _brandOrder: [],
 
   // Size-label helpers shared with page-pdp.js / cart so display + matching
   // always use the same logic (single source of truth lives above).
@@ -686,9 +730,10 @@ const BumiData = {
   // kegagalan brand (mis. definition/scope metaobject bermasalah) tidak
   // mengosongkan produk, dan sebaliknya. loadError hanya true kalau produk gagal.
   async _load() {
-    const [prodRes, brandRes] = await Promise.allSettled([
+    const [prodRes, brandRes, orderRes] = await Promise.allSettled([
       fetchShopifyProducts(),
       fetchBrands(),
+      fetchBrandOrder(),
     ]);
     if (prodRes.status === 'fulfilled') {
       this.PRODUCTS = prodRes.value;
@@ -704,9 +749,17 @@ const BumiData = {
       console.error('BumiData: failed to load brands from Shopify', brandRes.reason);
       this._metaBrands = [];
     }
+    this._brandOrder = orderRes.status === 'fulfilled' ? (orderRes.value || []) : [];
     // Brands are rebuilt from the catalogue on every load so a newly imported
     // vendor shows up on /brands without anyone touching the metaobjects.
-    this.BRANDS = buildBrands(this.PRODUCTS, this._metaBrands);
+    // The admin-curated order is applied on top (curated first, rest default).
+    this.BRANDS = applyBrandOrder(buildBrands(this.PRODUCTS, this._metaBrands), this._brandOrder);
+  },
+
+  /* Brand list already sorted by the admin-curated order. UI (home section,
+     PLP filter, /brands) should read this rather than re-sorting BRANDS. */
+  getBrands() {
+    return this.BRANDS.slice();
   },
 
   /* ── Lookup helpers ── */

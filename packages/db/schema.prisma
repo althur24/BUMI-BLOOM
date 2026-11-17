@@ -349,6 +349,19 @@ model HeroCard {
   updatedAt     DateTime @updatedAt
 }
 
+// Storefront brand display order. Rows are keyed by the normalised brand key
+// (see normalizeBrandKey in the storefront's data.js) so a Shopify metaobject
+// name and a product vendor still resolve to the same brand. Brands without a
+// row fall back to the default order (has products first, then alphabetical).
+model BrandOrder {
+  brandKey  String   @id
+  sortOrder Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
 // ── Stripe checkout ─────────────────────────────────────────────────────────
 // Stripe is the payment source of truth; Shopify remains the commerce source
 // of truth (order, stock, customer, reporting). One row per checkout session.

@@ -78,11 +78,10 @@
     }
 
     function render() {
-      // Brands with products first, then those still waiting for their first
-      // import, so the grid always leads with shoppable labels.
-      const brands = (BumiData.BRANDS || []).slice().sort((a, b) =>
-        (b.productCount > 0) - (a.productCount > 0) || String(a.name).localeCompare(String(b.name))
-      );
+      // Order is already applied by BumiData (admin-curated first, then the
+      // default has-products-first / alphabetical fallback). Do NOT re-sort
+      // here or the curated order would be lost.
+      const brands = BumiData.getBrands ? BumiData.getBrands() : (BumiData.BRANDS || []).slice();
       if (!brands.length) {
         grid.innerHTML = '<p class="brand-empty">Our brand list is loading — please refresh in a moment.</p>';
         return;
