@@ -527,6 +527,50 @@ test("import mapper collapses option-less variants to a single variant", () => {
   assert.equal(input.productPayload.options, undefined);
 });
 
+test("PDP ignores a cosmetic colour when variants have no Color option", () => {
+  // Real case: "Girl Cardigan 4.0 Mauve Purple" has Size-only variants (color
+  // "") plus a bumi.colors metafield naming "mauve purple". Treating that as a
+  // selectable colour made every size look Sold Out despite stock.
+  const src = readFileSync(
+    join(__dirname, "../../storefront/public/js/page-pdp.js"),
+    "utf8",
+  );
+  const start = src.indexOf("const colorIsSelectable");
+  const end = src.indexOf("function firstAvailableSize");
+  assert.ok(start >= 0 && end > start, "PDP colour/availability block not found");
+  const factory = new Function(
+    "product",
+    src.slice(start, end) + "\nreturn { colorIsSelectable, variantFor, sizeAvailable, colorAvailable };",
+  ) as (p: unknown) => {
+    colorIsSelectable: boolean;
+    variantFor: (c: string, s: string) => { size: string } | null;
+    sizeAvailable: (c: string, s: string) => boolean;
+    colorAvailable: (c: string) => boolean;
+  };
+
+  const sizeOnly = factory({
+    variants: [
+      { color: "", size: "6–12 months", available: true },
+      { color: "", size: "1 yr", available: true },
+    ],
+  });
+  assert.equal(sizeOnly.colorIsSelectable, false);
+  assert.equal(sizeOnly.variantFor("mauve purple", "1 yr")?.size, "1 yr");
+  assert.equal(sizeOnly.sizeAvailable("mauve purple", "1 yr"), true);
+  assert.equal(sizeOnly.colorAvailable("mauve purple"), true);
+
+  // A real Color option still filters by colour.
+  const withColor = factory({
+    variants: [
+      { color: "Mauve Purple", size: "1 yr", available: true },
+      { color: "Army Green", size: "1 yr", available: false },
+    ],
+  });
+  assert.equal(withColor.colorIsSelectable, true);
+  assert.equal(withColor.sizeAvailable("Mauve Purple", "1 yr"), true);
+  assert.equal(withColor.sizeAvailable("Army Green", "1 yr"), false);
+});
+
 test("cleanMetafields drops blank values for every type", () => {
   // A blank string is invalid for number/boolean/json fields, and one bad item
   // rejects the whole metafieldsSet batch — the bug that made "add stock" fail.

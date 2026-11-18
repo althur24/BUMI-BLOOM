@@ -52,10 +52,22 @@
     const productColors = product.colors || [];
     const allSoldOut = !(product.variants || []).some((v) => v.available);
 
+    // Some products carry a colourway name in `bumi.colors` but have NO Shopify
+    // Color variant option (size-only variants) — the colour is cosmetic. If we
+    // treated it as a selectable dimension, no variant would match the colour
+    // and every size would read "Sold Out" despite stock. Only treat colour as
+    // selectable when a variant actually carries one.
+    const colorIsSelectable = (product.variants || []).some((v) => v.color);
+
     function variantFor(color, size) {
-      return (product.variants || []).find((v) =>
-        v.size === size && (color ? v.color === color : true)
-      ) || null;
+      const variants = product.variants || [];
+      const exact = variants.find((v) => v.size === size && (!color || v.color === color));
+      if (exact) return exact;
+      // Cosmetic colour (no variant carries it): match on size alone.
+      if (color && !variants.some((v) => v.color === color)) {
+        return variants.find((v) => v.size === size) || null;
+      }
+      return null;
     }
 
     // Colour → gallery image (from Shopify variant images) so the gallery
@@ -72,14 +84,21 @@
     }
 
     function colorAvailable(color) {
-      return (product.variants || []).some((v) => v.available && (!color || v.color === color));
+      const variants = product.variants || [];
+      if (color && !variants.some((v) => v.color === color)) {
+        // Cosmetic colour → availability is decided by size alone.
+        return variants.some((v) => v.available);
+      }
+      return variants.some((v) => v.available && (!color || v.color === color));
     }
 
     function firstAvailableSize(color) {
       return product.sizes.find((s) => sizeAvailable(color, s)) || product.sizes[0] || '';
     }
 
-    let selectedColor = (productColors.find((c) => colorAvailable(c.name)) || productColors[0] || {}).name || '';
+    let selectedColor = colorIsSelectable
+      ? (productColors.find((c) => colorAvailable(c.name)) || productColors[0] || {}).name || ''
+      : '';
     let selectedSize = firstAvailableSize(selectedColor);
 
     // Price for the currently selected colour + size. Falls back to the
@@ -135,7 +154,7 @@
       return '<button class="pdp-color-swatch' + (c.name === selectedColor ? ' is-active' : '') + (soldOutColor ? ' is-sold-out' : '') + '" style="background:' + safeHex(c.hex) + '" data-color="' + name + '" title="' + name + '" aria-label="' + name + '" type="button"' + (soldOutColor ? ' disabled aria-disabled="true"' : '') + '></button>';
     }).join('');
 
-    const colorOptionHTML = productColors.length
+    const colorOptionHTML = colorIsSelectable && productColors.length
       ? '<div class="pdp-option"><p class="pdp-option__label">Colour — <span id="selected-colour">' + escapeHtml(selectedColor || '—') + '</span></p><div class="pdp-color-swatches">' + colorSwatches + '</div></div>'
       : '';
 
