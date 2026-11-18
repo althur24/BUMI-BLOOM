@@ -65,6 +65,67 @@ const CREATE = `mutation CreateDef($def: MetafieldDefinitionInput!) {
   }
 }`;
 
+const LIST = `query Defs($cursor: String) {
+  metafieldDefinitions(first: 100, ownerType: PRODUCT, namespace: "bumi", after: $cursor) {
+    pageInfo { hasNextPage endCursor }
+    edges { node { id key type access { storefront } } }
+  }
+}`;
+
+const UPDATE = `mutation UpdateDef($def: MetafieldDefinitionUpdateInput!) {
+  metafieldDefinitionUpdate(definition: $def) {
+    updatedDefinition { key }
+    userErrors { field message code }
+  }
+}`;
+
+async function listDefs(token) {
+  const out = [];
+  let cursor = null;
+  do {
+    const data = await gql(token, LIST, { cursor });
+    const conn = data.metafieldDefinitions;
+    for (const e of conn.edges) out.push(e.node);
+    cursor = conn.pageInfo.hasNextPage ? conn.pageInfo.endCursor : null;
+  } while (cursor);
+  return out;
+}
+
+// Verify what actually exists in the shop: every definition must have the same
+// type the code writes (a mismatch makes metafieldsSet reject the whole batch)
+// and PUBLIC_READ storefront access (or the storefront cannot read it at all).
+// Storefront access is auto-repaired; a wrong type is only reported, because
+// changing a definition's type requires deleting it (which deletes its values).
+async function verifyDefs(token, current) {
+  const byKey = new Map(current.map((d) => [d.key, d]));
+  let issues = 0;
+  for (const d of DEFS) {
+    const found = byKey.get(d.key);
+    if (!found) {
+      console.log(`  ✗ bumi.${d.key}  HILANG — jalankan ulang script ini`);
+      issues++;
+      continue;
+    }
+    if (found.type !== d.type) {
+      console.log(`  ⚠ bumi.${d.key}  type=${found.type} (kode menulis ${d.type}) — perlu dibuat ulang manual`);
+      issues++;
+    }
+    if (found.access?.storefront !== 'PUBLIC_READ') {
+      const res = await gql(token, UPDATE, {
+        def: { id: found.id, access: { storefront: 'PUBLIC_READ' } },
+      });
+      const errs = res.metafieldDefinitionUpdate?.userErrors || [];
+      if (errs.length) {
+        console.log(`  ✗ bumi.${d.key}  storefront access gagal diperbaiki: ${JSON.stringify(errs)}`);
+        issues++;
+      } else {
+        console.log(`  ✓ bumi.${d.key}  storefront access diperbaiki → PUBLIC_READ`);
+      }
+    }
+  }
+  return issues;
+}
+
 async function main() {
   const token = await getToken();
   let ok = 0, skipped = 0;
@@ -83,7 +144,17 @@ async function main() {
       ok++;
     }
   }
+
+  console.log('\nVerifikasi definisi:');
+  const issues = await verifyDefs(token, await listDefs(token));
+
   console.log(`\nSelesai: ${ok} baru, ${skipped} sudah ada, dari ${DEFS.length} definition.`);
+  if (issues) {
+    console.log(`⚠ ${issues} definisi perlu perhatian (lihat di atas). Perbaiki sebelum push produk.`);
+    process.exitCode = 1;
+  } else {
+    console.log('✓ Semua definisi sesuai (tipe + storefront access).');
+  }
 }
 
 main().catch((e) => { console.error('❌', e.message); process.exitCode = 1; });

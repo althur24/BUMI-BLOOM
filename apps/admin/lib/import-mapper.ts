@@ -13,6 +13,11 @@ export interface ShopifyPushInput {
   handle: string;
   productPayload: Record<string, unknown>;
   metafields: { namespace: string; key: string; value: string; type: string }[];
+  // Lifecycle fields (badge / is_new / is_bestseller / added_at_rank) describe a
+  // product's first appearance. They are applied only when a product is
+  // created; a re-import of an existing product must not reset an admin's
+  // badge or re-rank the homepage.
+  lifecycleMetafields?: { namespace: string; key: string; value: string; type: string }[];
   // Colour name (normalised) → image src, so the push can set variant images.
   colorImages?: Record<string, string>;
 }
@@ -73,12 +78,14 @@ function textToHtml(text: string | undefined): string {
 
 function normaliseCategory(value: string | undefined): string {
   const v = String(value || "").toLowerCase().trim();
-  if (["busy-book", "tshirts", "shorts", "dresses", "outerwear", "accessories", "baby"].includes(v)) {
+  if (["busy-book", "tshirts", "shorts", "dresses", "outerwear", "accessories"].includes(v)) {
     return v;
   }
   // "BUSY_BOOK" (Gemini) / "busy book" → the canonical hyphenated slug.
   const v2 = v.replace(/[\s_]+/g, "-");
   if (v2 !== v && ["busy-book"].includes(v2)) return v2;
+  // Legacy AI/imports used "baby"; there is no such category on the storefront,
+  // so it resolves through inferCategory() to the closest real one.
   return inferCategory(v);
 }
 
@@ -129,7 +136,32 @@ export function buildShopifyPushInput(
     sizeLabel(sizeOf(v) || (sizeKey ? firstSize : undefined));
 
   const productCompareAt = np.compareAtPrice;
-  const baseVariants = np.variants;
+
+  // Shopify builds a product from the cartesian product of its option values.
+  // Two payload shapes are rejected with 422 "invalid variant" and are guarded
+  // here:
+  //   1) more than one variant but no recognised Color/Size option — Shopify
+  //      allows only a single option-less variant, so collapse to the first;
+  //   2) duplicate Color+Size combinations — drop repeats (keep the first).
+  let baseVariants = np.variants;
+  if (baseVariants.length > 1 && !colorKey && !sizeKey) {
+    console.warn(
+      `[import] ${baseVariants.length} varian tanpa opsi Color/Size — hanya varian pertama dipakai.`,
+    );
+    baseVariants = baseVariants.slice(0, 1);
+  }
+  const variantKey = (v: ScraperVariant): string =>
+    `${colorKey ? variantColor(v) || "" : ""}|${sizeKey ? variantSize(v) || "" : ""}`
+      .trim()
+      .toLowerCase();
+  const seenVariantKeys = new Set<string>();
+  baseVariants = baseVariants.filter((v) => {
+    const key = variantKey(v);
+    if (seenVariantKeys.has(key)) return false;
+    seenVariantKeys.add(key);
+    return true;
+  });
+
   const variants =
     baseVariants.length > 0
       ? baseVariants.map((v) => {
@@ -235,8 +267,10 @@ export function buildShopifyPushInput(
     }
     return out;
   };
-  const colorValues = uniqueValues(np.variants.map((v) => variantColor(v)));
-  const sizeValues = uniqueValues(np.variants.map((v) => variantSize(v)));
+  // Option values must match the variant option values exactly; both are
+  // clipped to Shopify's 255-char limit so a long label cannot desync them.
+  const colorValues = uniqueValues(baseVariants.map((v) => variantColor(v))).map((v) => clip(v, 255));
+  const sizeValues = uniqueValues(baseVariants.map((v) => variantSize(v))).map((v) => clip(v, 255));
 
   const options = [];
   if (colorKey)
@@ -244,11 +278,11 @@ export function buildShopifyPushInput(
   if (sizeKey)
     options.push({ name: "Size", values: sizeValues.length ? sizeValues : ["Default"] });
 
-  if (np.variants.length > 100) {
+  if (variants.length > 100) {
     // REST product creation caps at 100 variants; the Shopify push uses the
     // GraphQL productSet path for these so every colour × size survives.
     console.warn(
-      `[import] ${np.variants.length} varian — push lewat GraphQL productSet (tanpa batas 100).`,
+      `[import] ${variants.length} varian — push lewat GraphQL productSet (tanpa batas 100).`,
     );
   }
 
@@ -293,25 +327,27 @@ export function buildShopifyPushInput(
       value: np.currency,
       type: "single_line_text_field",
     });
-  if (np.rating != null)
+  // Numeric metafields must be finite: "NaN" would make metafieldsSet reject
+  // the whole batch ("Value must be a decimal/integer").
+  if (np.rating != null && Number.isFinite(Number(np.rating)))
     metafields.push({
       namespace: "bumi",
       key: "rating",
       value: String(np.rating),
       type: "number_decimal",
     });
-  if (np.reviewsCount != null)
+  if (np.reviewsCount != null && Number.isFinite(Number(np.reviewsCount)))
     metafields.push({
       namespace: "bumi",
       key: "reviews_count",
-      value: String(Math.round(np.reviewsCount)),
+      value: String(Math.round(Number(np.reviewsCount))),
       type: "number_integer",
     });
-  if (np.soldCount != null)
+  if (np.soldCount != null && Number.isFinite(Number(np.soldCount)))
     metafields.push({
       namespace: "bumi",
       key: "sold_count",
-      value: String(Math.round(np.soldCount)),
+      value: String(Math.round(Number(np.soldCount))),
       type: "number_integer",
     });
 
@@ -374,19 +410,18 @@ export function buildShopifyPushInput(
     value: audience,
     type: "single_line_text_field",
   });
-  metafields.push({ namespace: "bumi", key: "is_new", value: "true", type: "boolean" });
-  metafields.push({
-    namespace: "bumi",
-    key: "badge",
-    value: "new",
-    type: "single_line_text_field",
-  });
-  metafields.push({
-    namespace: "bumi",
-    key: "added_at_rank",
-    value: String(Date.now()),
-    type: "number_integer",
-  });
 
-  return { handle, productPayload, metafields, colorImages: colorImageMap };
+  // Lifecycle fields — written only when the product is first created (see
+  // createProductPush). Kept separate so a re-import never clobbers a manually
+  // chosen badge or pushes an old product back to the top of the homepage.
+  const lifecycleMetafields: ShopifyPushInput["metafields"] = [
+    { namespace: "bumi", key: "is_new", value: "true", type: "boolean" },
+    // Explicit "false" so every product has the key defined from the start
+    // (the storefront reads it to build the Bestsellers listing).
+    { namespace: "bumi", key: "is_bestseller", value: "false", type: "boolean" },
+    { namespace: "bumi", key: "badge", value: "new", type: "single_line_text_field" },
+    { namespace: "bumi", key: "added_at_rank", value: String(Date.now()), type: "number_integer" },
+  ];
+
+  return { handle, productPayload, metafields, lifecycleMetafields, colorImages: colorImageMap };
 }

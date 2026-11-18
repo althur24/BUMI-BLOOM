@@ -82,10 +82,34 @@
     let selectedColor = (productColors.find((c) => colorAvailable(c.name)) || productColors[0] || {}).name || '';
     let selectedSize = firstAvailableSize(selectedColor);
 
+    // Price for the currently selected colour + size. Falls back to the
+    // product-level pair (the discounted variant chosen in the data layer) only
+    // when no exact variant matches — so the headline price always matches the
+    // shopper's selection instead of showing another size's price.
+    function selectedPriceInfo() {
+      const variant = variantFor(selectedColor, selectedSize);
+      if (variant && Number.isFinite(variant.price)) {
+        const compareAt = Number.isFinite(variant.compareAt) && variant.compareAt > variant.price
+          ? variant.compareAt
+          : undefined;
+        return { price: variant.price, compareAt };
+      }
+      return { price: product.price, compareAt: product.compareAt };
+    }
+
     function buildPriceHTML() {
-      return product.compareAt
-        ? BumiData.formatPrice(product.price) + '<span class="pdp-price__original">' + BumiData.formatPrice(product.compareAt) + '</span>'
-        : BumiData.formatPrice(product.price);
+      const { price, compareAt } = selectedPriceInfo();
+      return compareAt
+        ? BumiData.formatPrice(price) + '<span class="pdp-price__original">' + BumiData.formatPrice(compareAt) + '</span>'
+        : BumiData.formatPrice(price);
+    }
+
+    // Keep the headline + sticky price in step with the selected variant.
+    function refreshPriceUI() {
+      const priceEl = document.getElementById('pdp-price');
+      if (priceEl) priceEl.innerHTML = buildPriceHTML();
+      const stickyPrice = root.querySelector('.pdp-sticky-bar__price');
+      if (stickyPrice) stickyPrice.textContent = BumiData.formatPrice(selectedPriceInfo().price);
     }
 
     const badges = { new: 'New', bestseller: 'Bestseller' };
@@ -194,7 +218,7 @@
           accordionHTML(product) +
         '</div>' +
       '</div></div>' +
-      '<div class="pdp-sticky-bar"><div class="container"><div class="pdp-sticky-bar__inner"><span class="pdp-sticky-bar__price">' + BumiData.formatPrice(product.price) + '</span><button class="btn btn--primary" id="add-to-bag-sticky" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button></div></div></div>';
+      '<div class="pdp-sticky-bar"><div class="container"><div class="pdp-sticky-bar__inner"><span class="pdp-sticky-bar__price">' + BumiData.formatPrice(selectedPriceInfo().price) + '</span><button class="btn btn--primary" id="add-to-bag-sticky" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button></div></div></div>';
 
     // Gallery — swipeable, scroll-snapping carousel with arrows, thumbnail
     // strip, counter and keyboard support. All navigation funnels through
@@ -396,6 +420,8 @@
         btn.disabled = !available;
         btn.textContent = available ? 'Add to Bag' : 'Sold Out';
       });
+
+      refreshPriceUI();
     }
 
     // Add to bag
@@ -405,7 +431,7 @@
         return;
       }
       BumiCart.addItem({
-        id: product.id, name: product.name, brand: product.brand, price: product.price,
+        id: product.id, name: product.name, brand: product.brand, price: selectedPriceInfo().price,
         size: selectedSize || '', color: selectedColor || '', image: product.image
       });
     }
@@ -434,10 +460,7 @@
 
     // Re-render prices when the currency switch changes
     window.addEventListener('currency-updated', () => {
-      const priceEl = document.getElementById('pdp-price');
-      if (priceEl) priceEl.innerHTML = buildPriceHTML();
-      const stickyPrice = root.querySelector('.pdp-sticky-bar__price');
-      if (stickyPrice) stickyPrice.textContent = BumiData.formatPrice(product.price);
+      refreshPriceUI();
       if (related.length) relatedGrid.innerHTML = related.map((p, i) => relatedCardHTML(p, i)).join('');
     });
 
@@ -465,24 +488,52 @@
       const soldOut = p.soldOut === true;
       const active = BumiWishlist.isWishlisted(p.id) ? ' is-active' : '';
       const fill = BumiWishlist.isWishlisted(p.id) ? 'currentColor' : 'none';
+
+      // Mirror the PLP card: a discount badge next to the status badge and a
+      // struck-through original price, derived from the unrounded values.
+      const onSale = Number.isFinite(p.priceRaw) && Number.isFinite(p.compareAtRaw) && p.compareAtRaw > p.priceRaw;
+      const pct = onSale ? Math.max(1, Math.round((1 - p.priceRaw / p.compareAtRaw) * 100)) : 0;
+      const statusBadge = p.badge === 'new'
+        ? '<span class="product-card__badge product-card__badge--new">New</span>'
+        : p.badge === 'bestseller'
+          ? '<span class="product-card__badge product-card__badge--bestseller">Bestseller</span>'
+          : '';
+      const saleBadge = onSale
+        ? '<span class="product-card__badge product-card__badge--sale" aria-label="' + pct + ' percent off">-' + pct + '%</span>'
+        : '';
+      const badges = soldOut
+        ? '<span class="product-card__badge product-card__badge--soldout">Sold Out</span>'
+        : (statusBadge || saleBadge)
+          ? '<div class="product-card__badges">' + statusBadge + saleBadge + '</div>'
+          : '';
+      const fromPrefix = p.priceFrom && !onSale ? 'From ' : '';
+      const priceHTML = onSale
+        ? fromPrefix + BumiData.formatPrice(p.price) + ' <span class="product-card__price--original">' + BumiData.formatPrice(p.compareAt) + '</span>'
+        : fromPrefix + BumiData.formatPrice(p.price);
+
       return '<article class="product-card product-card--bg-' + bg + (soldOut ? ' product-card--sold-out' : '') + '" data-category="' + p.category + '">' +
         '<div class="product-card__image-wrap">' +
           '<img src="' + p.image + '" alt="' + p.name + '" class="product-card__image" loading="lazy">' +
-          (soldOut ? '<span class="product-card__badge product-card__badge--soldout">Sold Out</span>' : '') +
+          badges +
           '<button class="product-card__wishlist' + active + '" data-id="' + p.id + '" aria-label="Save ' + p.name + ' to wishlist" type="button"><svg viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>' +
         '</div>' +
         '<div class="product-card__info"><p class="product-card__brand">' + p.brand + '</p>' +
           '<h3 class="product-card__name"><a class="product-card__link" href="/products/' + p.id + '">' + p.name + '</a></h3>' +
-          '<p class="product-card__price">' + BumiData.formatPrice(p.price) + '</p></div>' +
+          '<p class="product-card__price' + (onSale ? ' product-card__price--sale' : '') + '">' + priceHTML + '</p></div>' +
       '</article>';
     }
 
     function accordionHTML(product) {
+      // Shipping copy comes from the imported `bumi.shipping_returns` metafield
+      // when present; otherwise fall back to the store's standard policy.
+      const shippingCopy = product.shippingReturns
+        ? richText(product.shippingReturns)
+        : '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>';
       return '<div class="accordion" style="margin-top:var(--space-6);">' +
         item('Description', richText(product.description), true) +
         item('Material &amp; Care', richText(product.material)) +
         item('Size Guide', sizeGuideHTML(product)) +
-        item('Shipping &amp; Returns', '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>') +
+        item('Shipping &amp; Returns', shippingCopy) +
       '</div>';
     }
 

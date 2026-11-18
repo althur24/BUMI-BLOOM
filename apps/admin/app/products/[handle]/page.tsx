@@ -99,7 +99,15 @@ const BADGE_OPTIONS = [
   { value: "", label: "Tanpa label", hint: "Tidak ada badge di storefront." },
   { value: "new", label: "New", hint: "Badge “New” + produk masuk halaman New In." },
   { value: "bestseller", label: "Bestseller", hint: "Badge “Bestseller” + masuk halaman Bestsellers." },
+  { value: "low-stock", label: "Low Stock", hint: "Badge “Low Stock” saja — tidak mengubah New In/Bestsellers." },
 ] as const;
+
+// Metadata shown in the preview for each label.
+const BADGE_PREVIEW: Record<string, { label: string; className: string }> = {
+  new: { label: "New", className: "badge--green" },
+  bestseller: { label: "Bestseller", className: "badge--yellow" },
+  "low-stock": { label: "Low Stock", className: "badge--coral" },
+};
 
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(path, init);
@@ -209,7 +217,7 @@ export default function ProductEditorPage() {
         setMeta(p.metafields || {});
         const loadedBadge = String(p.metafields.badge || "").trim().toLowerCase();
         setBadgeValue(
-          loadedBadge === "new" || loadedBadge === "bestseller" ? loadedBadge : "",
+          BADGE_OPTIONS.some((o) => o.value === loadedBadge) ? loadedBadge : "",
         );
         setAudience(normaliseAudience(p.metafields.audience));
         setVariantEdits({});
@@ -495,9 +503,11 @@ export default function ProductEditorPage() {
           sold_count: meta.sold_count || "",
           badge: badgeValue,
           // `is_new` / `is_bestseller` power the New In and Bestsellers
-          // listings; they must never drift from `badge`.
-          is_new: badgeValue === "new" ? "true" : "",
-          is_bestseller: badgeValue === "bestseller" ? "true" : "",
+          // listings; they must never drift from `badge`. These metafields are
+          // boolean, so always send an explicit "true"/"false" (an empty string
+          // cannot be stored in a boolean field).
+          is_new: badgeValue === "new" ? "true" : "false",
+          is_bestseller: badgeValue === "bestseller" ? "true" : "false",
         },
       };
 
@@ -946,11 +956,11 @@ export default function ProductEditorPage() {
             </label>
           ))}
         </div>
-        {badgeValue && (
+        {badgeValue && BADGE_PREVIEW[badgeValue] && (
           <p className="badge-preview" aria-live="polite">
             Preview:{" "}
-            <span className={"badge badge--" + (badgeValue === "new" ? "green" : "yellow")}>
-              {badgeValue === "new" ? "New" : "Bestseller"}
+            <span className={"badge " + BADGE_PREVIEW[badgeValue].className}>
+              {BADGE_PREVIEW[badgeValue].label}
             </span>
           </p>
         )}

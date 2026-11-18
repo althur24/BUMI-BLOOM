@@ -292,6 +292,24 @@
   color: var(--color-white);
 }
 
+/* Badge stack: the status badge (New / Bestseller / …) and the discount badge
+   (-N%) can appear together, so they share one top-left container instead of
+   fighting over the same corner. */
+.product-card__badges {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  z-index: 2;
+}
+
+.product-card__badges .product-card__badge {
+  position: static;
+}
+
 .product-card--sold-out .product-card__image {
   opacity: 0.55;
 }

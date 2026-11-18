@@ -1,7 +1,10 @@
 // Rule-based product categorisation for the storefront taxonomy
-// (busy-book | tshirts | shorts | dresses | outerwear | accessories | baby)
-// and audience (girls | boys | baby | unisex). AI enrichment can refine
-// these, but imports must be usable when GEMINI_API_KEY is not configured.
+// (busy-book | tshirts | shorts | dresses | outerwear | accessories)
+// and audience (girls | boys | unisex). AI enrichment can refine these, but
+// imports must be usable when GEMINI_API_KEY is not configured.
+//
+// There is no "baby" category: the storefront has no Baby collection/filter, so
+// baby wording resolves to the closest real category (see the final rule).
 
 import { parseSizeMeta } from "./size-labels";
 
@@ -12,20 +15,15 @@ export type StoreCategory =
   | "dresses"
   | "outerwear"
   | "accessories"
-  | "baby"
   | "";
 
 const CATEGORY_RULES: { category: Exclude<StoreCategory, "">; re: RegExp }[] = [
   // Busy books are toys, not clothing — and their titles almost always also
   // mention ages/babies ("...usia 0 bulan... bayi"), so this rule must run
-  // before the baby rule or every busy book would be miscategorised as baby.
+  // first or every busy book would be miscategorised.
   {
     category: "busy-book",
     re: /\b(busy ?books?|quiet ?books?|activity ?books?|soft ?books?|cloth ?books?|fabric ?books?|felt ?books?|contrast ?books?|buku (?:mainan|maianan|edukasi|aktivitas|activity)|softbook)\b/i,
-  },
-  {
-    category: "baby",
-    re: /\b(baby|bayi|newborn|infant|romper|bodysuit|sleepsuit|onesie|0-?24\s*m)\b/i,
   },
   {
     category: "outerwear",
@@ -46,6 +44,14 @@ const CATEGORY_RULES: { category: Exclude<StoreCategory, "">; re: RegExp }[] = [
   {
     category: "tshirts",
     re: /\b(shirt|tee|t-shirt|tshirt|top|atasan|kaos|blouse|polo|longsleeve|long sleeve|short sleeve)\b/i,
+  },
+  {
+    // Baby-only wording is not a category of its own. Garment rules above win
+    // (a "baby jacket" is outerwear, a "baby dress" is a dress); bare
+    // baby/infant phrasing and baby basics (romper/onesie/bodysuit/sleepsuit)
+    // fall back to tops — the closest real category.
+    category: "tshirts",
+    re: /\b(baby|bayi|newborn|infant|romper|bodysuit|sleepsuit|onesie|balita|0-?24\s*m)\b/i,
   },
 ];
 

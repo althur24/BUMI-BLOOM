@@ -4,7 +4,7 @@
 // This module is the other direction: it lets an admin fix a live product
 // (colours, variants, images, metafields) without re-importing it.
 
-import { adminRest, setMetafields } from "./shopify";
+import { adminRest, ensureMetafieldTypes, setMetafields } from "./shopify";
 import { colorsFromVariants, normalizeHex, resolveColorHex } from "./colors";
 import { normaliseAudience, parseAudience, type ProductAudience } from "./audience";
 
@@ -144,8 +144,12 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   size_label_mode: "single_line_text_field",
   shipping_returns: "single_line_text_field",
   badge: "single_line_text_field",
-  is_new: "single_line_text_field",
-  is_bestseller: "single_line_text_field",
+  // Boolean (matching the Shopify definition in
+  // backend/scripts/create-metafield-definitions.mjs) so the editor and the
+  // import pipeline write the same type. A mismatch makes metafieldsSet reject
+  // the whole batch, silently losing every other field on save.
+  is_new: "boolean",
+  is_bestseller: "boolean",
   rating: "number_decimal",
   reviews_count: "number_integer",
   sold_count: "number_integer",
@@ -155,17 +159,15 @@ const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   no_color: "boolean",
 };
 
-// Storefront product types. "baby" is kept as a *valid type* even though the
-// Baby collection is gone: the scrapper still infers it for infant garments and
-// those products keep showing on /products. Dropping it here would flag every
-// one of them as "Kategori tidak standar" for no reason.
+// Storefront product types. There is no "baby" type: the storefront has no
+// Baby collection/filter, so imports map baby wording to the closest real
+// category (see normaliseCategory in import-mapper.ts).
 const STORE_CATEGORIES = new Set([
   "tshirts",
   "shorts",
   "dresses",
   "outerwear",
   "accessories",
-  "baby",
   "busy-book",
 ]);
 
@@ -399,6 +401,10 @@ async function upsertMetafields(
     const typed = key as BumiMetafieldKey;
     if (!BUMI_FIELDS.includes(typed)) continue;
     if (value == null) continue;
+    // An empty value is invalid for number/boolean/json fields and would make
+    // metafieldsSet reject the whole batch. Blank labels (badge/is_new/…) are
+    // cleared separately via clearMetafields, so skipping them here is safe.
+    if (!String(value).trim()) continue;
     values.push({
       namespace: "bumi",
       key: typed,
@@ -407,6 +413,11 @@ async function upsertMetafields(
     });
   }
   if (!values.length) return [];
+  // Self-heal any key whose stored type disagrees with the one we now write
+  // (e.g. an old `is_new` stored as text). metafieldsSet rejects the whole
+  // batch on a type mismatch, so without this a single stale key silently
+  // loses every field in the same save.
+  await ensureMetafieldTypes(productId, values);
   await setMetafields(`gid://shopify/Product/${productId}`, values);
   return values.map((v) => v.key);
 }

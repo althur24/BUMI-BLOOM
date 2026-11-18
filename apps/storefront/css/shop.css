@@ -145,10 +145,11 @@ textarea.input {
   accent-color: var(--color-coral);
   flex-shrink: 0;
 }
-.plp-sidebar__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+.plp-sidebar__count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
 }
 .plp-sidebar__swatches {
   display: flex;

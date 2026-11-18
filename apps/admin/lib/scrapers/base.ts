@@ -150,10 +150,13 @@ export function extractProductFromJsonLd(
         ? obj.brand
         : obj.brand?.name,
   };
-  if (obj.aggregateRating?.ratingValue)
-    partial.rating = Number(obj.aggregateRating.ratingValue);
-  if (obj.aggregateRating?.reviewCount)
-    partial.reviewsCount = Number(obj.aggregateRating.reviewCount);
+  // Guard against non-numeric JSON-LD values ("n/a" → NaN): a NaN rating would
+  // be written as the string "NaN" to a number_decimal metafield and make the
+  // whole metafieldsSet batch fail.
+  const rating = Number(obj.aggregateRating?.ratingValue);
+  if (Number.isFinite(rating) && rating > 0) partial.rating = rating;
+  const reviewsCount = Number(obj.aggregateRating?.reviewCount);
+  if (Number.isFinite(reviewsCount) && reviewsCount >= 0) partial.reviewsCount = reviewsCount;
   return partial;
 }
 

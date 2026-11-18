@@ -356,19 +356,21 @@ export async function ensureBrandMetaobject(
   }
 }
 
-export async function setMetafields(
-  ownerId: string,
+// Prepare metafields for a metafieldsSet call:
+//  - single_line_text_field must not contain line breaks, so newlines are
+//    joined with " · " (Shopify rejects the whole batch otherwise).
+//  - EVERY blank value is dropped, whatever its type. An empty string is
+//    invalid for number_decimal / number_integer / boolean / json too, and one
+//    bad item rejects the entire batch — which used to make saving a product
+//    (even just editing stock) fail with "Value must be a decimal/integer".
+export function cleanMetafields(
   metafields: { namespace: string; key: string; value: string; type: string }[],
-): Promise<void> {
-  // single_line_text_field rejects line breaks, and one bad item rejects the
-  // whole metafieldsSet batch. Normalize text and drop blanks before sending.
-  const cleaned = metafields
+): { namespace: string; key: string; value: string; type: string }[] {
+  return metafields
     .map((m) =>
       m.type === "single_line_text_field"
         ? {
             ...m,
-            // Shopify rejects newlines in single-line fields; join lines with
-            // a separator so "S — 1-2 yrs\nM — 3-4 yrs" stays readable.
             value: String(m.value || "")
               .replace(/\s*[\r\n]+\s*/g, " · ")
               .replace(/\t+/g, " ")
@@ -377,15 +379,14 @@ export async function setMetafields(
           }
         : m,
     )
-    .filter(
-      (m) =>
-        !(
-          (m.type === "single_line_text_field" ||
-            m.type === "multi_line_text_field" ||
-            m.type === "url") &&
-          !String(m.value || "").trim()
-        ),
-    );
+    .filter((m) => String(m.value ?? "").trim() !== "");
+}
+
+export async function setMetafields(
+  ownerId: string,
+  metafields: { namespace: string; key: string; value: string; type: string }[],
+): Promise<void> {
+  const cleaned = cleanMetafields(metafields);
   if (!cleaned.length) return;
   const data = await adminGraphQL<{
     metafieldsSet: {
@@ -538,7 +539,7 @@ async function getProductMetafield(
 // Shopify rejects a metafieldsSet batch when an existing key has a different
 // type (e.g. size_guide moved from single_line to multi_line). Delete the old
 // definition first so the new one can be written.
-async function ensureMetafieldTypes(
+export async function ensureMetafieldTypes(
   productId: number | string,
   metafields: MetafieldInput[],
 ): Promise<void> {
@@ -825,11 +826,23 @@ async function applyVariantImages(
   }
 }
 
+// Lifecycle fields (badge / is_new / is_bestseller / added_at_rank) are only
+// meaningful when a product first appears, so they are merged in here — on the
+// create path only. The update path deliberately writes `metafields` alone so a
+// re-import never resets an admin's badge or re-ranks the homepage.
+function createMetafields(input: {
+  metafields?: MetafieldInput[];
+  lifecycleMetafields?: MetafieldInput[];
+}): MetafieldInput[] {
+  return [...(input.metafields || []), ...(input.lifecycleMetafields || [])];
+}
+
 async function createProductPush(
   input: {
     handle: string;
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
+    lifecycleMetafields?: MetafieldInput[];
     publicationId?: string;
     colorImages?: Record<string, string>;
   },
@@ -845,16 +858,20 @@ async function createProductPush(
   }
 
   const created = await createProduct(input.productPayload);
-  const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+
+  // Variant images and inventory MUST be applied before the metafield write:
+  // a metafieldsSet failure would otherwise abort the push and leave the new
+  // product with zero stock — which the storefront then shows as "Sold Out".
+  const payloadOptions = input.productPayload.options as { name: string }[] | undefined;
+  await applyVariantImages(created.id, payloadVariants, payloadOptions, input.colorImages, warnings);
+  await applyInventory(created.id, payloadVariants, payloadOptions, warnings);
+  await publishToHeadless(created.id, publicationId);
+
+  const metafields = createMetafields(input).filter((m) => String(m.value || "").trim());
   if (metafields.length) {
     await ensureMetafieldTypes(created.id, metafields);
     await setMetafields(`gid://shopify/Product/${created.id}`, metafields);
   }
-  await publishToHeadless(created.id, publicationId);
-
-  const payloadOptions = input.productPayload.options as { name: string }[] | undefined;
-  await applyVariantImages(created.id, payloadVariants, payloadOptions, input.colorImages, warnings);
-  await applyInventory(created.id, payloadVariants, payloadOptions, warnings);
 
   return { productId: created.id, shopifyAdminUrl: productAdminUrl(created.id), warnings };
 }
@@ -868,6 +885,7 @@ async function createProductViaProductSet(
     handle: string;
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
+    lifecycleMetafields?: MetafieldInput[];
     publicationId?: string;
     colorImages?: Record<string, string>;
   },
@@ -976,12 +994,16 @@ async function createProductViaProductSet(
   if (!gid) throw new Error("productSet tidak mengembalikan produk.");
   const productId = Number(gid.split("/").pop());
 
-  const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
+  // Publish before writing metafields so a metafieldsSet failure cannot leave
+  // the product invisible on the storefront. (Inventory is set inside the
+  // productSet mutation above, so stock is already in place.)
+  await publishToHeadless(productId, publicationId);
+
+  const metafields = createMetafields(input).filter((m) => String(m.value || "").trim());
   if (metafields.length) {
     await ensureMetafieldTypes(productId, metafields);
     await setMetafields(`gid://shopify/Product/${productId}`, metafields);
   }
-  await publishToHeadless(productId, publicationId);
 
   warnings.push(
     `Produk dibuat via GraphQL productSet (${payloadVariants.length} varian, >100).`,
@@ -1161,13 +1183,13 @@ async function updateProductPush(
       input.colorImages,
       warnings,
     );
+    await applyInventory(productId, payloadVariants, payloadOptions, warnings);
+    await publishToHeadless(productId, publicationId);
     const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
     if (metafields.length) {
       await ensureMetafieldTypes(productId, metafields);
       await setMetafields(`gid://shopify/Product/${productId}`, metafields);
     }
-    await applyInventory(productId, payloadVariants, payloadOptions, warnings);
-    await publishToHeadless(productId, publicationId);
     return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
   }
 
@@ -1184,11 +1206,16 @@ async function updateProductPush(
     const body: Record<string, any> = {
       price: incoming.price,
       sku: incoming.sku || match?.sku || "",
-      compare_at_price:
+    };
+    // Only touch compare-at when the payload actually carries the key. An
+    // import that lost the marketplace strike price must not wipe an existing
+    // sale (which would also remove the storefront's sale badge and listing).
+    if (Object.prototype.hasOwnProperty.call(incoming, "compare_at_price")) {
+      body.compare_at_price =
         incoming.compare_at_price != null && incoming.compare_at_price !== ""
           ? incoming.compare_at_price
-          : null,
-    };
+          : null;
+    }
     if (incoming.grams) body.grams = incoming.grams;
     if (match) {
       matchedUpdates.push({ id: match.id, ...body });
@@ -1233,20 +1260,23 @@ async function updateProductPush(
     warnings,
   );
 
-  // 3) Metafields (upsert by namespace+key).
+  // 3) Variant images (colour → image) after the new images exist.
+  await applyVariantImages(productId, payloadVariants, payloadOptions, input.colorImages, warnings);
+
+  // 4) Inventory — verify/enforce the requested quantities. Done BEFORE the
+  //    metafield write: a metafieldsSet failure must not leave stale stock.
+  await applyInventory(productId, payloadVariants, payloadOptions, warnings);
+
+  await publishToHeadless(productId, publicationId);
+
+  // 5) Metafields (upsert by namespace+key). Lifecycle fields
+  //    (lifecycleMetafields) are intentionally omitted here: this is an update,
+  //    so a re-import must preserve the admin's badge / New flag / homepage rank.
   const metafields = (input.metafields || []).filter((m) => String(m.value || "").trim());
   if (metafields.length) {
     await ensureMetafieldTypes(productId, metafields);
     await setMetafields(`gid://shopify/Product/${productId}`, metafields);
   }
-
-  // 4) Variant images (colour → image) after the new images exist.
-  await applyVariantImages(productId, payloadVariants, payloadOptions, input.colorImages, warnings);
-
-  // 5) Inventory — verify/enforce the requested quantities.
-  await applyInventory(productId, payloadVariants, payloadOptions, warnings);
-
-  await publishToHeadless(productId, publicationId);
 
   return { productId, shopifyAdminUrl: productAdminUrl(productId), warnings };
 }
@@ -1258,6 +1288,7 @@ export async function pushProductToShopify(
     handle: string;
     productPayload: Record<string, unknown>;
     metafields?: MetafieldInput[];
+    lifecycleMetafields?: MetafieldInput[];
     publicationId?: string;
     colorImages?: Record<string, string>;
   },

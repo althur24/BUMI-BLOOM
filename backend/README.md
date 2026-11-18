@@ -3,8 +3,9 @@
 Supabase (Postgres + Storage) + Prisma + Express (TypeScript).
 
 The backend is now a **stateless read-only API** (`/api`) plus a `/health`
-check. The admin UI is the storefront's `admin.html`, which talks to Supabase
-directly (RLS-gated) — AdminJS has been removed from this service.
+check. Product/catalogue management has moved to the Shopify-backed admin app
+(`apps/admin`); the old storefront `admin.html` panel and its direct Supabase
+writes are retired. AdminJS has been removed from this service.
 
 ## Prerequisites
 

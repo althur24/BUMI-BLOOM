@@ -12,6 +12,8 @@ import {
   sniffImage,
 } from "../lib/image-utils";
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
+import { buildShopifyPushInput } from "../lib/import-mapper";
+import { cleanMetafields } from "../lib/shopify";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { normaliseAudience, parseAudience } from "../lib/audience";
 import {
@@ -193,7 +195,13 @@ test("colours keep their bound image through the metafield round-trip", () => {
 test("category and audience inference", () => {
   assert.equal(inferCategory("Anakmu Piccolo Jacket windbreaker"), "outerwear");
   assert.equal(inferCategory("BIM Ribbed Shirt Kids Longsleeved Tops"), "tshirts");
-  assert.equal(inferCategory("Baby Romper"), "baby");
+  // There is no Baby category on the storefront: baby basics fall back to the
+  // closest real category (tops), while a specific garment keyword still wins.
+  assert.equal(inferCategory("Baby Romper"), "tshirts");
+  assert.equal(inferCategory("Newborn Onesie"), "tshirts");
+  assert.equal(inferCategory("Baby Jacket"), "outerwear");
+  assert.equal(inferCategory("Baby Dress"), "dresses");
+  assert.equal(inferCategory("Baby Busy Book"), "busy-book");
   assert.equal(inferAudience("Unisex kids longsleeved top"), "unisex");
   assert.equal(inferAudience("Dress untuk anak perempuan"), "girls");
   assert.equal(inferAudience("Kaos anak laki-laki"), "boys");
@@ -383,6 +391,162 @@ test("storefront size-label mirror matches the admin module", async () => {
     assert.equal(mirror.translateSizeLabel(s), translateSizeLabel(s), `drift on "${s}"`);
   }
   assert.equal(mirror.displaySize("100", "height"), displaySize("100", "height"));
+});
+
+test("import mapper keeps lifecycle fields out of the update payload", () => {
+  // badge / is_new / is_bestseller / added_at_rank describe a product's first
+  // appearance. They must ride on lifecycleMetafields (create only) so a
+  // re-import never resets an admin's badge or re-ranks the homepage.
+  const input = buildShopifyPushInput({
+    platform: "SHOPEE",
+    sourceUrl: "https://shopee.test/item/1",
+    title: "Ribbed Tee",
+    price: 25,
+    currency: "IDR",
+    images: ["https://cdn.test/a.jpg"],
+    variants: [{ price: 25, stock: 3, options: { Size: "S (1-2 TAHUN)" } }],
+    specs: { category: "tshirts", audience: "unisex" },
+    brand: "Anakmu",
+  });
+
+  const keys = input.metafields.map((m) => m.key);
+  for (const key of ["badge", "is_new", "is_bestseller", "added_at_rank"]) {
+    assert.ok(!keys.includes(key), `${key} must not be in update metafields`);
+  }
+
+  const lifecycle = input.lifecycleMetafields || [];
+  const byKey = new Map(lifecycle.map((m) => [m.key, m]));
+  assert.equal(byKey.get("is_new")?.value, "true");
+  assert.equal(byKey.get("is_new")?.type, "boolean");
+  assert.equal(byKey.get("is_bestseller")?.value, "false");
+  assert.equal(byKey.get("is_bestseller")?.type, "boolean");
+  assert.equal(byKey.get("badge")?.value, "new");
+  assert.ok(Number(byKey.get("added_at_rank")?.value) > 0);
+});
+
+test("import mapper maps legacy baby category to the closest storefront type", () => {
+  const input = buildShopifyPushInput({
+    platform: "SHOPEE",
+    sourceUrl: "https://shopee.test/item/2",
+    title: "Baby Romper Set",
+    price: 20,
+    currency: "IDR",
+    images: [],
+    variants: [],
+    specs: { category: "baby", audience: "unisex" },
+    brand: "Anakmu",
+  });
+  assert.equal(input.productPayload.product_type, "tshirts");
+});
+
+test("import mapper never emits a baby product_type", () => {
+  const input = buildShopifyPushInput({
+    platform: "TOKPED",
+    sourceUrl: "https://tokopedia.test/item/3",
+    title: "Busy Book Bayi",
+    price: 15,
+    currency: "IDR",
+    images: [],
+    variants: [],
+    specs: { category: "busy-book", audience: "unisex" },
+    brand: "Bumi",
+  });
+  assert.equal(input.productPayload.product_type, "busy-book");
+});
+
+test("storefront age buckets place sizes into year ranges", () => {
+  // Guards the storefront "Shop by Age" filter: the age bucketing lives in
+  // data.js/products.js, so we run the real block against the shared parser.
+  const src = readFileSync(
+    join(__dirname, "../../storefront/public/js/products.js"),
+    "utf8",
+  );
+  const start = src.indexOf("const AGE_BUCKETS");
+  const end = src.indexOf("function renderAgeFilter");
+  assert.ok(start >= 0 && end > start, "storefront age-filter block not found");
+  const block = src.slice(start, end);
+  const factory = new Function(
+    "BumiData",
+    block + "\nreturn { bbAgeBucketsFor, bbYearsFromAge };",
+  ) as (bd: unknown) => {
+    bbAgeBucketsFor: (p: { sizesRaw?: string[] }) => { key: string }[];
+    bbYearsFromAge: (a: string) => [number, number] | null;
+  };
+  const api = factory({ parseSizeMeta });
+
+  const keys = (sizesRaw: string[]) => api.bbAgeBucketsFor({ sizesRaw }).map((b) => b.key);
+  assert.deepEqual(keys(["S (1-2 TAHUN)"]), ["1-2"]);
+  assert.deepEqual(keys(["100"]), ["3-4"]); // bare height code → 3–4 yrs
+  assert.deepEqual(keys(["12-18M"]), ["1-2"]); // months → years
+  assert.deepEqual(keys(["2T"]), ["2-3"]);
+  assert.deepEqual(keys(["6-7 TAHUN"]), ["6-8"]);
+  assert.deepEqual(keys(["XL"]), []); // letter size carries no age
+  assert.deepEqual(keys(["S-ADULT"]), []); // adult sizes are excluded
+  // Single-year sizes are widened per size, so a product offering "1 yr" and
+  // "2 yr" covers 1–3 yrs and shows under both the 1–2 and 2–3 buckets.
+  assert.deepEqual(keys(["1 yr", "2 yr"]), ["1-2", "2-3"]);
+  assert.deepEqual(api.bbYearsFromAge("10–12 yrs"), [10, 12]);
+});
+
+test("import mapper dedupes identical variant option combinations", () => {
+  // Shopify rejects duplicate Color+Size combos with 422 "invalid variant".
+  const input = buildShopifyPushInput({
+    platform: "SHOPEE",
+    sourceUrl: "https://shopee.test/item/dup",
+    title: "Dup Tee",
+    price: 20,
+    currency: "IDR",
+    images: [],
+    variants: [
+      { price: 20, stock: 3, options: { Size: "S (1-2 TAHUN)" } },
+      { price: 20, stock: 5, options: { Size: "S (1-2 TAHUN)" } },
+    ],
+    specs: { category: "tshirts", audience: "unisex" },
+    brand: "Anakmu",
+  });
+  assert.equal((input.productPayload.variants as any[]).length, 1);
+});
+
+test("import mapper collapses option-less variants to a single variant", () => {
+  // More than one variant with no Color/Size option is invalid on Shopify.
+  const input = buildShopifyPushInput({
+    platform: "SHOPEE",
+    sourceUrl: "https://shopee.test/item/noopt",
+    title: "No Option Item",
+    price: 20,
+    currency: "IDR",
+    images: [],
+    variants: [
+      { price: 20, stock: 1, options: {} },
+      { price: 21, stock: 2, options: {} },
+    ],
+    specs: { category: "accessories", audience: "unisex" },
+    brand: "Anakmu",
+  });
+  assert.equal((input.productPayload.variants as any[]).length, 1);
+  assert.equal(input.productPayload.options, undefined);
+});
+
+test("cleanMetafields drops blank values for every type", () => {
+  // A blank string is invalid for number/boolean/json fields, and one bad item
+  // rejects the whole metafieldsSet batch — the bug that made "add stock" fail.
+  const out = cleanMetafields([
+    { namespace: "bumi", key: "material", value: "   ", type: "single_line_text_field" },
+    { namespace: "bumi", key: "fibre", value: "", type: "single_line_text_field" },
+    { namespace: "bumi", key: "rating", value: "", type: "number_decimal" },
+    { namespace: "bumi", key: "sold_count", value: "", type: "number_integer" },
+    { namespace: "bumi", key: "colors", value: "", type: "json" },
+    { namespace: "bumi", key: "is_new", value: "true", type: "boolean" },
+    { namespace: "bumi", key: "audience", value: "unisex", type: "single_line_text_field" },
+    { namespace: "bumi", key: "sold_count", value: "0", type: "number_integer" },
+  ]);
+  assert.deepEqual(out.map((m) => m.key), ["is_new", "audience", "sold_count"]);
+  assert.equal(out[2].value, "0"); // "0" is a valid value, not blank
+
+  const one = cleanMetafields([
+    { namespace: "bumi", key: "material", value: "a\nb", type: "single_line_text_field" },
+  ]);
+  assert.equal(one[0].value, "a · b"); // newlines joined for single_line
 });
 
 console.log(`\n${passed} tests passed.`);

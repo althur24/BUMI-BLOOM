@@ -293,6 +293,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
               id
               price { amount currencyCode }
               compareAtPrice { amount }
+              availableForSale
               quantityAvailable
               image { url }
               selectedOptions { name value }
@@ -313,6 +314,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
           {namespace:"bumi",key:"size_guide"},
           {namespace:"bumi",key:"size_chart_image"},
           {namespace:"bumi",key:"size_label_mode"},
+          {namespace:"bumi",key:"shipping_returns"},
           {namespace:"bumi",key:"added_at_rank"}
         ]) { key value }
       }
@@ -353,6 +355,22 @@ const PRODUCT_AUDIENCES = ['girls', 'boys', 'unisex', 'baby'];
 function normalizeAudience(value) {
   const v = String(value == null ? '' : value).trim().toLowerCase();
   return PRODUCT_AUDIENCES.includes(v) ? v : 'unisex';
+}
+
+// Shopify product types are free text ("Busy Book", "busy_book"), so they are
+// normalised to the storefront slug taxonomy. Older imports may still carry a
+// "baby" type, which has no filter chip; it is mapped to the closest real
+// category from the title (mirroring the import-side rule order) so those
+// products are not invisible in the PLP.
+function normalizeProductType(raw, title) {
+  const type = String(raw == null ? '' : raw).trim().toLowerCase().replace(/[\s_]+/g, '-');
+  if (type !== 'baby') return type;
+  const t = String(title || '').toLowerCase();
+  if (/busy ?books?|quiet ?books?|buku (?:mainan|edukasi|aktivitas)/.test(t)) return 'busy-book';
+  if (/jacket|jaket|coat|blazer|hoodie|cardigan|windbreaker|parka|bomber|vest|sweater|jumper/.test(t)) return 'outerwear';
+  if (/dress|gaun|jumpsuit/.test(t)) return 'dresses';
+  if (/shorts|celana|pants|trousers|jogger|skirt|rok|legging|overalls?/.test(t)) return 'shorts';
+  return 'tshirts';
 }
 
 // Shopify Storefront product node → data.js product shape.
@@ -403,7 +421,15 @@ function mapShopifyProduct(node) {
       sizeRaw: rawSize,
       price: parseFloat(v.price.amount),
       compareAt: v.compareAtPrice ? parseFloat(v.compareAtPrice.amount) : undefined,
-      available: typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true,
+      // `availableForSale` is Shopify's canonical "can be bought" flag for the
+      // active market: it respects the inventory policy (oversell/CONTINUE) and
+      // the market's location set. `quantityAvailable` alone reported 0 for
+      // products that are actually buyable (e.g. policy CONTINUE, or stock held
+      // at a location the market does not count), which showed a false
+      // "Sold Out". Fall back to the quantity only when the flag is absent.
+      available: typeof v.availableForSale === 'boolean'
+        ? v.availableForSale
+        : (typeof v.quantityAvailable === 'number' ? v.quantityAvailable > 0 : true),
       image: (v.image && v.image.url) || '',
     };
   });
@@ -421,14 +447,26 @@ function mapShopifyProduct(node) {
   const image = featured || images[0] || PLACEHOLDER_IMG;
   const gallery = images.length ? images : [image];
 
-  const priceAmt = variants.length ? parseFloat(variants[0].price.amount) : 0;
-  // Sale is defined purely by the compare-at price, so look at every variant:
-  // a markdown on any size makes the product a sale item, even when the first
-  // variant is full price. Removing the compare-at price takes it out of Sale.
+  // Price and compare-at must come from the SAME variant. Taking the first
+  // variant's price with another variant's strike price produces a bogus
+  // discount percentage (and a card price that never existed as a pair).
+  // A markdown on any size makes the product a sale item, so the discounted
+  // variant is preferred; otherwise the first priced variant is used.
+  const priced = variantList.filter((v) => Number.isFinite(v.price) && v.price > 0);
   const discounted = variantList.find(
     (v) => Number.isFinite(v.compareAt) && v.compareAt > v.price,
   );
-  const compareAt = discounted ? discounted.compareAt : undefined;
+  const primary = discounted || priced[0];
+  const priceRaw = primary
+    ? primary.price
+    : variants.length
+      ? parseFloat(variants[0].price.amount)
+      : 0;
+  const compareAtRaw = discounted ? discounted.compareAt : undefined;
+  // "from $X" when sizes/colours are priced differently, so the card never
+  // implies a single price for a product that starts elsewhere.
+  const distinctPrices = new Set(priced.map((v) => Math.round(v.price * 100)));
+  const priceFrom = distinctPrices.size > 1;
 
   return {
     id: node.handle,
@@ -438,9 +476,14 @@ function mapShopifyProduct(node) {
     // Shopify product types are free text ("Busy Book", "busy_book") —
     // normalise to the storefront slug taxonomy (busy-book) so manually
     // edited products still match the category filters.
-    category: (node.productType || '').trim().toLowerCase().replace(/[\s_]+/g, '-'),
-    price: Math.round(priceAmt),
-    compareAt: compareAt ? Math.round(compareAt) : undefined,
+    category: normalizeProductType(node.productType, node.title),
+    price: Math.round(priceRaw),
+    // Unrounded values: the storefront derives the -N% badge from these so a
+    // rounded card price never produces a wrong percentage.
+    priceRaw,
+    compareAt: compareAtRaw != null ? Math.round(compareAtRaw) : undefined,
+    compareAtRaw,
+    priceFrom,
     fibre: meta.fibre || '',
     colors: Array.isArray(colors) ? colors : [],
     sizes,
@@ -463,6 +506,7 @@ function mapShopifyProduct(node) {
     material: meta.material || '',
     sizeGuide: meta.size_guide || '',
     sizeChartImage: meta.size_chart_image || '',
+    shippingReturns: meta.shipping_returns || '',
     soldCount: meta.sold_count ? parseInt(meta.sold_count, 10) : 0,
   };
 }

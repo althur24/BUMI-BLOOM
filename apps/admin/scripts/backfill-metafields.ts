@@ -12,7 +12,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { prisma } from "@bumi/db";
 import { buildShopifyPushInput } from "../lib/import-mapper";
-import { adminRest, setMetafields } from "../lib/shopify";
+import { adminRest, ensureMetafieldTypes, setMetafields } from "../lib/shopify";
 import { colorOptionOf, dedupeColors } from "../lib/colors";
 import type { NormalizedProduct } from "../lib/scrapers/base";
 
@@ -48,13 +48,11 @@ async function main() {
     np.colors = dedupeColors([...(np.colors || []), ...fromVariants]);
 
     const input = buildShopifyPushInput(np);
-    // Don't overwrite lifecycle fields on existing products: a backfill must
-    // not re-rank the homepage or mark old products as new again.
-    const skipKeys = new Set(["is_new", "badge", "added_at_rank"]);
+    // Lifecycle fields (is_new / is_bestseller / badge / added_at_rank) now
+    // live on `lifecycleMetafields`, which this backfill deliberately ignores:
+    // it must not re-rank the homepage or mark old products as new again.
     const metafields = input.metafields.filter(
-      (m) =>
-        !skipKeys.has(m.key) &&
-        !(m.type === "single_line_text_field" && !String(m.value || "").trim()),
+      (m) => !(m.type === "single_line_text_field" && !String(m.value || "").trim()),
     );
     const ownerId = `gid://shopify/Product/${job.shopifyProductId}`;
 
@@ -79,6 +77,7 @@ async function main() {
     }
 
     try {
+      await ensureMetafieldTypes(job.shopifyProductId as string, metafields);
       await setMetafields(ownerId, metafields);
       const colors = np.colors.length
         ? np.colors.map((c) => `${c.name} ${c.hex}`).join(", ")

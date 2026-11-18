@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
     gaId: process.env.NEXT_PUBLIC_GA_ID || '',
     metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || '',
+    adminAppUrl: process.env.NEXT_PUBLIC_ADMIN_APP_URL || '',
   };
 
   return (

@@ -9,7 +9,7 @@ import {
   ensureBrandMetaobject,
 } from "@/lib/shopify";
 import { buildShopifyPushInput } from "@/lib/import-mapper";
-import { inferAudience } from "@/lib/categorize";
+import { inferAudience, inferCategory } from "@/lib/categorize";
 import { PRODUCT_AUDIENCES } from "@/lib/audience";
 import { rehostImages } from "@/lib/storage";
 import { aiMatchVendor } from "@/lib/ai/enrich";
@@ -19,6 +19,17 @@ import type { NormalizedProduct } from "@/lib/scrapers/base";
 export const dynamic = "force-dynamic";
 
 const AUDIENCE_VALUES: string[] = PRODUCT_AUDIENCES;
+
+// Storefront product types. An empty or unknown type hides the product from
+// every PLP filter, so every pushed product must resolve to one of these.
+const STORE_CATEGORIES = [
+  "tshirts",
+  "shorts",
+  "dresses",
+  "outerwear",
+  "accessories",
+  "busy-book",
+];
 
 // POST → push an EXTRACTED job's product to Shopify (create + metafields +
 // publish to Headless). Optional JSON body overrides fields (admin edits from
@@ -72,6 +83,24 @@ export async function POST(
     ? requestedAudience
     : inferAudience(np.title, np.description);
   np.specs = { ...(np.specs || {}), audience: resolvedAudience };
+
+  // Category must resolve to a real storefront type. Legacy "baby" and unknown
+  // values fall through to the rule-based inference; a product with no usable
+  // category would be missing from every PLP filter, so it is rejected here.
+  const requestedCategory = String((np.specs || {}).category || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
+  const category = STORE_CATEGORIES.includes(requestedCategory)
+    ? requestedCategory
+    : inferCategory(np.title, np.description);
+  if (!category || !STORE_CATEGORIES.includes(category)) {
+    return jsonError(
+      400,
+      "Kategori belum diisi. Pilih salah satu: T-Shirts & Tops, Shorts & Bottoms, Dresses, Outerwear, Accessories, atau Busy Book.",
+    );
+  }
+  np.specs = { ...(np.specs || {}), category };
 
   // If the user edited the product price, propagate it to ALL variants so the
   // edited price is what Shopify receives (not the auto-converted AUD price).

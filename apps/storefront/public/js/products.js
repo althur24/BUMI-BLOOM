@@ -1,7 +1,7 @@
 /* ============================================
    BUMI / BLOOM — Product Listing & Rendering
    - Renders the PLP grid from BumiData.PRODUCTS
-   - Real filtering (type, size, colour, price, brand)
+   - Real filtering (type, age, colour, price, brand)
    - Real sorting, URL search & category routing
    - Renders the homepage "Collections" grid
    ============================================ */
@@ -43,25 +43,30 @@ function wishlisted(id) {
   return window.BumiWishlist ? BumiWishlist.isWishlisted(id) : false;
 }
 
-// Priority: Sold Out > New > Bestseller > discount %.
-// The percentage badge is derived from the compare-at price alone, so removing
-// the markdown in Shopify removes the badge (and the Sale listing) with it.
+// Status badge priority: Sold Out > New > Bestseller > Low Stock. The discount
+// badge is independent: whenever the compare-at price is higher than the price
+// it is shown alongside the status badge, so a product that is both "New" and
+// on sale advertises both. The percentage uses the unrounded values so a
+// rounded card price never yields a wrong number.
 function badgeHTML(product) {
-  let cls = null;
-  let label = '';
   if (product.soldOut) {
     return `<span class="product-card__badge product-card__badge--soldout">Sold Out</span>`;
   }
-  if (product.badge === 'new') { cls = 'product-card__badge--new'; label = 'New'; }
-  else if (product.badge === 'bestseller') { cls = 'product-card__badge--bestseller'; label = 'Bestseller'; }
-  else if (product.badge === 'low-stock') { cls = 'product-card__badge--bestseller'; label = 'Low Stock'; }
-  if (!cls && product.compareAt && product.compareAt > product.price) {
-    cls = 'product-card__badge--sale';
-    const pct = Math.max(1, Math.round((1 - product.price / product.compareAt) * 100));
-    label = '-' + pct + '%';
+
+  const badges = [];
+  if (product.badge === 'new') badges.push(`<span class="product-card__badge product-card__badge--new">New</span>`);
+  else if (product.badge === 'bestseller') badges.push(`<span class="product-card__badge product-card__badge--bestseller">Bestseller</span>`);
+  else if (product.badge === 'low-stock') badges.push(`<span class="product-card__badge product-card__badge--bestseller">Low Stock</span>`);
+
+  const now = Number(product.priceRaw != null ? product.priceRaw : product.price);
+  const was = Number(product.compareAtRaw != null ? product.compareAtRaw : product.compareAt);
+  if (Number.isFinite(now) && Number.isFinite(was) && now > 0 && was > now) {
+    const pct = Math.max(1, Math.round((1 - now / was) * 100));
+    badges.push(`<span class="product-card__badge product-card__badge--sale" aria-label="${pct} percent off">-${pct}%</span>`);
   }
-  if (!cls) return '';
-  return `<span class="product-card__badge ${cls}">${label}</span>`;
+
+  if (!badges.length) return '';
+  return `<div class="product-card__badges">${badges.join('')}</div>`;
 }
 
 function productCardHTML(product, index) {
@@ -69,9 +74,14 @@ function productCardHTML(product, index) {
   const soldOut = product.soldOut === true;
   const active = wishlisted(product.id) ? ' is-active' : '';
   const fill = wishlisted(product.id) ? 'currentColor' : 'none';
-  const priceHTML = product.compareAt
-    ? `${BumiData.formatPrice(product.price)} <span class="product-card__price--original">${BumiData.formatPrice(product.compareAt)}</span>`
-    : BumiData.formatPrice(product.price);
+  const onSale = product.compareAt && product.compareAt > product.price;
+  // "From" only makes sense at full price: on sale the headline is the
+  // discounted variant's price, which is not necessarily the cheapest, so a
+  // "From" prefix there would misstate the lowest price.
+  const fromPrefix = product.priceFrom && !onSale ? 'From ' : '';
+  const priceHTML = onSale
+    ? `${fromPrefix}${BumiData.formatPrice(product.price)} <span class="product-card__price--original">${BumiData.formatPrice(product.compareAt)}</span>`
+    : `${fromPrefix}${BumiData.formatPrice(product.price)}`;
 
   const swatches = (product.colors || []).slice(0, 4).map(c =>
     `<span class="product-card__swatch" style="background:${bbSafeHex(c.hex)};" title="${bbEscapeHtml(c.name)}"></span>`
@@ -94,7 +104,7 @@ function productCardHTML(product, index) {
         <p class="product-card__brand">${product.brand}</p>
         <h3 class="product-card__name"><a class="product-card__link" href="/products/${product.id}">${product.name}</a></h3>
         ${ratingHTML}
-        <p class="product-card__price">${priceHTML}</p>
+        <p class="product-card__price${onSale ? ' product-card__price--sale' : ''}">${priceHTML}</p>
         ${product.fibre ? `<span class="product-card__material">${product.fibre}</span>` : ''}
         ${swatches ? `<div class="product-card__swatches">${swatches}</div>` : ''}
         <button class="btn btn--primary btn--sm product-card__add" data-id="${product.id}" type="button"${soldOut ? ' disabled' : ''}>${soldOut ? 'Sold Out' : 'Add to Bag'}</button>
@@ -204,26 +214,98 @@ const PRICE_BANDS = {
 };
 
 // Filter chips are generated from the catalogue so imported sizes/colours
-// (e.g. "S (1-2 YO)", "9-10Y", "Butter") appear without code changes.
-function bbSizeSortKey(value) {
-  const s = String(value || '').trim();
-  const range = s.match(/(\d+)\s*[-–]\s*(\d+)/);
-  const months = s.match(/(\d+)\s*[-–]\s*(\d+)\s*M/i);
-  if (months) return -1000 + Number(months[1]);
-  if (range) return Number(range[1]) * 100 + Number(range[2]);
-  const single = s.match(/(\d+)/);
-  if (single) return Number(single[1]) * 100;
-  const letters = { XXS: 1, XS: 2, S: 3, M: 4, L: 5, XL: 6, XXL: 7, XXXL: 8 };
-  return letters[s.toUpperCase()] ? letters[s.toUpperCase()] * 10 : 9999;
+// (e.g. "S (1–2 yrs)", "Butter") appear without code changes.
+//
+// The Size filter is presented as "Shop by Age": shoppers think in ages, not in
+// supplier size codes, and the catalogue mixes letter sizes, height codes and
+// age ranges. Ages are bucketed into fixed year ranges and matched by overlap,
+// so a product sized "S (1–2 yrs)" and another sized "100 cm (3–4 yrs)" land in
+// the same bucket language instead of two unrelated chips.
+const AGE_BUCKETS = [
+  { key: '0-1', label: '0–1 yrs', min: 0, max: 1 },
+  { key: '1-2', label: '1–2 yrs', min: 1, max: 2 },
+  { key: '2-3', label: '2–3 yrs', min: 2, max: 3 },
+  { key: '3-4', label: '3–4 yrs', min: 3, max: 4 },
+  { key: '4-5', label: '4–5 yrs', min: 4, max: 5 },
+  { key: '5-6', label: '5–6 yrs', min: 5, max: 6 },
+  { key: '6-8', label: '6–8 yrs', min: 6, max: 8 },
+  { key: '8-10', label: '8–10 yrs', min: 8, max: 10 },
+  { key: '10-12', label: '10–12 yrs', min: 10, max: 12 },
+];
+
+// "1–2 yrs" / "12–18 months" / "1 yr" → [min, max] in years. Returns null when
+// the string carries no age (a letter size, "Adult", etc.).
+function bbYearsFromAge(age) {
+  const s = String(age || '').toLowerCase();
+  if (!s) return null;
+  const range = s.match(/(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)\s*(yrs?|years?|months?|bln|bulan)/);
+  if (range) {
+    const div = /month|bln|bulan/.test(range[3]) ? 12 : 1;
+    return [Number(range[1]) / div, Number(range[2]) / div];
+  }
+  const single = s.match(/(\d+(?:\.\d+)?)\s*(yrs?|years?|months?|bln|bulan)/);
+  if (single) {
+    const div = /month|bln|bulan/.test(single[2]) ? 12 : 1;
+    const v = Number(single[1]) / div;
+    return [v, v];
+  }
+  return null;
+}
+
+// Age span of a product, in years, from its RAW size values (the display labels
+// drop weight/height detail but keep the age). A single-year size ("2 yr") is
+// widened by one year *before* aggregating, so a product sized "1 yr" + "2 yr"
+// covers 1–3 yrs and shows under both the 1–2 and 2–3 buckets instead of only
+// the lower one.
+function bbProductAgeRange(product) {
+  const raws = Array.isArray(product.sizesRaw) && product.sizesRaw.length
+    ? product.sizesRaw
+    : (product.sizes || []);
+  let min = null;
+  let max = null;
+  for (const raw of raws) {
+    const meta = BumiData.parseSizeMeta ? BumiData.parseSizeMeta(raw) : null;
+    if (!meta || meta.adult) continue;
+    const range = bbYearsFromAge(meta.age || raw);
+    if (!range) continue;
+    if (range[1] <= range[0]) range[1] = range[0] + 1;
+    min = min == null ? range[0] : Math.min(min, range[0]);
+    max = max == null ? range[1] : Math.max(max, range[1]);
+  }
+  if (min == null) return null;
+  if (max <= min) max = min + 1;
+  return { min, max };
+}
+
+function bbAgeBucketsFor(product) {
+  const range = bbProductAgeRange(product);
+  if (!range) return [];
+  return AGE_BUCKETS.filter((b) => range.min < b.max && range.max > b.min);
+}
+
+function renderAgeFilter() {
+  const wrap = document.getElementById('plp-age-options');
+  if (!wrap) return;
+
+  const counts = new Map();
+  (BumiData.PRODUCTS || []).forEach((product) => {
+    bbAgeBucketsFor(product).forEach((b) => counts.set(b.key, (counts.get(b.key) || 0) + 1));
+  });
+
+  const available = AGE_BUCKETS.filter((b) => (counts.get(b.key) || 0) > 0);
+  const section = wrap.closest('.plp-sidebar__section');
+  if (section) section.style.display = available.length ? '' : 'none';
+
+  wrap.innerHTML = available
+    .map((b) => `<label><input type="checkbox" name="age" value="${b.key}"> <span>${b.label}</span> <span class="plp-sidebar__count">(${counts.get(b.key)})</span></label>`)
+    .join('');
 }
 
 function renderDynamicFilters() {
-  const sizes = new Set();
   const colorsByName = new Map();
   const brands = new Set();
 
   (BumiData.PRODUCTS || []).forEach((product) => {
-    (product.sizes || []).forEach((size) => sizes.add(String(size)));
     if (product.brand) brands.add(String(product.brand));
     (product.colors || []).forEach((color) => {
       if (!color || !color.name) return;
@@ -232,13 +314,7 @@ function renderDynamicFilters() {
     });
   });
 
-  const sizeWrap = document.getElementById('plp-size-chips');
-  if (sizeWrap) {
-    sizeWrap.innerHTML = [...sizes]
-      .sort((a, b) => bbSizeSortKey(a) - bbSizeSortKey(b) || a.localeCompare(b))
-      .map((size) => `<button class="pdp-size plp-size-btn" type="button" data-size="${bbEscapeHtml(size)}">${bbEscapeHtml(size)}</button>`)
-      .join('');
-  }
+  renderAgeFilter();
 
   const colorWrap = document.getElementById('plp-color-swatches');
   if (colorWrap) {
@@ -290,7 +366,7 @@ function initPLP() {
     category: params.get('category') || 'all',
     search: (params.get('search') || '').trim(),
     types: new Set(),
-    sizes: new Set(),
+    ages: new Set(),
     colors: new Set(),
     prices: new Set(),
     brands: new Set(),
@@ -364,7 +440,12 @@ function initPLP() {
     }
     if (state.types.size) list = list.filter(p => state.types.has(p.category));
     if (state.brands.size) list = list.filter(p => state.brands.has(BumiData.brandKey(p.brand)));
-    if (state.sizes.size) list = list.filter(p => p.sizes.some(s => state.sizes.has(s)));
+    if (state.ages.size) {
+      list = list.filter(p => {
+        const buckets = bbAgeBucketsFor(p);
+        return buckets.length > 0 && [...state.ages].some(key => buckets.some(b => b.key === key));
+      });
+    }
     if (state.colors.size) list = list.filter(p => (p.colors || []).some(c => state.colors.has(c.hex.toLowerCase())));
     if (state.prices.size) {
       list = list.filter(p => {
@@ -439,12 +520,11 @@ function initPLP() {
     });
   });
 
-  document.querySelectorAll('.plp-size-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+  document.querySelectorAll('input[name="age"]').forEach(btn => {
+    btn.addEventListener('change', () => {
       state.visible = PAGE_SIZE;
-      btn.classList.toggle('is-active');
-      const size = btn.dataset.size;
-      if (state.sizes.has(size)) state.sizes.delete(size); else state.sizes.add(size);
+      const age = btn.value;
+      if (btn.checked) state.ages.add(age); else state.ages.delete(age);
       render();
     });
   });

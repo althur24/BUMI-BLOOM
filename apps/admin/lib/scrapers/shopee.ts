@@ -8,6 +8,7 @@
 
 import { withPage, readJsonLd } from "./browser";
 import { buildImagePlan } from "./images";
+import { extractMaterialFacts } from "../categorize";
 import {
   extractProductFromJsonLd,
   toNum,
@@ -65,19 +66,37 @@ export async function scrapeShopee(url: string): Promise<ScrapeResult> {
           brand: partial?.brand,
           rating: partial?.rating,
           reviewsCount: partial?.reviewsCount,
+          soldCount: partial?.soldCount,
           extractionPath: "jsonld+state",
         };
 
         // Fill gaps from preloaded state, keyed by itemid when available.
-        if (state && (!normalized.price || normalized.images.length === 0)) {
+        if (
+          state &&
+          (!normalized.price ||
+            normalized.images.length === 0 ||
+            !normalized.description ||
+            normalized.rating == null ||
+            normalized.soldCount == null)
+        ) {
           const extra = deepFindShopeeItem(state, ids.itemid);
           if (extra) {
             normalized.price ??= extra.price;
             if (normalized.images.length === 0)
               normalized.images = extra.images || [];
             normalized.description ??= extra.description;
+            normalized.rating ??= extra.rating;
+            normalized.reviewsCount ??= extra.reviewsCount;
+            normalized.soldCount ??= extra.soldCount;
           }
         }
+
+        // Derive material/fibre from the final description (JSON-LD or preloaded
+        // state). Tokopedia and the website scraper already do this; without it
+        // Shopee imports shipped an empty "Material & Care" section.
+        const facts = extractMaterialFacts(normalized.description);
+        if (facts.materialCare) normalized.materialCare = facts.materialCare;
+        if (facts.fibre) normalized.fibre = facts.fibre;
 
         return {
           ok: true,
@@ -138,11 +157,21 @@ function parseShopeeItem(item: any): Partial<NormalizedProduct> | null {
   // versions and blind division corrupts >1M IDR values, so we don't guess —
   // JSON-LD (correct) is primary, and the admin can edit the preview price.
   const price = toNum(item.price);
+  // Shopee preloaded state carries social proof under a few shapes depending on
+  // the page version; capture what is available, never invent it.
+  const rating = toNum(item.item_rating?.rating_star ?? item.rating_star ?? item.rating);
+  const reviewsCount = toNum(
+    item.item_rating?.rating_count?.[0] ?? item.rating_count?.[0] ?? item.reviews,
+  );
+  const soldCount = toNum(item.historical_sold ?? item.sold ?? item.sold_count ?? item.global_sold_count);
   return {
     title: item.name,
     description: item.description,
     price,
     images,
     brand: typeof item.brand === "string" ? item.brand : item.brand?.name,
+    rating,
+    reviewsCount,
+    soldCount,
   };
 }
