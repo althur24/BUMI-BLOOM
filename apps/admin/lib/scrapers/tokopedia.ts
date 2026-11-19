@@ -1165,39 +1165,37 @@ async function scrapeTokopediaHttp(url: string): Promise<ScrapeResult> {
   throw lastError;
 }
 
-// One attempt at fetching + parsing the SSR HTML.
-async function scrapeTokopediaHttpOnce(url: string): Promise<ScrapeResult> {
-  let response: Awaited<ReturnType<typeof fetchWithProxy>>;
-  try {
-    response = await fetchWithProxy(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "id,ID;q=0.9,en;q=0.8",
-      },
-      timeoutMs: 60_000,
-    });
-  } catch (e: any) {
-    const cause = e?.cause?.message || e?.cause?.code || "";
-    throw new Error(`fetch gagal: ${e?.message || e}${cause ? ` (${cause})` : ""}`);
-  }
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const html = await response.text();
-  const finalUrl = response.url || url;
+// Parse a Tokopedia PDP HTML document (SSR `window.__cache`) into a normalized
+// product. Shared by the HTTP fast path and the "paste HTML" import, which lets
+// an admin supply the HTML from their own browser when the server IP is blocked.
+export function parseTokopediaHtml(
+  url: string,
+  html: string,
+  finalUrl?: string,
+): ScrapeResult {
+  const effectiveUrl = finalUrl || url;
   const ogTitle = decodeHtmlEntities(
     html.match(/property="og:title" content="([^"]*)"/i)?.[1] || "",
   );
   if (/captcha|verify you are human|unusual traffic/i.test(ogTitle.slice(0, 200))) {
-    throw new Error("Tokopedia memblokir permintaan (captcha/anti-bot).");
+    return {
+      ok: false,
+      error: "Tokopedia memblokir permintaan (captcha/anti-bot).",
+      raw: { failureKind: "block" },
+    };
   }
 
   const structured = extractPdpFromHtml(html);
   if (!structured || (!structured.variants.length && structured.basePrice == null)) {
-    throw new Error("Data produk tidak ditemukan di HTML (struktur berubah atau diblokir).");
+    return {
+      ok: false,
+      error:
+        "Data produk tidak ditemukan di HTML (struktur berubah atau HTML tidak lengkap). Pastikan seluruh halaman tersalin.",
+      raw: { failureKind: "other" },
+    };
   }
 
-  const resolvedUrl = canonicalizeUrl(finalUrl);
+  const resolvedUrl = canonicalizeUrl(effectiveUrl);
   const shopMatch = html.match(/"shopName":"([^"]+)"/);
   const brand = shopMatch ? decodeHtmlEntities(shopMatch[1]) : brandFromOgTitle(ogTitle);
   const rawTitle = structured.title || ogTitle.split(" | Tokopedia")[0].trim();
@@ -1252,11 +1250,38 @@ async function scrapeTokopediaHttpOnce(url: string): Promise<ScrapeResult> {
   return {
     ok: true,
     raw: {
-      id: productIdFromUrl(finalUrl),
+      id: productIdFromUrl(effectiveUrl),
       resolvedUrl,
       extractionPath: "http-cache",
       variantCount: structured.variants.length,
     },
     normalized,
   };
+}
+
+// One attempt at fetching + parsing the SSR HTML.
+async function scrapeTokopediaHttpOnce(url: string): Promise<ScrapeResult> {
+  let response: Awaited<ReturnType<typeof fetchWithProxy>>;
+  try {
+    response = await fetchWithProxy(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "id,ID;q=0.9,en;q=0.8",
+      },
+      timeoutMs: 60_000,
+    });
+  } catch (e: any) {
+    const cause = e?.cause?.message || e?.cause?.code || "";
+    throw new Error(`fetch gagal: ${e?.message || e}${cause ? ` (${cause})` : ""}`);
+  }
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const html = await response.text();
+
+  // Throw on a parse failure so the HTTP path keeps its retry/fallback semantics
+  // (the paste-HTML route calls parseTokopediaHtml directly instead).
+  const parsed = parseTokopediaHtml(url, html, response.url || url);
+  if (!parsed.ok) throw new Error(parsed.error || "Data produk tidak ditemukan");
+  return parsed;
 }
