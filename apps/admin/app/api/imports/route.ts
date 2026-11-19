@@ -6,6 +6,7 @@ import { enqueue } from "@/lib/queue";
 import { detectPlatform } from "@/lib/platform";
 import { canonicalizeUrl } from "@/lib/urls";
 import { assertHttpUrl, assertPublicHost } from "@/lib/safe-fetch";
+import { hostOf, scrapeGuard } from "@/lib/scrape-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,22 @@ export async function POST(request: Request) {
           "Produk ini pernah diedit manual dari halaman Produk. Import ulang akan menimpa perubahan tersebut.",
       },
       { status: 409 },
+    );
+  }
+
+  // Frequency/cooldown gate: refuse (429) while a domain is paused or its
+  // hourly cap is reached. The short interval is left to the worker, which
+  // spaces requests automatically, so queuing several links still works.
+  const gateDomain = hostOf(url);
+  const gate = scrapeGuard.check(gateDomain);
+  if (!gate.ok && gate.reason !== "interval") {
+    return NextResponse.json(
+      {
+        error: gate.message,
+        guard: { reason: gate.reason, domain: gateDomain },
+        retryAfterSeconds: Math.max(1, Math.ceil(gate.retryAfterMs / 1000)),
+      },
+      { status: 429 },
     );
   }
 

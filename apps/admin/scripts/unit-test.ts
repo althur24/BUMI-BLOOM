@@ -14,6 +14,11 @@ import {
 import { buildSizeGuide, inferAudience, inferCategory, sizeGuideLine } from "../lib/categorize";
 import { buildShopifyPushInput } from "../lib/import-mapper";
 import { cleanMetafields } from "../lib/shopify";
+import {
+  classifyScrapeFailure,
+  createScrapeGuard,
+  hostOf,
+} from "../lib/scrape-guard";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { normaliseAudience, parseAudience } from "../lib/audience";
 import {
@@ -591,6 +596,70 @@ test("cleanMetafields drops blank values for every type", () => {
     { namespace: "bumi", key: "material", value: "a\nb", type: "single_line_text_field" },
   ]);
   assert.equal(one[0].value, "a · b"); // newlines joined for single_line
+});
+
+test("scrape guard throttles, caps hourly volume and opens a cooldown", () => {
+  let now = 1_000_000;
+  const guard = createScrapeGuard(
+    { minIntervalMs: 30_000, maxPerHour: 2, cooldownMs: 60_000 },
+    () => now,
+  );
+
+  // First request allowed, then recorded.
+  assert.equal(guard.check("x.com").ok, true);
+  guard.record("x.com");
+
+  // Immediately after → interval block.
+  const interval = guard.check("x.com");
+  assert.equal(interval.ok, false);
+  assert.equal(interval.reason, "interval");
+  assert.ok(interval.retryAfterMs > 0 && interval.retryAfterMs <= 30_000);
+
+  // After the interval → allowed, recorded (2nd of the hour).
+  now += 30_000;
+  assert.equal(guard.check("x.com").ok, true);
+  guard.record("x.com");
+
+  // Hourly cap (2/hour) reached.
+  now += 30_000;
+  const hourly = guard.check("x.com");
+  assert.equal(hourly.ok, false);
+  assert.equal(hourly.reason, "hourly");
+
+  // A reset/abuse signal trips the cooldown breaker.
+  guard.noteFailure("x.com", "read ECONNRESET");
+  const cooldown = guard.check("x.com");
+  assert.equal(cooldown.ok, false);
+  assert.equal(cooldown.reason, "cooldown");
+  assert.ok(cooldown.message && cooldown.message.length > 0);
+
+  // Cooldown expires; the hourly cap is still the active limiter.
+  now += 61_000;
+  assert.equal(guard.check("x.com").reason, "hourly");
+
+  // Another domain is unaffected by x.com's state.
+  assert.equal(guard.check("y.com").ok, true);
+});
+
+test("scrape failure classification and host normalisation", () => {
+  assert.equal(classifyScrapeFailure("read ECONNRESET"), "block");
+  assert.equal(classifyScrapeFailure("Tokopedia memblokir permintaan (captcha/anti-bot)"), "block");
+  assert.equal(classifyScrapeFailure("fetch failed"), "network");
+  assert.equal(classifyScrapeFailure("The operation was aborted due to timeout"), "network");
+  assert.equal(classifyScrapeFailure("Data produk tidak ditemukan"), "other");
+  assert.equal(hostOf("https://WWW.Tokopedia.com/a/b?x=1"), "www.tokopedia.com");
+  assert.equal(hostOf("https://tk.tokopedia.com/abc"), "www.tokopedia.com");
+  assert.equal(hostOf("https://tokopedia.com/abc"), "www.tokopedia.com");
+  assert.equal(hostOf("not a url"), "unknown");
+
+  // Explicit failure kinds also open the breaker.
+  let now = 0;
+  const guard = createScrapeGuard(
+    { minIntervalMs: 0, maxPerHour: 100, cooldownMs: 10_000 },
+    () => now,
+  );
+  assert.equal(guard.noteFailureKind("z.com", "network"), "network");
+  assert.equal(guard.check("z.com").reason, "cooldown");
 });
 
 console.log(`\n${passed} tests passed.`);

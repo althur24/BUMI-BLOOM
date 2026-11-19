@@ -14,8 +14,10 @@ import { rehostImages } from "./storage";
 import { enrichProduct } from "./ai/enrich";
 import { getAudToIdrRate } from "./currency";
 import { canonicalizeUrl } from "./urls";
+import { hostOf, scrapeGuard, type ScrapeFailureKind } from "./scrape-guard";
 
 const useBullMQ = (): boolean => Boolean(process.env.REDIS_URL);
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── Shared processor ───────────────────────────────────────────────────────
 async function processJob(jobId: string): Promise<void> {
@@ -31,12 +33,47 @@ async function processJob(jobId: string): Promise<void> {
   try {
     // Lazy import so route handlers don't pull Playwright at module load.
     const { scrape } = await import("./scrapers");
-    const result = await scrape(job.sourceUrl);
+
+    // Frequency gate BEFORE touching the network. A short interval is simply
+    // waited out (the worker is single-threaded anyway); a long cooldown or the
+    // hourly cap fails the job with an actionable message instead of hammering
+    // the marketplace and worsening the block.
+    const domain = hostOf(job.sourceUrl);
+    const gate = scrapeGuard.check(domain);
+    if (!gate.ok) {
+      if (gate.reason === "interval" && gate.retryAfterMs <= 120_000) {
+        await sleep(gate.retryAfterMs + 250);
+      } else {
+        await failJob(jobId, gate.message || "Import dijeda sementara.", {
+          guard: { reason: gate.reason, retryAfterMs: gate.retryAfterMs, domain },
+        });
+        return;
+      }
+    }
+
+    scrapeGuard.record(domain);
+    const result = await scrape(job.sourceUrl).catch((e) => {
+      // A thrown scrape error is usually the strongest block signal.
+      scrapeGuard.noteFailure(domain, e);
+      throw e;
+    });
 
     if (!result.ok || !result.normalized) {
-      await failJob(jobId, result.error || "Unknown scrape error", result.raw);
+      // Prefer the failure kind the scraper already determined (e.g. it knows a
+      // captcha/anti-bot page was returned); fall back to classifying the text.
+      const rawKind = (result.raw as { failureKind?: ScrapeFailureKind } | undefined)
+        ?.failureKind;
+      const kind = rawKind
+        ? scrapeGuard.noteFailureKind(domain, rawKind)
+        : scrapeGuard.noteFailure(domain, result.error || "Unknown scrape error");
+      await failJob(jobId, result.error || "Unknown scrape error", {
+        scrape: result.raw ?? null,
+        failureKind: kind,
+        domain,
+      });
       return;
     }
+    scrapeGuard.noteSuccess(domain);
 
     const np = result.normalized;
 

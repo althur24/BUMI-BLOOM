@@ -5,6 +5,7 @@
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { Browser, Page } from "playwright";
+import { playwrightProxy } from "../proxy";
 
 chromium.use(StealthPlugin());
 
@@ -12,8 +13,11 @@ let _browser: Browser | null = null;
 
 export async function getBrowser(): Promise<Browser> {
   if (_browser) return _browser;
+  // Route Chromium through IMPORT_PROXY_URL when set (datacenter IPs are
+  // blocked by the marketplaces). Undefined keeps the direct connection.
   _browser = await chromium.launch({
     headless: true,
+    proxy: playwrightProxy(),
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",

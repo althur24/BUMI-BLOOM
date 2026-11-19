@@ -123,6 +123,30 @@ textarea.input { resize: vertical; font-family: inherit; }
 .muted { color: var(--muted); font-size: 12px; }
 .hint { color: var(--muted); font-size: 11px; margin-top: 4px; }
 
+/* Import throttle/cooldown banners */
+.notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 16px;
+  border: 1px solid transparent;
+}
+.notice strong { font-weight: 600; }
+.notice--warn {
+  background: #fdf2e9;
+  border-color: #f0c48a;
+  color: #7a4a12;
+}
+.notice--info {
+  background: #eef4fb;
+  border-color: #c3d9ef;
+  color: #1f4a73;
+}
+
 /* ── Import bar ──────────────────────────────────────────────────────────── */
 .import-bar {
   display: flex;

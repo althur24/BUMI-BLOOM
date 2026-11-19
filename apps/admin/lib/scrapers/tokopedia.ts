@@ -12,6 +12,7 @@
 import { withPage, readJsonLd, type CapturedResponse } from "./browser";
 import { extractPdpStructured, extractPdpFromHtml, brandFromOgTitle } from "./tokopedia-pdp";
 import { canonicalizeUrl } from "../urls";
+import { fetchWithProxy } from "../proxy";
 import {
   toNum,
   type NormalizedColor,
@@ -37,6 +38,8 @@ import {
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Transport-level blocks (as opposed to "page loaded but no data"): connection
 // resets / timeouts thrown by undici or Chromium when the host throttles the IP.
@@ -812,7 +815,25 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
       error:
         `Tokopedia membatasi koneksi dari IP ini (rate-limit jaringan: ${errMsg(httpError)}). ` +
         "Tunggu beberapa menit lalu ulangi. Di server produksi (IP berbeda) biasanya lancar.",
-      raw: { id, blocked: true },
+      raw: { id, blocked: true, failureKind: "network" },
+    };
+  }
+
+  // Browser fallback is opt-in. Chromium loads dozens of subrequests per page,
+  // which trips marketplace rate limits far faster than the single HTTP fetch;
+  // it should only be enabled deliberately (IMPORT_BROWSER_FALLBACK=1).
+  const browserFallback = /^(1|true|yes|on)$/i.test(
+    String(process.env.IMPORT_BROWSER_FALLBACK || "0"),
+  );
+  if (!browserFallback) {
+    if (httpResult?.ok) return httpResult;
+    const httpMessage = httpError ? errMsg(httpError) : "tidak ada data";
+    return {
+      ok: false,
+      error:
+        `${httpMessage} | browser fallback dimatikan (IMPORT_BROWSER_FALLBACK=0). ` +
+        "Aktifkan hanya bila perlu — browser memicu jauh lebih banyak request dan lebih cepat kena blok.",
+      raw: { id, browserFallback: false },
     };
   }
 
@@ -840,7 +861,7 @@ export async function scrapeTokopedia(url: string): Promise<ScrapeResult> {
             ok: false,
             error:
               "Tokopedia memblokir permintaan (captcha/anti-bot). Coba lagi beberapa saat atau gunakan jalur Affiliate API.",
-            raw: { id: resolvedId },
+            raw: { id: resolvedId, failureKind: "block" },
           };
         }
 
@@ -1123,15 +1144,22 @@ ${htmlAfter}`,
 }
 
 // Direct HTTP scrape: no Playwright. Reads `window.__cache` from the SSR HTML.
-// Retries transient connection resets with backoff.
+// Extra retries are opt-in via IMPORT_HTTP_RETRIES (default 0 — the guard
+// already spaces requests, and hammering a rate-limited host makes it worse).
 async function scrapeTokopediaHttp(url: string): Promise<ScrapeResult> {
+  // Retries are opt-in (default 0). The guard already spaces attempts, and
+  // hammering a rate-limited host makes the block worse.
+  const retries = Math.max(
+    0,
+    Math.min(3, Number(process.env.IMPORT_HTTP_RETRIES ?? 0) || 0),
+  );
   let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await scrapeTokopediaHttpOnce(url);
     } catch (e) {
       lastError = e;
-      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 + attempt * 2500));
+      if (attempt < retries) await sleep(1500 + attempt * 2500);
     }
   }
   throw lastError;
@@ -1139,17 +1167,16 @@ async function scrapeTokopediaHttp(url: string): Promise<ScrapeResult> {
 
 // One attempt at fetching + parsing the SSR HTML.
 async function scrapeTokopediaHttpOnce(url: string): Promise<ScrapeResult> {
-  let response: Response;
+  let response: Awaited<ReturnType<typeof fetchWithProxy>>;
   try {
-    response = await fetch(url, {
-      redirect: "follow",
+    response = await fetchWithProxy(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "id,ID;q=0.9,en;q=0.8",
       },
-      signal: AbortSignal.timeout(60_000),
+      timeoutMs: 60_000,
     });
   } catch (e: any) {
     const cause = e?.cause?.message || e?.cause?.code || "";

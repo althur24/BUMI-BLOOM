@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { PRODUCT_AUDIENCES, parseAudience, type ProductAudience } from "@/lib/audience";
@@ -37,7 +37,31 @@ const STATUS_BADGE: Record<string, string> = {
   FAILED: "badge--coral",
 };
 
-const POLL_TIMEOUT_MS = 90_000;
+// Extraction can legitimately take a while now: the worker spaces requests per
+// domain (throttle) and may be behind a queued job, so allow several minutes
+// before showing a client-side timeout.
+const POLL_TIMEOUT_MS = 300_000;
+
+// Throttle/cooldown state reported by GET /api/imports/guard.
+interface GuardDomain {
+  domain: string;
+  requestsLastHour: number;
+  inCooldown: boolean;
+  cooldownUntil: number | null;
+  cooldownReason: string | null;
+  retryAfterMs: number;
+}
+interface GuardInfo {
+  config: { minIntervalMs: number; maxPerHour: number; cooldownMs: number };
+  domains: GuardDomain[];
+}
+
+function fmtCountdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 // Audience selection is mandatory: a blank audience would hide the product
 // from both the Girls and Boys collections. Labels live next to the values so
@@ -60,8 +84,17 @@ async function api(path: string, method = "GET", body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) throw new Error("NO_SESSION");
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // Carry the throttle info so callers can show the cooldown notice.
+    const err = new Error(json.error || `HTTP ${res.status}`) as Error & {
+      status?: number;
+      retryAfterSeconds?: number;
+    };
+    err.status = res.status;
+    err.retryAfterSeconds = json.retryAfterSeconds;
+    throw err;
+  }
   return json;
 }
 
@@ -102,6 +135,9 @@ export default function ImportPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [newColorHex, setNewColorHex] = useState("#CCCCCC");
   const [elapsed, setElapsed] = useState(0);
+  const [guard, setGuard] = useState<GuardInfo | null>(null);
+  const [guardAt, setGuardAt] = useState(0);
+  const [clockTick, setClockTick] = useState(0);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef(0);
 
@@ -124,6 +160,49 @@ export default function ImportPage() {
       if (e.message === "NO_SESSION") router.replace("/login");
     }
   }, [router]);
+
+  const refreshGuard = useCallback(async () => {
+    try {
+      const g = (await api("/api/imports/guard")) as GuardInfo;
+      setGuard(g);
+      setGuardAt(Date.now());
+    } catch {
+      // Non-critical: the banner just won't show.
+    }
+  }, []);
+
+  // Load guard state once ready, then poll it and drive a 1s countdown so the
+  // cooldown notice counts down live.
+  useEffect(() => {
+    if (!ready) return;
+    void refreshGuard();
+    const countdown = setInterval(() => setClockTick((t) => (t + 1) % 1_000_000), 1000);
+    const poll = setInterval(() => void refreshGuard(), 20_000);
+    return () => {
+      clearInterval(countdown);
+      clearInterval(poll);
+    };
+  }, [ready, refreshGuard]);
+
+  // Remaining cooldown, recomputed every second (clockTick) from the last
+  // server snapshot so the UI stays accurate between polls.
+  const guardCooldownMs = useMemo(() => {
+    if (!guard) return 0;
+    const maxRetry = guard.domains.reduce(
+      (m, d) => Math.max(m, d.inCooldown ? d.retryAfterMs : 0),
+      0,
+    );
+    if (!maxRetry) return 0;
+    return Math.max(0, maxRetry - (Date.now() - guardAt));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guard, guardAt, clockTick]);
+
+  const guardReason =
+    guard?.domains.find((d) => d.inCooldown)?.cooldownReason ||
+    "Marketplace membatasi permintaan dari server ini.";
+  const hourlyMaxed = Boolean(
+    guard && guard.domains.some((d) => d.requestsLastHour >= guard.config.maxPerHour),
+  );
 
   const pollJob = useCallback((jobId: string) => {
     if (pollRef.current) clearTimeout(pollRef.current);
@@ -218,6 +297,8 @@ export default function ImportPage() {
       else setError(e.message);
     } finally {
       setBusy(false);
+      // The guard may have opened a cooldown or counted this attempt.
+      void refreshGuard();
     }
   }
 
@@ -480,6 +561,23 @@ export default function ImportPage() {
         </div>
       </div>
 
+      {guardCooldownMs > 0 && (
+        <div className="notice notice--warn" role="status" aria-live="polite">
+          <span>
+            <strong>Import dijeda sementara.</strong> {guardReason} Coba lagi dalam{" "}
+            <strong>{fmtCountdown(guardCooldownMs)}</strong>.
+          </span>
+        </div>
+      )}
+      {guardCooldownMs === 0 && hourlyMaxed && guard && (
+        <div className="notice notice--info" role="status">
+          <span>
+            Batas aman <strong>{guard.config.maxPerHour} import/jam</strong> sudah tercapai untuk
+            salah satu marketplace. Import berikutnya akan ditolak sampai batasnya turun.
+          </span>
+        </div>
+      )}
+
       <form className="import-bar" onSubmit={onExtract}>
         <input
           className="input"
@@ -488,8 +586,18 @@ export default function ImportPage() {
           onChange={(e) => setUrlInput(e.target.value)}
           disabled={busy}
         />
-        <button className="btn btn--primary" type="submit" disabled={busy || !urlInput.trim()}>
-          {busy ? "Memproses…" : "Ekstrak"}
+        <button
+          className="btn btn--primary"
+          type="submit"
+          disabled={busy || !urlInput.trim() || guardCooldownMs > 0 || hourlyMaxed}
+        >
+          {busy
+            ? "Memproses…"
+            : guardCooldownMs > 0
+              ? "Dijeda sementara"
+              : hourlyMaxed
+                ? "Batas per jam"
+                : "Ekstrak"}
         </button>
       </form>
 
