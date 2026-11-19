@@ -267,6 +267,16 @@ export default function ProductsPage() {
                     {busyHandle === p.handle ? "Memproses…" : "Isi warna dari varian"}
                   </button>
                 )}
+                {/* Fill only what is missing: colours, material/fibre, size guide. */}
+                <button
+                  className="btn btn--ghost btn--sm"
+                  type="button"
+                  disabled={busyHandle === p.handle}
+                  title="Isi otomatis: warna, material, fibre, size guide (hanya yang kosong)"
+                  onClick={() => runFix(p.handle, "generate-content")}
+                >
+                  {busyHandle === p.handle ? "Memproses…" : "Generate konten kosong"}
+                </button>
                 <a
                   className="btn btn--ghost btn--sm"
                   href={`https://p9gcf7-wj.myshopify.com/admin/products/${p.id}`}

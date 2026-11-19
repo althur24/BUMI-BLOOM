@@ -19,6 +19,7 @@ import {
   createScrapeGuard,
   hostOf,
 } from "../lib/scrape-guard";
+import { buildContentPatch, deriveColors } from "../lib/generate-content";
 import { colorsFromVariants, detectColorNames, hexForColorName } from "../lib/colors";
 import { normaliseAudience, parseAudience } from "../lib/audience";
 import {
@@ -660,6 +661,96 @@ test("scrape failure classification and host normalisation", () => {
   );
   assert.equal(guard.noteFailureKind("z.com", "network"), "network");
   assert.equal(guard.check("z.com").reason, "cooldown");
+});
+
+function mkProduct(overrides: Record<string, unknown>): any {
+  return {
+    id: 1,
+    handle: "h",
+    title: "T",
+    bodyHtml: "",
+    vendor: "",
+    productType: "",
+    status: "active",
+    tags: "",
+    options: [],
+    variants: [],
+    images: [],
+    metafields: {},
+    manuallyEdited: false,
+    ...overrides,
+  };
+}
+
+test("generate fills colors, material, fibre and size guide from the product", () => {
+  const product = mkProduct({
+    bodyHtml: "<p>Material: 100% cotton. Care: machine wash cold.</p>",
+    options: [
+      { name: "Color", values: ["Mauve", "Navy"] },
+      { name: "Size", values: ["1-2 TAHUN", "3-4 TAHUN"] },
+    ],
+    variants: [
+      { option1: "Mauve", option2: "1-2 TAHUN", imageId: null, image: null },
+      { option1: "Navy", option2: "3-4 TAHUN", imageId: null, image: null },
+    ],
+  });
+
+  const colors = deriveColors(product);
+  assert.equal(colors.length, 2);
+  assert.ok(colors.every((c) => c.hex && /^#/.test(c.hex)));
+
+  const patch = buildContentPatch(product, colors);
+  assert.ok(patch.colors && patch.colors.length === 2);
+  const stored = JSON.parse(patch.metafields.colors);
+  assert.equal(stored.length, 2);
+  assert.match(patch.metafields.material, /Material:/);
+  assert.ok(patch.metafields.fibre);
+  assert.ok(patch.metafields.size_guide);
+  assert.equal(patch.metafields.size_label_mode, "age");
+  assert.ok(patch.filled.some((f) => f.startsWith("warna")));
+});
+
+test("generate never overwrites existing metafields", () => {
+  const product = mkProduct({
+    bodyHtml: "<p>Material: 100% linen.</p>",
+    options: [{ name: "Size", values: ["1-2 TAHUN"] }],
+    variants: [{ option1: "1-2 TAHUN" }],
+    metafields: {
+      colors: '[{"name":"Black","hex":"#111111"}]',
+      material: "Existing material",
+      fibre: "Cotton",
+      size_guide: "S — 1-2 yrs",
+      size_label_mode: "height",
+    },
+  });
+  const patch = buildContentPatch(product, []);
+  assert.equal(patch.colors, null);
+  assert.equal(patch.metafields.material, undefined);
+  assert.equal(patch.metafields.fibre, undefined);
+  assert.equal(patch.metafields.size_guide, undefined);
+  assert.equal(patch.metafields.colors, undefined);
+  assert.ok(patch.skipped.some((s) => /material sudah ada/.test(s)));
+});
+
+test("generate leaves material/size guide empty when there is no source", () => {
+  const product = mkProduct({
+    bodyHtml: "<p>Soft and comfy everyday piece.</p>",
+    options: [{ name: "Size", values: ["S", "M", "L"] }],
+    variants: [{ option1: "S" }, { option1: "M" }],
+  });
+  const patch = buildContentPatch(product, []);
+  assert.equal(patch.metafields.material, undefined);
+  assert.equal(patch.metafields.size_guide, undefined);
+  assert.ok(patch.skipped.some((s) => /material: tidak ada info bahan/.test(s)));
+  assert.ok(patch.skipped.some((s) => /size guide: ukuran tanpa info umur\/tinggi/.test(s)));
+});
+
+test("deriveColors returns nothing without a Color option", () => {
+  const product = mkProduct({
+    options: [{ name: "Size", values: ["1 yr"] }],
+    variants: [{ option1: "1 yr" }],
+  });
+  assert.deepEqual(deriveColors(product), []);
 });
 
 console.log(`\n${passed} tests passed.`);

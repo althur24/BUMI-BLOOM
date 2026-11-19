@@ -7,6 +7,9 @@ import {
   getProduct,
   updateProduct,
 } from "@/lib/products";
+import {
+  generateProductContent,
+} from "@/lib/generate-content";
 import { fetchExistingVendors, resolveVendorSimple, adminRest } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +20,8 @@ type FixAction =
   | "colors-from-variants"
   | "bind-color-images"
   | "normalize-vendor"
-  | "clean-handle";
+  | "clean-handle"
+  | "generate-content";
 
 // POST /api/products/[handle]/fix { action }
 export async function POST(
@@ -110,6 +114,16 @@ export async function POST(
       });
       await flagManualEdit(cleaned);
       return NextResponse.json({ ok: true, action, handle: cleaned, previous: current });
+    }
+
+    if (action === "generate-content") {
+      const product = await getProduct(handle);
+      if (!product) return jsonError(404, "Produk tidak ditemukan.");
+      // Colours come from the Color variant option; material/size guide from the
+      // description and Size option values. Only empty fields are filled.
+      const result = await generateProductContent(handle, product);
+      if (result.filled.length) await flagManualEdit(handle);
+      return NextResponse.json({ ok: true, action, ...result });
     }
 
     return jsonError(400, `Aksi tidak dikenal: ${action}`);
