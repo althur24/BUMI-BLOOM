@@ -26,13 +26,6 @@ body {
   filter: drop-shadow(0 4px 8px rgba(0, 64, 140, 0.14));
 }
 
-.age-tile__character {
-  background: none;
-  box-shadow: none;
-  padding: 0;
-  filter: drop-shadow(0 3px 6px rgba(0, 64, 140, 0.16));
-}
-
 /* Faint crayon path down the left edge (wide screens only) */
 .paper-path { display: none; }
 @media (min-width: 1500px) {
@@ -189,20 +182,10 @@ body {
   background: transparent;
 }
 
-/* Shop the Family sits right above the collections grid — trim the facing
-   gaps so the two sections read as one block instead of two screens apart. */
-#shop-by-age {
-  padding-bottom: var(--space-6);
-}
-#shop-by-age + .squiggle-divider + .collections-section {
-  padding-top: var(--space-8);
-}
-
 /* Sections that carry margin doodles */
 .collections-section,
 .testimonials-section,
-.trust-bar,
-#shop-by-age {
+.trust-bar {
   position: relative;
 }
 
@@ -247,57 +230,6 @@ body {
   box-shadow: 0 1px 3px rgba(0, 64, 140, 0.08);
   z-index: 3;
   pointer-events: none;
-}
-
-/* ---- Shop by Family: 3 tiles (Girls, Boys, Busy Book) ---- */
-.age-tiles { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 1024px) {
-  .age-tiles { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .age-tiles { grid-template-columns: 1fr; }
-}
-
-.age-tile {
-  rotate: 0deg;
-  background: var(--color-white);
-  padding: var(--space-3) var(--space-3) 0;
-}
-.age-tile:nth-child(1) { rotate: -1.2deg; }
-.age-tile:nth-child(2) { rotate: 0.9deg; }
-.age-tile:nth-child(3) { rotate: -0.7deg; }
-.age-tile:nth-child(4) { rotate: 1.1deg; }
-.age-tile:hover { rotate: 0deg; }
-.age-tile::before {
-  content: '';
-  position: absolute;
-  width: 80px;
-  height: 24px;
-  background: rgba(249, 184, 175, 0.5);
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%) rotate(-3deg);
-  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.08);
-  z-index: 3;
-  pointer-events: none;
-}
-.age-tile:nth-child(even)::before {
-  background: rgba(150, 173, 214, 0.45);
-  transform: translateX(-50%) rotate(3deg);
-}
-.age-tile__image { border-radius: var(--radius-md); }
-
-/* Boys tile: hand-drawn doodle tile (no boys photo in library yet) */
-.age-tile__image--doodle {
-  background: var(--color-blue-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.age-tile__image--doodle img {
-  width: 68%;
-  height: 68%;
-  object-fit: contain;
 }
 
 /* ---- Product cards: taped polaroids (homepage grid) ---- */

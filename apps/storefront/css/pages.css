@@ -537,31 +537,6 @@
   .hero-character--bunny { right: 4%; top: 4%; }
 }
 
-/* ---- Age tile character avatar ---- */
-.age-tile {
-  position: relative;
-}
-
-.age-tile__character {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--color-white);
-  box-shadow: var(--shadow-sm);
-  padding: 4px;
-  z-index: 2;
-}
-
-.age-tile__character img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
 /* ---- Friends strip ---- */
 .friends-section {
   background: var(--color-cream-light);
