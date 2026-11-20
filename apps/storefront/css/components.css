@@ -166,7 +166,7 @@
 /* Image wrap */
 .product-card__image-wrap {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 24px 24px 0 0;
   background-color: var(--color-cream);
