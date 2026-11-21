@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError } from "@/lib/auth";
 import { adminGraphQL, findHeadlessPublicationId } from "@/lib/shopify";
+import { cached } from "@/lib/cache";
 
 // Free-text Shopify product types ("Busy Book", "tshirts") → the storefront
 // slug taxonomy (busy-book). Kept in sync with mapShopifyProduct in the
@@ -43,52 +44,59 @@ export async function GET() {
       console.error("[hero-products] Headless publication lookup failed:", e?.message || e);
     }
 
-    const data = await adminGraphQL<{
-      products: {
-        edges: {
-          node: {
-            id: string;
-            handle: string;
-            title: string;
-            vendor: string;
-            productType: string | null;
-            featuredImage: { url: string } | null;
-            publishedOnPublication?: boolean | null;
+    // The picker's product list changes rarely but this query (100 products
+    // plus a per-product publication lookup) is expensive, so it is cached.
+    const data = await cached(
+      `admin:hero-products:${headlessPublicationId || "all"}`,
+      120_000,
+      () =>
+        adminGraphQL<{
+          products: {
+            edges: {
+              node: {
+                id: string;
+                handle: string;
+                title: string;
+                vendor: string;
+                productType: string | null;
+                featuredImage: { url: string } | null;
+                publishedOnPublication?: boolean | null;
+              };
+            }[];
           };
-        }[];
-      };
-    }>(
-      headlessPublicationId
-        ? `query HeroProducts($pubId: ID!) {
-            products(first: 100, sortKey: TITLE) {
-              edges {
-                node {
-                  id
-                  handle
-                  title
-                  vendor
-                  productType
-                  featuredImage { url }
-                  publishedOnPublication(publicationId: $pubId)
+        }>(
+          headlessPublicationId
+            ? `query HeroProducts($pubId: ID!) {
+                products(first: 100, sortKey: TITLE) {
+                  edges {
+                    node {
+                      id
+                      handle
+                      title
+                      vendor
+                      productType
+                      featuredImage { url }
+                      publishedOnPublication(publicationId: $pubId)
+                    }
+                  }
                 }
-              }
-            }
-          }`
-        : `{
-            products(first: 100, sortKey: TITLE) {
-              edges {
-                node {
-                  id
-                  handle
-                  title
-                  vendor
-                  productType
-                  featuredImage { url }
+              }`
+            : `{
+                products(first: 100, sortKey: TITLE) {
+                  edges {
+                    node {
+                      id
+                      handle
+                      title
+                      vendor
+                      productType
+                      featuredImage { url }
+                    }
+                  }
                 }
-              }
-            }
-          }`,
-      headlessPublicationId ? { pubId: headlessPublicationId } : undefined,
+              }`,
+          headlessPublicationId ? { pubId: headlessPublicationId } : undefined,
+        ),
     );
 
     const byCategory = new Map<string, { handle: string; title: string; vendor: string; image: string | null }[]>();

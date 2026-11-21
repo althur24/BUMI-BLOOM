@@ -57,6 +57,21 @@ interface Color {
   fromVariant?: boolean;
 }
 
+// One row per colourway in the editor: the metafield entry merged with the
+// Shopify Color option values and their variants.
+interface ColorRow {
+  key: string;
+  // Effective name — what the admin sees and what gets saved to bumi.colors.
+  name: string;
+  // Original Shopify option value (null for metafield-only colours). Kept so a
+  // row can be matched back to the option value it came from.
+  variantName: string | null;
+  hex: string;
+  imageId: number | null;
+  fromVariant: boolean;
+  varian: { id: number; stock: number }[];
+}
+
 // Storefront product types. "baby" stays selectable: there is no Baby
 // collection any more, but infant garments still carry it as a type and keep
 // showing on /products.
@@ -174,6 +189,9 @@ export default function ProductEditorPage() {
   // bumi.audience — Girls/Boys collection routing on the storefront.
   const [audience, setAudience] = useState<AudienceValue>("unisex");
   const [variantEdits, setVariantEdits] = useState<Record<number, Partial<Variant>>>({});
+  // Hex edits for colourways that only exist as a Shopify Color option value
+  // (no bumi.colors entry yet), so their swatch is editable without a rename.
+  const [colorHexOverrides, setColorHexOverrides] = useState<Record<string, string>>({});
   const [removedImages, setRemovedImages] = useState<Set<number>>(new Set());
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -222,6 +240,7 @@ export default function ProductEditorPage() {
         setAudience(normaliseAudience(p.metafields.audience));
         setVariantEdits({});
         setRemovedImages(new Set());
+        setColorHexOverrides({});
       } catch (e: any) {
         if (e.message === "NO_SESSION") router.replace("/login");
         else setError(e.message);
@@ -256,33 +275,17 @@ export default function ProductEditorPage() {
 
   // One row per colourway: the metafield entry merged with the Shopify Color
   // option values and their variants, so the admin sees a single list.
-  const colorRows = useMemo(() => {
-    if (!product) return [] as {
-      key: string;
-      name: string;
-      hex: string;
-      imageId: number | null;
-      fromVariant: boolean;
-      varian: { id: number; stock: number }[];
-    }[];
+  const colorRows = useMemo((): ColorRow[] => {
+    if (!product) return [];
 
-    const byName = new Map<
-      string,
-      {
-        key: string;
-        name: string;
-        hex: string;
-        imageId: number | null;
-        fromVariant: boolean;
-        varian: { id: number; stock: number }[];
-      }
-    >();
+    const byName = new Map<string, ColorRow>();
 
     // Colours from the metafield first (keeps their image + hex).
     for (const c of colors) {
       byName.set(c.name.toLowerCase(), {
         key: c.key,
         name: c.name,
+        variantName: null,
         hex: c.hex,
         imageId: c.imageId ?? null,
         fromVariant: false,
@@ -301,12 +304,14 @@ export default function ProductEditorPage() {
         const existing = byName.get(key);
         if (existing) {
           existing.fromVariant = true;
+          existing.variantName = name;
           existing.varian.push({ id: v.id, stock: Number(stock) });
           if (existing.imageId == null && v.imageId != null) existing.imageId = v.imageId;
         } else {
           byName.set(key, {
             key: `v-${key}`,
             name,
+            variantName: name,
             // Resolve from the colour dictionary so a variant-only colour is
             // not saved as neutral grey.
             hex: hexForColorName(name),
@@ -318,8 +323,15 @@ export default function ProductEditorPage() {
       }
     }
 
+    // Apply a pending swatch edit so a variant-only colour is editable before
+    // the first save.
+    for (const row of byName.values()) {
+      const override = colorHexOverrides[row.key];
+      if (override) row.hex = override;
+    }
+
     return [...byName.values()];
-  }, [product, colors, colorPosition, variantEdits]);
+  }, [product, colors, colorPosition, variantEdits, colorHexOverrides]);
 
   function updateColorName(key: string, name: string) {
     setColors((prev) =>
@@ -327,8 +339,14 @@ export default function ProductEditorPage() {
     );
   }
 
-  function updateColorHex(key: string, hex: string) {
-    setColors((prev) => prev.map((c) => (c.key === key ? { ...c, hex } : c)));
+  // A variant-only colourway has no bumi.colors entry yet, so editing its swatch
+  // records an override that is merged back into the palette on save.
+  function updateColorHex(row: ColorRow, hex: string) {
+    if (row.varian.length > 0) {
+      setColorHexOverrides((prev) => ({ ...prev, [row.key]: hex }));
+      return;
+    }
+    setColors((prev) => prev.map((c) => (c.key === row.key ? { ...c, hex } : c)));
   }
 
   // Picking an image for a colourway stores it on the colour entry; variants of
@@ -356,8 +374,30 @@ export default function ProductEditorPage() {
     });
   }
 
-  function removeColor(key: string) {
-    setColors((prev) => prev.filter((c) => c.key !== key));
+  // A colourway that also exists as a Shopify Color option value cannot be
+  // removed here: the value (and its variants) must be deleted in the Shopify
+  // admin first. Metafield-only colours are removed from bumi.colors.
+  function removeColorRow(row: ColorRow) {
+    if (row.varian.length > 0) {
+      setError(
+        `Warna "${row.name}" dipakai ${row.varian.length} varian. Hapus varian warna itu di Shopify dulu, lalu tekan × lagi.`,
+      );
+      return;
+    }
+    setError("");
+    setColors((prev) =>
+      prev.filter(
+        (c) =>
+          c.key !== row.key &&
+          c.name.toLowerCase() !== row.name.toLowerCase() &&
+          (!row.variantName || c.name.toLowerCase() !== row.variantName.toLowerCase()),
+      ),
+    );
+    setColorHexOverrides((prev) => {
+      const next = { ...prev };
+      delete next[row.key];
+      return next;
+    });
   }
 
   const newColorKey = () =>
@@ -392,6 +432,7 @@ export default function ProductEditorPage() {
       const refreshed = await api(`/api/products/${encodeURIComponent(handle)}`);
       setProduct(refreshed.product);
       setColors(parseColorsJson(refreshed.product.metafields.colors));
+      setColorHexOverrides({});
       setMessage(`${(res.bound || []).length} gambar warna diambil dari varian.`);
     } catch (e: any) {
       setError(e.message);
@@ -412,6 +453,7 @@ export default function ProductEditorPage() {
       setProduct(refreshed.product);
       setNoColor(false);
       setColors(parseColorsJson(refreshed.product.metafields.colors));
+      setColorHexOverrides({});
       setMessage(`${(res.colors || []).length} warna diambil dari varian dan disimpan.`);
     } catch (e: any) {
       setError(e.message);
@@ -566,6 +608,7 @@ export default function ProductEditorPage() {
       setMessage(`Tersimpan (${(res.updated || []).length} perubahan).`);
       setVariantEdits({});
       setRemovedImages(new Set());
+      setColorHexOverrides({});
       const refreshed = await api(`/api/products/${encodeURIComponent(handle)}`);
       setProduct(refreshed.product);
       const freshColors = parseColorsJson(refreshed.product.metafields.colors);
@@ -726,7 +769,7 @@ export default function ProductEditorPage() {
                 type="color"
                 className="color-row__hex"
                 value={/^#[0-9a-f]{6}$/i.test(row.hex) ? row.hex : "#CCCCCC"}
-                onChange={(e) => updateColorHex(row.key, e.target.value.toUpperCase())}
+                onChange={(e) => updateColorHex(row, e.target.value.toUpperCase())}
                 aria-label={`Kode warna untuk ${row.name}`}
               />
               <span className="muted" style={{ fontSize: 12, minWidth: 130 }}>
@@ -735,7 +778,7 @@ export default function ProductEditorPage() {
               <button
                 className="btn btn--ghost btn--sm"
                 type="button"
-                onClick={() => removeColor(row.key)}
+                onClick={() => removeColorRow(row)}
                 aria-label={`Hapus warna ${row.name}`}
               >
                 ×

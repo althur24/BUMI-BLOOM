@@ -1,6 +1,8 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
+import { cacheGet, cacheSet } from "./cache";
 
 // Service-role client — bypasses RLS. SERVER ONLY. Used for Supabase Storage
 // uploads (re-hosting images). The anon key (browser) is never used here.
@@ -62,8 +64,26 @@ export function createSupabaseServerClient(): SupabaseClient {
 }
 
 // Returns the signed-in user from the cookie session, or null.
-export async function getServerUser() {
-  const { data, error } = await createSupabaseServerClient().auth.getUser();
+//
+// `auth.getUser()` is a network round-trip to Supabase Auth. The admin page
+// fires several API calls at once (product editor = detail + vendors, hero =
+// cards + products, …), so the same token would be verified repeatedly. The
+// verified result is cached for 60s keyed by a hash of the access token (never
+// the raw token) — a revoked session is still rejected once the entry expires.
+const USER_CACHE_TTL_MS = 60_000;
+
+export async function getServerUser(): Promise<User | null> {
+  const supabase = createSupabaseServerClient();
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) return null;
+
+  const cacheKey = `auth:user:${createHash("sha256").update(token).digest("hex")}`;
+  const cachedUser = cacheGet<User>(cacheKey);
+  if (cachedUser) return cachedUser;
+
+  const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
-  return data.user;
+  return cacheSet(cacheKey, data.user, USER_CACHE_TTL_MS);
 }

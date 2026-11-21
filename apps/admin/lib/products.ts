@@ -4,7 +4,14 @@
 // This module is the other direction: it lets an admin fix a live product
 // (colours, variants, images, metafields) without re-importing it.
 
-import { adminRest, ensureMetafieldTypes, setMetafields } from "./shopify";
+import {
+  adminRest,
+  adminGraphQL,
+  ensureMetafieldTypes,
+  setMetafields,
+  VENDORS_CACHE_KEY,
+} from "./shopify";
+import { cacheDelete, cacheGet, cacheSet } from "./cache";
 import { colorsFromVariants, normalizeHex, resolveColorHex } from "./colors";
 import { normaliseAudience, parseAudience, type ProductAudience } from "./audience";
 
@@ -77,6 +84,8 @@ export interface AdminVariant {
   option2: string | null;
   option3: string | null;
   grams: number | null;
+  // Needed to set stock without an extra per-variant GET.
+  inventoryItemId: number | null;
 }
 
 export interface AdminProductDetail {
@@ -110,7 +119,6 @@ export interface ProductPatch {
   variantPrices?: { id: number; price?: string; compareAtPrice?: string | null; sku?: string; inventoryQuantity?: number }[];
   variantImages?: { id: number; imageId: number | null }[];
   removeImageIds?: number[];
-  imageOrder?: number[];
 }
 
 const BUMI_FIELDS: BumiMetafieldKey[] = [
@@ -136,10 +144,14 @@ const BUMI_FIELDS: BumiMetafieldKey[] = [
 
 const FIELD_TYPES: Record<BumiMetafieldKey, string> = {
   colors: "json",
-  material: "single_line_text_field",
+  // Material & Size Guide keep line breaks: the storefront renders Material as
+  // rich text and parses Size Guide line-by-line (or " · "-separated).
+  // EnsureMetafieldTypes deletes the stale single_line metafield per product
+  // before the multi_line value is written, so nothing breaks on upgrade.
+  material: "multi_line_text_field",
   fibre: "single_line_text_field",
   audience: "single_line_text_field",
-  size_guide: "single_line_text_field",
+  size_guide: "multi_line_text_field",
   size_chart_image: "url",
   size_label_mode: "single_line_text_field",
   shipping_returns: "single_line_text_field",
@@ -208,16 +220,99 @@ function metafieldValue(metafields: any[], key: string): string {
 
 // ── Reads ──────────────────────────────────────────────────────────────────
 
+const METAFIELD_TTL_MS = 60_000;
+const metafieldCacheKey = (productId: number | string) => `mf:${productId}`;
+
 async function fetchMetafields(productId: number | string): Promise<any[]> {
+  const cached = cacheGet<any[]>(metafieldCacheKey(productId));
+  if (cached) return cached;
   try {
     const res = await adminRest<any>(
       "GET",
       `/products/${productId}/metafields.json?namespace=bumi`,
     );
-    return res?.metafields || [];
+    return cacheSet(metafieldCacheKey(productId), res?.metafields || [], METAFIELD_TTL_MS);
   } catch {
     return [];
   }
+}
+
+// Fetch the `bumi` metafields for many products in a SINGLE GraphQL request.
+// The old code issued one REST call per product (N+1): a 50-product page made
+// 50 sequential round-trips to Shopify, which is what made the admin slow.
+async function fetchMetafieldsBatch(productIds: (number | string)[]): Promise<Map<number, any[]>> {
+  const out = new Map<number, any[]>();
+  const missing: number[] = [];
+  for (const id of productIds) {
+    const numeric = Number(id);
+    if (!Number.isFinite(numeric)) continue;
+    const cached = cacheGet<any[]>(metafieldCacheKey(numeric));
+    if (cached) out.set(numeric, cached);
+    else if (!missing.includes(numeric)) missing.push(numeric);
+  }
+  if (!missing.length) return out;
+
+  // Shopify caps `nodes(ids:)` at 100 ids per request.
+  for (let i = 0; i < missing.length; i += 100) {
+    const batch = missing.slice(i, i + 100);
+    try {
+      const data = await adminGraphQL<{
+        nodes: ({ id: string; metafields?: { edges: { node: any }[] } } | null)[];
+      }>(
+        `query ProductMetafields($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ... on Product {
+              id
+              metafields(first: 30, namespace: "bumi") {
+                edges { node { key value } }
+              }
+            }
+          }
+        }`,
+        { ids: batch.map((id) => `gid://shopify/Product/${id}`) },
+        { timeoutMs: 30_000 },
+      );
+      for (const node of data?.nodes || []) {
+        if (!node?.id) continue;
+        const numeric = Number(String(node.id).split("/").pop());
+        if (!Number.isFinite(numeric)) continue;
+        const metafields = (node.metafields?.edges || []).map((e) => e.node);
+        out.set(numeric, metafields);
+        cacheSet(metafieldCacheKey(numeric), metafields, METAFIELD_TTL_MS);
+      }
+    } catch (err: any) {
+      console.error("[products] batch metafields failed:", err?.message || err);
+      // Fall back to a bounded number of parallel single fetches so a GraphQL
+      // hiccup degrades to "slower" instead of "missing metafields".
+      await mapWithConcurrency(batch, 5, async (id) => {
+        const metafields = await fetchMetafields(id);
+        if (metafields.length) out.set(id, metafields);
+      });
+    }
+  }
+  return out;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  work: (item: T) => Promise<void>,
+): Promise<void> {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length) {
+      const next = queue.shift();
+      if (next === undefined) return;
+      await work(next);
+    }
+  });
+  await Promise.all(workers);
 }
 
 export async function listProducts(opts: {
@@ -236,9 +331,11 @@ export async function listProducts(opts: {
 
   const search = String(opts.search || "").trim().toLowerCase();
 
+  const metafieldsByProduct = await fetchMetafieldsBatch(raw.map((p: any) => p.id));
+
   const products: AdminProductSummary[] = [];
   for (const p of raw) {
-    const metafields = await fetchMetafields(p.id);
+    const metafields = metafieldsByProduct.get(Number(p.id)) || [];
     const colors = parseColors(metafieldValue(metafields, "colors"));
     const variants = p.variants || [];
     const options = p.options || [];
@@ -303,6 +400,85 @@ export async function listProducts(opts: {
   return { products, nextCursor };
 }
 
+// REST product endpoints truncate variants at 100. When that happens, fetch the
+// complete list from GraphQL (paginated) and map it to the REST variant shape
+// the editor expects, so large products are not silently missing variants.
+async function fetchAllVariantsDetailed(
+  productId: number | string,
+  options: { name: string; position?: number }[],
+): Promise<any[] | null> {
+  try {
+    const positionByName = new Map<string, number>();
+    options.forEach((o, i) =>
+      positionByName.set(String(o.name).toLowerCase(), Number(o.position) || i + 1),
+    );
+
+    const out: any[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 10; page++) {
+      const data: {
+        product: {
+          variants: {
+            nodes: any[];
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
+        } | null;
+      } = await adminGraphQL(
+        `query AllVariants($id: ID!, $after: String) {
+          product(id: $id) {
+            variants(first: 250, after: $after) {
+              nodes {
+                id
+                title
+                sku
+                price
+                compareAtPrice
+                inventoryQuantity
+                inventoryItem { id }
+                image { id }
+                selectedOptions { name value }
+              }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+        }`,
+        { id: `gid://shopify/Product/${productId}`, after: cursor },
+        { timeoutMs: 30_000 },
+      );
+
+      const variants = data?.product?.variants;
+      if (!variants) return null;
+      for (const node of variants.nodes || []) {
+        const mapped: Record<string, any> = {
+          id: numericFromGid(node.id),
+          title: node.title,
+          sku: node.sku || "",
+          price: node.price ?? "0",
+          compare_at_price: node.compareAtPrice ?? null,
+          inventory_quantity: node.inventoryQuantity ?? 0,
+          inventory_item_id: node.inventoryItem?.id ? numericFromGid(node.inventoryItem.id) : null,
+          image_id: node.image?.id ? numericFromGid(node.image.id) : null,
+          grams: null,
+        };
+        for (const sel of node.selectedOptions || []) {
+          const position = positionByName.get(String(sel.name).toLowerCase());
+          if (position) mapped[`option${position}`] = sel.value;
+        }
+        out.push(mapped);
+      }
+      if (!variants.pageInfo?.hasNextPage) break;
+      cursor = variants.pageInfo.endCursor;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function numericFromGid(gid: string): number {
+  return Number(String(gid).split("/").pop());
+}
+
 export async function getProduct(handle: string): Promise<AdminProductDetail | null> {
   const found = await adminRest<any>(
     "GET",
@@ -317,6 +493,11 @@ export async function getProduct(handle: string): Promise<AdminProductDetail | n
 
   const imageById = new Map<number, string>();
   for (const img of p.images || []) imageById.set(img.id, img.src);
+
+  if (Array.isArray(p.variants) && p.variants.length >= 100) {
+    const all = await fetchAllVariantsDetailed(p.id, p.options || []);
+    if (all?.length) p.variants = all;
+  }
 
   return {
     id: p.id,
@@ -344,6 +525,7 @@ export async function getProduct(handle: string): Promise<AdminProductDetail | n
       option2: v.option2 ?? null,
       option3: v.option3 ?? null,
       grams: v.grams ?? null,
+      inventoryItemId: v.inventory_item_id ?? null,
     })),
     images: (p.images || []).map((img: any) => ({
       id: img.id,
@@ -389,6 +571,7 @@ async function clearMetafields(
       throw new Error(`Metafield ${key} gagal dihapus: ${e?.message || e}`);
     }
   }
+  cacheDelete(metafieldCacheKey(productId));
   return cleared;
 }
 
@@ -419,6 +602,7 @@ async function upsertMetafields(
   // loses every field in the same save.
   await ensureMetafieldTypes(productId, values);
   await setMetafields(`gid://shopify/Product/${productId}`, values);
+  cacheDelete(metafieldCacheKey(productId));
   return values.map((v) => v.key);
 }
 
@@ -452,6 +636,7 @@ export async function updateProduct(
     Object.keys(productBody).forEach((k) => {
       if (k !== "id") updated.push(k);
     });
+    if (patch.vendor != null) cacheDelete(VENDORS_CACHE_KEY);
   }
 
   // Shopify rejects a variant batch that includes unchanged variants whose ids
@@ -519,8 +704,8 @@ export async function updateProduct(
       warnings.push("Lokasi inventory tidak ditemukan — stok tidak diperbarui.");
     } else {
       for (const v of stockPatch) {
-        const detail = await adminRest<any>("GET", `/variants/${v.id}.json`).catch(() => null);
-        const itemId = detail?.variant?.inventory_item_id;
+        // Reuse the inventory item id from the product read (no extra GET).
+        const itemId = liveById.get(v.id)?.inventoryItemId;
         if (!itemId) {
           warnings.push(`Inventory item varian ${v.id} tidak ditemukan.`);
           continue;
@@ -537,15 +722,6 @@ export async function updateProduct(
       }
       updated.push("inventory");
     }
-  }
-
-  if (patch.imageOrder?.length) {
-    for (let i = 0; i < patch.imageOrder.length; i++) {
-      await adminRest("PUT", `/product_images/${patch.imageOrder[i]}.json`, {
-        image: { id: patch.imageOrder[i], position: i + 1 },
-      }).catch((e: any) => warnings.push(`Urutan gambar gagal: ${e?.message || e}`));
-    }
-    updated.push("imageOrder");
   }
 
   if (patch.removeImageIds?.length) {
@@ -673,21 +849,43 @@ export async function updateProduct(
     }
   }
 
-  // Flush price/SKU changes one variant at a time. A product-level PUT with a
-  // subset of variants deletes the omitted ones, so this is the only safe path
-  // when the product has more variants than the ones being edited.
+  // Flush price/SKU changes via GraphQL bulk update (chunked). Unlike the REST
+  // variant endpoint this also works for products with more than 100 variants.
   if (pendingVariantUpdates.length) {
-    for (const v of pendingVariantUpdates) {
-      const id = Number(v.id);
-      const body: Record<string, unknown> = { id };
-      for (const [k, val] of Object.entries(v)) {
-        if (k !== "id") body[k] = val;
-      }
-      if (Object.keys(body).length <= 1) continue;
+    for (const batch of chunkArray(pendingVariantUpdates, 100)) {
+      const variants = batch
+        .map((v) => {
+          const input: Record<string, unknown> = {
+            id: `gid://shopify/ProductVariant/${Number(v.id)}`,
+          };
+          if (v.price !== undefined) input.price = Number(v.price);
+          if (v.compare_at_price !== undefined) {
+            input.compareAtPrice =
+              v.compare_at_price === null || v.compare_at_price === ""
+                ? null
+                : Number(v.compare_at_price);
+          }
+          if (v.sku !== undefined) input.inventoryItem = { sku: String(v.sku) };
+          return input;
+        })
+        .filter((v) => Object.keys(v).length > 1);
+      if (!variants.length) continue;
       try {
-        await adminRest("PUT", `/variants/${id}.json`, { variant: body });
+        const data = await adminGraphQL<any>(
+          `mutation UpdateVariants($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+              userErrors { field message }
+            }
+          }`,
+          { productId: `gid://shopify/Product/${productId}`, variants },
+          { timeoutMs: 60_000 },
+        );
+        const errs = data?.productVariantsBulkUpdate?.userErrors || [];
+        if (errs.length) {
+          warnings.push(`Update varian: ${errs.map((e: any) => e.message).join("; ")}`);
+        }
       } catch (e: any) {
-        warnings.push(`Varian ${id} gagal disimpan: ${e?.message || e}`);
+        warnings.push(`Update varian gagal: ${e?.message || e}`);
       }
     }
   }

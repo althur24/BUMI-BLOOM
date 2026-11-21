@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError } from "@/lib/auth";
 import { adminGraphQL, fetchBrandMetaobjects } from "@/lib/shopify";
+import { cached } from "@/lib/cache";
 
 // Brand key normaliser — MUST stay identical to normalizeBrandKey() in the
 // storefront's public/js/data.js, otherwise an admin re-order would not match
@@ -26,13 +27,22 @@ interface BrandOption {
 // count) plus brand metaobjects that have no products yet. Deduped by key so
 // "Sabine & Heem" and "Sabine and Heem" are one row.
 export async function GET() {
-  let ctx;
   try {
-    ctx = await requireAdmin(["SUPER_ADMIN", "CONTENT_EDITOR", "SUPPORT"]);
+    await requireAdmin(["SUPER_ADMIN", "CONTENT_EDITOR", "SUPPORT"]);
   } catch (e: any) {
     return jsonError(e.status || 500, e.message);
   }
 
+  try {
+    const brands = await cached("admin:brand-options", 120_000, loadBrandOptions);
+    return NextResponse.json({ brands });
+  } catch (err: any) {
+    console.error("[brand-options] GET error:", err?.message || err);
+    return jsonError(502, "Gagal memuat brand dari Shopify");
+  }
+}
+
+async function loadBrandOptions(): Promise<BrandOption[]> {
   const byKey = new Map<string, BrandOption>();
 
   // Match the storefront's catalogue fetch (also first: 100, no pagination) so
@@ -73,6 +83,5 @@ export async function GET() {
     console.error("[brand-options] metaobject lookup failed:", err?.message || err);
   }
 
-  const brands = [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
-  return NextResponse.json({ brands });
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

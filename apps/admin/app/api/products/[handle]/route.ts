@@ -22,7 +22,12 @@ export async function GET(
 
   try {
     const handle = decodeURIComponent(context.params.handle);
-    const product = await getProduct(handle);
+    // The vendor datalist is independent of the product itself — fetch both at
+    // once instead of waiting for the product round-trip first.
+    const [product, vendors] = await Promise.all([
+      getProduct(handle),
+      fetchExistingVendors().catch(() => [] as string[]),
+    ]);
     if (!product) return jsonError(404, `Produk "${handle}" tidak ditemukan.`);
 
     // Link the live product back to its import job so manual edits can be
@@ -32,8 +37,6 @@ export async function GET(
       orderBy: { createdAt: "desc" },
       select: { id: true, sourceUrl: true, manuallyEditedAt: true },
     });
-
-    const vendors = await fetchExistingVendors().catch(() => [] as string[]);
 
     return NextResponse.json({
       product: { ...product, manuallyEdited: Boolean(job?.manuallyEditedAt) },

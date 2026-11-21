@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError } from "@/lib/auth";
 import { getAnalyticsSummary } from "@/lib/analytics";
+import { cached } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,11 @@ export async function GET(request: Request) {
   const range = u.searchParams.get("range") === "30d" ? "30d" : "7d";
 
   try {
-    const summary = await getAnalyticsSummary(range);
+    // Analytics paginates every order in the range; cache it so switching back
+    // to the dashboard (or between 7d/30d) is instant.
+    const summary = await cached(`admin:analytics:${range}`, 120_000, () =>
+      getAnalyticsSummary(range),
+    );
     const shop = process.env.SHOPIFY_SHOP;
     return NextResponse.json({
       ...summary,

@@ -1,5 +1,6 @@
 import { prisma } from "@bumi/db";
 import { getServerUser } from "./supabase-server";
+import { cacheGet, cacheSet } from "./cache";
 
 // Roles mirror the Prisma AdminRole enum (packages/db/schema.prisma).
 export type AdminRole =
@@ -24,15 +25,33 @@ export function jsonError(status: number, message: string) {
 // Verifies the signed-in user from the cookie session (via @supabase/ssr),
 // then re-checks the role against AdminUser (Prisma) by email. The client is
 // never trusted to assert its own role.
+const ADMIN_LOOKUP_TTL_MS = 60_000;
+
+interface AdminLookup {
+  email: string;
+  role: string;
+  isActive: boolean;
+}
+
 export async function requireAdmin(
   roles: AdminRole[] = IMPORT_ROLES,
 ): Promise<AdminContext> {
   const user = await getServerUser();
   if (!user || !user.email) throw httpError(401, "Invalid session");
 
-  const admin = await prisma.adminUser.findUnique({
-    where: { email: user.email },
-  });
+  // Role checks happen on every API request; cache the DB lookup briefly so a
+  // page that calls several endpoints does not query AdminUser each time.
+  const cacheKey = `auth:admin:${user.email.toLowerCase()}`;
+  let admin = cacheGet<AdminLookup>(cacheKey);
+  if (!admin) {
+    const row = await prisma.adminUser.findUnique({
+      where: { email: user.email },
+    });
+    if (row) {
+      admin = { email: row.email, role: row.role, isActive: row.isActive };
+      cacheSet(cacheKey, admin, ADMIN_LOOKUP_TTL_MS);
+    }
+  }
   if (!admin || !admin.isActive) throw httpError(401, "Not an active admin");
 
   if (!roles.includes(admin.role as AdminRole)) {

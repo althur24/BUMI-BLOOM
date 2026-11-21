@@ -37,6 +37,10 @@ NEXT_PUBLIC_SUPABASE_URL=<isi dari .env.local>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<isi dari .env.local>
 
 # Prisma
+# DATABASE_URL  → TRANSACTION pooler (port 6543) + ?pgbouncer=true&connection_limit=5
+# DIRECT_URL    → DIRECT/session (port 5432), dipakai untuk migrasi
+# Catatan performa: samakan region Railway dengan region Supabase (mis.
+# ap-northeast-2). Beda region membuat setiap query DB menambah 100–300 ms.
 DATABASE_URL=<isi dari .env.local>
 DIRECT_URL=<isi dari .env.local>
 

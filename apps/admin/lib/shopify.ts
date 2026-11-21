@@ -3,6 +3,7 @@
 // token caching, leaky-bucket rate-limit respect). Server-only — secrets in env.
 
 import { canonicalizeUrl } from "./urls";
+import { cached } from "./cache";
 
 const SHOP = () => process.env.SHOPIFY_SHOP!;
 const CLIENT_ID = () => process.env.SHOPIFY_CLIENT_ID!;
@@ -117,7 +118,13 @@ export async function adminGraphQL<T = any>(
 }
 
 // ── Headless publication (so products appear on the storefront channel) ─────
+// The publication id never changes; resolve it once per process (also avoids
+// an extra GraphQL call on every hero-products request).
 export async function findHeadlessPublicationId(): Promise<string> {
+  return cached("shopify:headless-publication", 600_000, resolveHeadlessPublicationId);
+}
+
+async function resolveHeadlessPublicationId(): Promise<string> {
   const data = await adminGraphQL<{ publications: { edges: { node: { id: string; name: string; app?: { title?: string } } }[] } }>(
     `{ publications(first: 30) { edges { node { id name app { title } } } } }`,
   );
@@ -180,16 +187,22 @@ export async function deleteProduct(id: number | string): Promise<void> {
 }
 
 // Fetch existing vendor names from Shopify (unique list from all products).
+// Vendors are read on every product-editor load and every import push. The list
+// changes rarely, so cache it briefly and invalidate it on writes.
+export const VENDORS_CACHE_KEY = "shopify:vendors";
+
 export async function fetchExistingVendors(): Promise<string[]> {
-  const res = await adminRest<{ products: { vendor: string }[] }>(
-    "GET",
-    "/products.json?limit=250&fields=vendor",
-  );
-  const vendors = new Set<string>();
-  for (const p of res?.products || []) {
-    if (p.vendor) vendors.add(p.vendor);
-  }
-  return [...vendors];
+  return cached(VENDORS_CACHE_KEY, 120_000, async () => {
+    const res = await adminRest<{ products: { vendor: string }[] }>(
+      "GET",
+      "/products.json?limit=250&fields=vendor",
+    );
+    const vendors = new Set<string>();
+    for (const p of res?.products || []) {
+      if (p.vendor) vendors.add(p.vendor);
+    }
+    return [...vendors];
+  });
 }
 
 // Normalize vendor string for fuzzy matching: lowercase, remove common
@@ -356,9 +369,16 @@ export async function ensureBrandMetaobject(
   }
 }
 
+// Keys whose line breaks must survive: Material & Size Guide are rendered as
+// rich text / a table on the storefront, so joining lines with " · " would
+// destroy formatting. They are written as multi_line_text_field (see
+// FIELD_TYPES); Shopify accepts newlines for that type.
+const PRESERVE_NEWLINES = new Set(["material", "size_guide"]);
+
 // Prepare metafields for a metafieldsSet call:
 //  - single_line_text_field must not contain line breaks, so newlines are
 //    joined with " · " (Shopify rejects the whole batch otherwise).
+//  - material/size_guide keep their newlines (multi-line safe).
 //  - EVERY blank value is dropped, whatever its type. An empty string is
 //    invalid for number_decimal / number_integer / boolean / json too, and one
 //    bad item rejects the entire batch — which used to make saving a product
@@ -367,8 +387,19 @@ export function cleanMetafields(
   metafields: { namespace: string; key: string; value: string; type: string }[],
 ): { namespace: string; key: string; value: string; type: string }[] {
   return metafields
-    .map((m) =>
-      m.type === "single_line_text_field"
+    .map((m) => {
+      if (PRESERVE_NEWLINES.has(m.key)) {
+        return {
+          ...m,
+          value: String(m.value || "")
+            .replace(/\r\n?/g, "\n")
+            .split("\n")
+            .map((line) => line.replace(/\t+/g, " ").replace(/ {2,}/g, " ").trimEnd())
+            .join("\n")
+            .trim(),
+        };
+      }
+      return m.type === "single_line_text_field"
         ? {
             ...m,
             value: String(m.value || "")
@@ -377,8 +408,8 @@ export function cleanMetafields(
               .replace(/ {2,}/g, " ")
               .trim(),
           }
-        : m,
-    )
+        : m;
+    })
     .filter((m) => String(m.value ?? "").trim() !== "");
 }
 

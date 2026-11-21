@@ -14,6 +14,7 @@ import { PRODUCT_AUDIENCES } from "@/lib/audience";
 import { rehostImages } from "@/lib/storage";
 import { aiMatchVendor } from "@/lib/ai/enrich";
 import { canonicalizeUrl } from "@/lib/urls";
+import { cacheDelete } from "@/lib/cache";
 import type { NormalizedProduct } from "@/lib/scrapers/base";
 
 export const dynamic = "force-dynamic";
@@ -214,6 +215,11 @@ export async function POST(
       sourceUrl: job.sourceKey || canonicalizeUrl(job.sourceUrl),
     });
     if (brandWarning) res.warnings.push(brandWarning);
+    // The product/vendor/brand lists are cached; make the new/updated product
+    // visible on the next page load instead of after the TTL.
+    cacheDelete("admin:hero-products");
+    cacheDelete("admin:brand-options");
+    cacheDelete("shopify:vendors");
     await prisma.importJob.update({
       where: { id: job.id },
       data: {
