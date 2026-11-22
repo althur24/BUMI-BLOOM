@@ -151,11 +151,6 @@ textarea.input {
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
-.plp-sidebar__swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
 
 .plp-toolbar {
   display: flex;

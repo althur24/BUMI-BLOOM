@@ -302,27 +302,13 @@ function renderAgeFilter() {
 }
 
 function renderDynamicFilters() {
-  const colorsByName = new Map();
   const brands = new Set();
 
   (BumiData.PRODUCTS || []).forEach((product) => {
     if (product.brand) brands.add(String(product.brand));
-    (product.colors || []).forEach((color) => {
-      if (!color || !color.name) return;
-      const hex = bbSafeHex(color.hex).toLowerCase();
-      if (!colorsByName.has(hex)) colorsByName.set(hex, color.name);
-    });
   });
 
   renderAgeFilter();
-
-  const colorWrap = document.getElementById('plp-color-swatches');
-  if (colorWrap) {
-    colorWrap.innerHTML = [...colorsByName.entries()]
-      .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
-      .map(([hex, name]) => `<button class="pdp-color-swatch plp-color-swatch" style="background:${hex}" data-hex="${hex}" title="${bbEscapeHtml(name)}" aria-label="${bbEscapeHtml(name)}" type="button"></button>`)
-      .join('');
-  }
 
   const brandWrap = document.getElementById('plp-brand-options');
   if (brandWrap) {
@@ -367,7 +353,6 @@ function initPLP() {
     search: (params.get('search') || '').trim(),
     types: new Set(),
     ages: new Set(),
-    colors: new Set(),
     prices: new Set(),
     brands: new Set(),
     sort: 'brand-priority',
@@ -446,7 +431,6 @@ function initPLP() {
         return buckets.length > 0 && [...state.ages].some(key => buckets.some(b => b.key === key));
       });
     }
-    if (state.colors.size) list = list.filter(p => (p.colors || []).some(c => state.colors.has(c.hex.toLowerCase())));
     if (state.prices.size) {
       list = list.filter(p => {
         return [...state.prices].some(key => {
@@ -525,16 +509,6 @@ function initPLP() {
       state.visible = PAGE_SIZE;
       const age = btn.value;
       if (btn.checked) state.ages.add(age); else state.ages.delete(age);
-      render();
-    });
-  });
-
-  document.querySelectorAll('.plp-color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      state.visible = PAGE_SIZE;
-      swatch.classList.toggle('is-active');
-      const hex = (swatch.dataset.hex || '').toLowerCase();
-      if (state.colors.has(hex)) state.colors.delete(hex); else state.colors.add(hex);
       render();
     });
   });
