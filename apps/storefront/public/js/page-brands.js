@@ -80,7 +80,9 @@
     function render() {
       // Brand list is alphabetical (BumiData.getBrands). The admin brand order
       // is a PRODUCT priority for Shop All, not a brand-list order.
-      const brands = BumiData.getBrands ? BumiData.getBrands() : (BumiData.BRANDS || []).slice();
+      // Brands without products are never shown (no empty cards).
+      const brands = (BumiData.getBrands ? BumiData.getBrands() : (BumiData.BRANDS || []).slice())
+        .filter((b) => (Number(b.productCount) || 0) > 0);
       if (!brands.length) {
         grid.innerHTML = '<p class="brand-empty">Our brand list is loading — please refresh in a moment.</p>';
         return;

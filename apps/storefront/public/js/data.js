@@ -581,7 +581,8 @@ function deriveBrandAudience(products) {
 // Merge the catalogue with the brand metaobjects:
 //   - every vendor in PRODUCTS becomes a brand (new imports appear instantly)
 //   - metaobject values (name/desc/city/website/logo) win when present
-//   - metaobject brands with no products stay visible (monogram card)
+//   - metaobject brands with no products are HIDDEN from the storefront, so a
+//     brand whose catalogue has emptied out does not appear as an empty card
 function buildBrands(products, metaBrands) {
   // Products are grouped first so a metaobject can always be attached to the
   // vendor it describes — even when its name differs from the vendor string
@@ -607,6 +608,8 @@ function buildBrands(products, metaBrands) {
       : (byHandle && productGroups.has(byHandle)) ? byHandle
       : (byName || byHandle);
     if (!key || byKey.has(key)) continue;
+    // Hide metaobject brands with no products — no empty brand cards on /brands.
+    if (!productGroups.has(key)) continue;
     byKey.set(key, { ...meta, key });
     order.push(key);
   }
@@ -796,9 +799,13 @@ const BumiData = {
     this._brandRank = buildBrandRank(this._brandOrder);
   },
 
-  /* Brand list in alphabetical order (used by /brands and the PLP filter). */
+  /* Brand list in alphabetical order (used by /brands and the PLP filter).
+     Brands with no products are excluded so an emptied-out brand never shows
+     as a dead card / filter chip. */
   getBrands() {
-    return this.BRANDS.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    return this.BRANDS
+      .filter(b => (Number(b.productCount) || 0) > 0)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   },
 
   /* Priority rank of a product's brand for the Shop All order. Accepts a raw
