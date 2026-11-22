@@ -87,10 +87,6 @@ function productCardHTML(product, index) {
     `<span class="product-card__swatch" style="background:${bbSafeHex(c.hex)};" title="${bbEscapeHtml(c.name)}"></span>`
   ).join('');
 
-  const ratingHTML = product.rating
-    ? `<span class="product-card__rating" aria-label="Rated ${product.rating} out of 5">★ ${Number(product.rating).toFixed(1)}${product.reviews ? ` <span class="product-card__rating-count">(${product.reviews})</span>` : ''}</span>`
-    : '';
-
   return `
     <article class="product-card product-card--bg-${bg}${soldOut ? ' product-card--sold-out' : ''}" data-id="${product.id}" data-category="${product.category}">
       <div class="product-card__image-wrap">
@@ -103,7 +99,6 @@ function productCardHTML(product, index) {
       <div class="product-card__info">
         <p class="product-card__brand">${product.brand}</p>
         <h3 class="product-card__name"><a class="product-card__link" href="/products/${product.id}">${product.name}</a></h3>
-        ${ratingHTML}
         <p class="product-card__price${onSale ? ' product-card__price--sale' : ''}">${priceHTML}</p>
         ${product.fibre ? `<span class="product-card__material">${product.fibre}</span>` : ''}
         ${swatches ? `<div class="product-card__swatches">${swatches}</div>` : ''}
