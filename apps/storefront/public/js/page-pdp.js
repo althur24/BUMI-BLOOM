@@ -132,6 +132,12 @@
     }
 
     const badges = { new: 'New', bestseller: 'Bestseller' };
+
+    // Small stroke icon (matches the trust-bar style) for the PDP promises row.
+    function pdpIcon(paths) {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + paths + '"/></svg>';
+    }
     const badgeHTML = product.badge && badges[product.badge]
       ? '<span class="badge badge--' + (product.badge === 'new' ? 'green' : 'yellow') + '" style="margin-bottom:var(--space-4);display:inline-block;">' + badges[product.badge] + '</span>'
       : '<span class="badge badge--soft" style="margin-bottom:var(--space-4);display:inline-block;">Designed in Indonesia</span>';
@@ -213,7 +219,11 @@
           '<p class="pdp-price" id="pdp-price">' + buildPriceHTML() + '</p>' +
           '<p style="font-size:var(--text-sm);color:var(--text-secondary);margin-top:var(--space-1);">Secure checkout · Visa, Mastercard &amp; Amex</p>' +
           '<p class="pdp-availability" id="pdp-availability" style="display:none;"></p>' +
-          '<ul class="pdp-promises"><li>🧵 Designed &amp; made in Indonesia</li><li>🌿 Non-toxic dyes</li><li>🛡️ 14-day damage guarantee</li></ul>' +
+          '<ul class="pdp-promises">' +
+            '<li>' + pdpIcon('M4 8c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 8v4c0 1.7 3.6 3 8 3s8-1.3 8-3V8') + ' Designed &amp; made in Indonesia</li>' +
+            '<li>' + pdpIcon('M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z M2 21c0-3 1.85-5.36 5.08-6') + ' Non-toxic dyes</li>' +
+            '<li>' + pdpIcon('M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4') + ' 14-day damage guarantee</li>' +
+          '</ul>' +
           '<div>' + badgeHTML + '</div>' +
           colorOptionHTML +
           sizeOptionHTML +

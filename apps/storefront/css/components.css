@@ -613,6 +613,7 @@
   color: var(--text-secondary);
 }
 .pdp-promises li { display: inline-flex; align-items: center; gap: 6px; }
+.pdp-promises li svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--color-script-accent); }
 
 /* ── Homepage section responsiveness ── */
 @media (max-width: 900px) {
@@ -893,8 +894,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
+  color: var(--color-script-accent);
 }
+
+.why-choose-item__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Pastel chip per card, in theme order (peach → blue → pink → cream). */
+.why-choose-item:nth-child(4n + 1) .why-choose-item__icon { background-color: var(--color-yellow-light); }
+.why-choose-item:nth-child(4n + 2) .why-choose-item__icon { background-color: var(--color-green-light); }
+.why-choose-item:nth-child(4n + 3) .why-choose-item__icon { background-color: var(--color-pink-light); }
+.why-choose-item:nth-child(4n + 4) .why-choose-item__icon { background-color: var(--color-blue-light); }
 
 .why-choose-item__icon--yellow {
   background-color: var(--color-yellow-light);
