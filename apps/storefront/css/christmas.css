@@ -1,5 +1,5 @@
-﻿/* ============================================
-   BUMI / BLOOM â€” "Crayon Christmas" theme layer
+/* ============================================
+   BUMI / BLOOM — "Crayon Christmas" theme layer
    Loaded after paper.css on the homepage. Keeps
    the cream / dark-blue / red crayon identity and
    adds festive doodles: snowfall, santa-hat logo,
@@ -13,7 +13,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: var(--z-toast);
+  z-index: 50; /* above page background, below header (200) / modal (500) */
   display: none;
 }
 @media (min-width: 768px) {

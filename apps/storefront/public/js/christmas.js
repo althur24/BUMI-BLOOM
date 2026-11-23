@@ -113,22 +113,64 @@
   }
 
   /* ----------------------------------------------------------- Countdown */
+  // Single source of truth for the AU Christmas delivery cut-off. Update this
+  // one value each year — every date on the page and the countdown follow it.
+  var XMAS_CUTOFF = '2026-12-18';
+
   function pad(n) {
     return n < 10 ? '0' + n : String(n);
   }
 
-  function initCountdown() {
+  var MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  function resolveCutoff() {
+    var el = document.querySelector('[data-xmas-cutoff]');
+    var raw = (el && el.getAttribute('data-xmas-cutoff')) || XMAS_CUTOFF;
+    var d = new Date(raw + 'T23:59:59');
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Fill any [data-xmas-date] element from the cutoff so the date text is
+  // never hardcoded separately from the countdown.
+  function fillDates(cutoff) {
+    if (!cutoff) return;
+    var short = cutoff.getDate() + ' ' + MONTHS[cutoff.getMonth()].slice(0, 3);
+    var long = cutoff.getDate() + ' ' + MONTHS[cutoff.getMonth()];
+    var nodes = document.querySelectorAll('[data-xmas-date]');
+    for (var i = 0; i < nodes.length; i += 1) {
+      nodes[i].textContent =
+        nodes[i].getAttribute('data-xmas-date') === 'long' ? long : short;
+    }
+  }
+
+  // Remove every seasonal urgency element once the date has passed so nothing
+  // festive goes stale.
+  function expirePromos() {
+    var els = document.querySelectorAll(
+      '[data-xmas-cutoff], .announcement-bar--xmas, .gift-banner, #gift-guide'
+    );
+    for (var i = 0; i < els.length; i += 1) els[i].style.display = 'none';
+  }
+
+  function initCountdown(cutoff) {
     var strip = document.querySelector('[data-xmas-cutoff]');
-    if (!strip) return;
+    if (!cutoff) return;
+    if (!strip) {
+      // No countdown strip on this page (e.g. PLP) — still hide promos if stale.
+      if (cutoff.getTime() - Date.now() <= 0) expirePromos();
+      return;
+    }
 
     var out = strip.querySelector('[data-xmas-countdown]');
-    var cutoff = new Date(strip.getAttribute('data-xmas-cutoff') + 'T23:59:59');
 
     function tick() {
       var diff = cutoff.getTime() - Date.now();
       if (diff <= 0) {
         // Cut-off passed — hide the urgency message rather than show zeros.
-        strip.style.display = 'none';
+        expirePromos();
         clearInterval(timer);
         return;
       }
@@ -145,7 +187,9 @@
 
   function init() {
     initSnow();
-    initCountdown();
+    var cutoff = resolveCutoff();
+    fillDates(cutoff);
+    initCountdown(cutoff);
   }
 
   if (document.readyState === 'loading') {
