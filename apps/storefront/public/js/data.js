@@ -285,6 +285,7 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
         description
         productType
         vendor
+        tags
         featuredImage { url }
         images(first: 50) { edges { node { url } } }
         variants(first: 100) {
@@ -380,6 +381,13 @@ function mapShopifyProduct(node) {
 
   const metaColors = safeParseJSON(meta.colors, []);
   const variants = (node.variants && node.variants.edges || []).map((e) => e.node);
+
+  // Merchants can flag a bestseller straight from Shopify Admin with the
+  // `bestseller` product tag (case-insensitive). The `bumi.is_bestseller`
+  // metafield stays as a fallback so products flagged through the admin app
+  // keep showing up.
+  const isBestsellerTag = (node.tags || [])
+    .some((t) => String(t).trim().toLowerCase() === 'bestseller');
   const sizeLabelMode = normaliseSizeLabelMode(meta.size_label_mode);
 
   // Translate each raw size once and reuse the same map for both the button
@@ -494,9 +502,9 @@ function mapShopifyProduct(node) {
     soldOut: !available,
     image,
     gallery: gallery.length ? gallery : [image],
-    badge: meta.badge || null,
+    badge: meta.badge || (isBestsellerTag ? 'bestseller' : null),
     isNew: meta.is_new === 'true',
-    isBestseller: meta.is_bestseller === 'true',
+    isBestseller: isBestsellerTag || meta.is_bestseller === 'true',
     rating: meta.rating ? parseFloat(meta.rating) : 0,
     reviews: meta.reviews_count ? parseInt(meta.reviews_count, 10) : 0,
     addedAt: meta.added_at_rank ? parseInt(meta.added_at_rank, 10) : 0,
