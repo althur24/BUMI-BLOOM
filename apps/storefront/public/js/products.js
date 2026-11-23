@@ -120,7 +120,7 @@ function emptyHTML(message) {
 
 function initHomeCollection() {
   const grid = document.getElementById('collection-grid');
-  const featured = BumiData.getFeatured(8);
+  const featured = BumiData.getFeatured(3);
   grid.innerHTML = featured.map((p, i) => productCardHTML(p, i)).join('');
   if (window.BumiTrack) {
     BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',

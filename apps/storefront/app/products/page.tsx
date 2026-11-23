@@ -1,4 +1,5 @@
 import '@/css/shop.css';
+import '@/css/christmas.css';
 import body from '@/content/products.html';
 import { Scripts } from '@/components/Scripts';
 import { STOREFRONT_CHAIN } from '@/lib/scripts';
