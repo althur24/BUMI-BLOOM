@@ -5,14 +5,31 @@ import { requireAdmin, jsonError } from "@/lib/auth";
 import { adminGraphQL, findHeadlessPublicationId } from "@/lib/shopify";
 import { cached } from "@/lib/cache";
 
-// Free-text Shopify product types ("Busy Book", "tshirts") → the storefront
-// slug taxonomy (busy-book). Kept in sync with mapShopifyProduct in the
-// storefront's data.js.
-function normalizeCategory(productType: string | null | undefined): string {
-  return String(productType || "")
-    .trim()
+// Free-text Shopify product types ("Busy Book", "Top", "Girls' Tops", "") → the
+// storefront slug taxonomy (busy-book, tshirts, ...). Kept in sync with
+// normalizeProductType in the storefront's data.js so picker groups match what
+// the storefront filters. Rules run against the raw type first, then the title.
+const CATEGORY_RULES: { category: string; re: RegExp }[] = [
+  { category: "busy-book", re: /busy ?books?|quiet ?books?|activity ?books?|soft ?books?|buku (?:mainan|edukasi|aktivitas)/ },
+  { category: "accessories", re: /accessor|hat|cap|topi|socks|kaos kaki|bag|tas|shoes|sepatu|sandal|belt|aksesoris|mitten|bootie|bib/ },
+  { category: "outerwear", re: /jacket|jaket|coat|blazer|hoodie|cardigan|windbreaker|parka|bomber|vest|sweater|jumper|pullover/ },
+  { category: "dresses", re: /dress|gaun|jumpsuit|romper/ },
+  { category: "shorts", re: /shorts|celana|pants|trousers|jogger|skirt|rok|legging|overalls?|tights|bottom/ },
+  { category: "tshirts", re: /shirt|tee|t-shirt|tshirt|top|atasan|kaos|blouse|polo|long ?sleeve|short ?sleeve/ },
+];
+
+function normalizeCategory(
+  productType: string | null | undefined,
+  title?: string | null,
+): string {
+  const type = String(productType || "")
     .toLowerCase()
-    .replace(/[\s_]+/g, "-");
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const titleText = String(title || "").toLowerCase();
+  for (const rule of CATEGORY_RULES) if (rule.re.test(type)) return rule.category;
+  for (const rule of CATEGORY_RULES) if (rule.re.test(titleText)) return rule.category;
+  return "tshirts";
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -104,7 +121,7 @@ export async function GET() {
       const n = edge.node;
       if (!n.handle) continue;
       if (headlessPublicationId && n.publishedOnPublication === false) continue;
-      const category = normalizeCategory(n.productType);
+      const category = normalizeCategory(n.productType, n.title);
       if (!byCategory.has(category)) byCategory.set(category, []);
       byCategory.get(category)!.push({
         handle: n.handle,

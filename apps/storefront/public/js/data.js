@@ -356,19 +356,32 @@ function normalizeAudience(value) {
   return PRODUCT_AUDIENCES.includes(v) ? v : 'unisex';
 }
 
-// Shopify product types are free text ("Busy Book", "busy_book"), so they are
-// normalised to the storefront slug taxonomy. Older imports may still carry a
-// "baby" type, which has no filter chip; it is mapped to the closest real
-// category from the title (mirroring the import-side rule order) so those
-// products are not invisible in the PLP.
+// Shopify product types are free text ("Busy Book", "Top", "Girls' Tops", ""),
+// so they are normalised to the storefront slug taxonomy before the PLP/tab
+// filters see them. Without this, products edited directly in Shopify Admin
+// (or imported with legacy types like "baby") silently fall out of the
+// Tops/Bottoms/Dresses/Outerwear filters and the homepage tabs.
+//
+// Rules are matched against the raw type first (most reliable), then the title
+// as a fallback, mirroring the import-side category rules (lib/categorize.ts).
+const PRODUCT_TYPE_RULES = [
+  { category: 'busy-book',   re: /busy ?books?|quiet ?books?|activity ?books?|soft ?books?|buku (?:mainan|edukasi|aktivitas)/ },
+  // Accessories run before tops so "top knot baby hat" lands in accessories.
+  { category: 'accessories', re: /accessor|hat|cap|topi|socks|kaos kaki|bag|tas|shoes|sepatu|sandal|belt|aksesoris|mitten|bootie|bib/ },
+  { category: 'outerwear',   re: /jacket|jaket|coat|blazer|hoodie|cardigan|windbreaker|parka|bomber|vest|sweater|jumper|pullover/ },
+  { category: 'dresses',     re: /dress|gaun|jumpsuit|romper/ },
+  { category: 'shorts',      re: /shorts|celana|pants|trousers|jogger|skirt|rok|legging|overalls?|tights|bottom/ },
+  { category: 'tshirts',     re: /shirt|tee|t-shirt|tshirt|top|atasan|kaos|blouse|polo|long ?sleeve|short ?sleeve/ },
+];
+
 function normalizeProductType(raw, title) {
-  const type = String(raw == null ? '' : raw).trim().toLowerCase().replace(/[\s_]+/g, '-');
-  if (type !== 'baby') return type;
-  const t = String(title || '').toLowerCase();
-  if (/busy ?books?|quiet ?books?|buku (?:mainan|edukasi|aktivitas)/.test(t)) return 'busy-book';
-  if (/jacket|jaket|coat|blazer|hoodie|cardigan|windbreaker|parka|bomber|vest|sweater|jumper/.test(t)) return 'outerwear';
-  if (/dress|gaun|jumpsuit/.test(t)) return 'dresses';
-  if (/shorts|celana|pants|trousers|jogger|skirt|rok|legging|overalls?/.test(t)) return 'shorts';
+  // Strip punctuation (so "Girls' Tops" → "girls tops") and collapse spacing.
+  const type = String(raw == null ? '' : raw).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const titleText = String(title || '').toLowerCase();
+  for (const rule of PRODUCT_TYPE_RULES) if (rule.re.test(type)) return rule.category;
+  for (const rule of PRODUCT_TYPE_RULES) if (rule.re.test(titleText)) return rule.category;
+  // Nothing matched (e.g. a blank type on a plain garment) — default to tops,
+  // the closest real category, so the product is never invisible in filters.
   return 'tshirts';
 }
 

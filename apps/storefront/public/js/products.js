@@ -118,14 +118,78 @@ function emptyHTML(message) {
 
 /* ---------- Homepage "Collections" grid ---------- */
 
+// "All" is a curated teaser (newest first); each category tab draws from the
+// whole catalogue instead, so a tab is never limited to the handful of cards
+// that happen to be featured. The limits match the 3-column grid (1 and 2 rows
+// respectively) and are easy to tweak here.
+const HOME_FEATURED_LIMIT = 3;
+const HOME_TAB_LIMIT = 6;
+let homeCollectionFilter = 'all';
+
+function homeCollectionProducts(filter) {
+  if (!filter || filter === 'all') return BumiData.getFeatured(HOME_FEATURED_LIMIT);
+  return (BumiData.PRODUCTS || [])
+    .filter((p) => p.category === filter)
+    .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+    .slice(0, HOME_TAB_LIMIT);
+}
+
+function renderHomeCollection() {
+  const grid = document.getElementById('collection-grid');
+  if (!grid) return;
+  const tabs = document.querySelectorAll('.collection-tab');
+
+  // Hide tabs whose category has no published products so clicking one never
+  // leads to an empty grid (e.g. a catalogue with no dresses yet). Keep "All".
+  tabs.forEach((tab) => {
+    const filter = tab.dataset.filter || 'all';
+    if (filter === 'all') return;
+    const has = (BumiData.PRODUCTS || []).some((p) => p.category === filter);
+    tab.style.display = has ? '' : 'none';
+    if (!has && filter === homeCollectionFilter) {
+      homeCollectionFilter = 'all';
+      tab.classList.remove('is-active');
+      const allTab = document.querySelector('.collection-tab[data-filter="all"]');
+      if (allTab) allTab.classList.add('is-active');
+    }
+  });
+
+  const list = homeCollectionProducts(homeCollectionFilter);
+  grid.innerHTML = list.length
+    ? list.map((p, i) => productCardHTML(p, i)).join('')
+    : emptyHTML('No pieces in this category just yet — try another tab.');
+
+  if (window.BumiTrack) {
+    BumiTrack.event('view_item_list', {
+      item_list_name: 'Homepage collection: ' + homeCollectionFilter,
+      items: list.map((p) => ({ id: p.id, name: p.name, price: p.price })),
+    });
+  }
+}
+
 function initHomeCollection() {
   const grid = document.getElementById('collection-grid');
-  const featured = BumiData.getFeatured(3);
-  grid.innerHTML = featured.map((p, i) => productCardHTML(p, i)).join('');
-  if (window.BumiTrack) {
-    BumiTrack.event('view_item_list', { item_list_name: 'Homepage collection',
-      items: featured.map(p => ({ id: p.id, name: p.name, price: p.price })) });
+  if (!grid) return;
+  const tabs = document.querySelectorAll('.collection-tab');
+
+  // Bind once; currency switches re-run this and must not stack listeners.
+  if (tabs.length && !grid.dataset.tabsBound) {
+    grid.dataset.tabsBound = '1';
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        homeCollectionFilter = tab.dataset.filter || 'all';
+        renderHomeCollection();
+      });
+    });
   }
+
+  // Keep the active tab (a currency switch re-renders this) instead of
+  // resetting to "All" and leaving the highlighted tab out of sync.
+  const active = document.querySelector('.collection-tab.is-active');
+  homeCollectionFilter = (active && active.dataset.filter) || 'all';
+  renderHomeCollection();
 }
 
 /* ---------- Homepage hero arch cards (admin-managed) ---------- */
