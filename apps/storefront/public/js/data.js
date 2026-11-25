@@ -312,8 +312,6 @@ const PRODUCTS_QUERY = `query @inContext(country: AU) {
           {namespace:"bumi",key:"rating"},
           {namespace:"bumi",key:"reviews_count"},
           {namespace:"bumi",key:"sold_count"},
-          {namespace:"bumi",key:"size_guide"},
-          {namespace:"bumi",key:"size_chart_image"},
           {namespace:"bumi",key:"size_label_mode"},
           {namespace:"bumi",key:"shipping_returns"},
           {namespace:"bumi",key:"added_at_rank"}
@@ -392,8 +390,8 @@ function mapShopifyProduct(node) {
 
   // Translate each raw size once and reuse the same map for both the button
   // list and the variant list, so selection/sold-out/cart matching stay in
-  // sync (they must reference the exact same display string). `sizeRaw` is
-  // kept for the Size Guide table (weight/height parsing) and debugging.
+  // sync (they must reference the exact same display string). `sizesRaw` is
+  // kept for the PLP age filter (weight/height parsing) and debugging.
   const sizeDisplayByRaw = new Map();
   function displayFor(raw) {
     if (!raw) return '';
@@ -512,8 +510,6 @@ function mapShopifyProduct(node) {
     // `description` is the tag-stripped plain text and only a last resort.
     description: node.descriptionHtml || node.description || '',
     material: meta.material || '',
-    sizeGuide: meta.size_guide || '',
-    sizeChartImage: meta.size_chart_image || '',
     shippingReturns: meta.shipping_returns || '',
     soldCount: meta.sold_count ? parseInt(meta.sold_count, 10) : 0,
   };
