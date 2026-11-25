@@ -89,7 +89,11 @@
       content_type: 'product',
       num_items: items.reduce(function (sum, i) { return sum + Number(i.quantity || 1); }, 0)
     };
-    if (params.transaction_id) payload.order_id = params.transaction_id;
+    // Meta `order_id` is display-only; prefer an explicit order_id (the Shopify
+    // order name) so it matches the server CAPI, else fall back to the id.
+    if (params.order_id || params.transaction_id) {
+      payload.order_id = params.order_id || params.transaction_id;
+    }
     if (items.length === 1 && items[0].name) payload.content_name = items[0].name;
     return payload;
   }
@@ -116,6 +120,8 @@
           return { item_id: i.id, item_name: i.name, price: Number(i.price || 0), quantity: Number(i.quantity || 1) };
         });
       }
+      // `order_id` is Meta-specific; GA4 uses transaction_id for dedup.
+      delete gaParams.order_id;
       window.gtag('event', name, gaParams);
     }
 
@@ -137,13 +143,15 @@
 
   /**
    * Fire the purchase event. Browser + server (Meta CAPI / GA4 MP) share the
-   * same event_id so the platforms deduplicate.
-   * @param {object} data { transaction_id, value, currency, items, event_id }
+   * same event_id so the platforms deduplicate. `transaction_id` (GA4 dedup) is
+   * the stable checkout id; `order_id` (Meta display) is the Shopify order name.
+   * @param {object} data { transaction_id, order_id, value, currency, items, event_id }
    */
   function purchase(data) {
     data = data || {};
     return event('purchase', {
       transaction_id: data.transaction_id || data.event_id,
+      order_id: data.order_id,
       value: Number(data.value || 0),
       currency: data.currency || 'AUD',
       items: data.items || [],

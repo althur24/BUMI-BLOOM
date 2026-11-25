@@ -38,6 +38,7 @@
     } catch {}
     window.BumiTrack.purchase({
       transaction_id: purchase.transaction_id,
+      order_id: purchase.order_id,
       value: purchase.value,
       currency: purchase.currency,
       items: purchase.items,

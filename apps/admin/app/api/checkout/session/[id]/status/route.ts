@@ -6,6 +6,7 @@ import {
   jsonWithCors,
 } from "@/lib/checkout";
 import { reconcileCheckout } from "@/lib/checkout-service";
+import { ga4TransactionId } from "@/lib/checkout-analytics";
 import { getOrderStatusUrl } from "@/lib/shopify-checkout";
 import { getStripe } from "@/lib/stripe";
 import { createTrackingToken, trackingUrl } from "@/lib/tracking";
@@ -114,12 +115,18 @@ export async function GET(
     : null;
 
   // Purchase event payload for the success page. Browser tracking fires with
-  // `event_id: checkout.id`, matching the server-side Meta CAPI / GA4 MP event
-  // in lib/checkout-analytics.ts so both sides deduplicate.
+  // `event_id: checkout.id`, matching the server-side Meta CAPI event in
+  // lib/checkout-analytics.ts so Meta deduplicates browser + server hits.
+  // GA4 deduplicates on transaction_id, so it must be the SAME stable value the
+  // server sends — `ga4TransactionId(checkout)` (the checkout id), never the
+  // Shopify order name, which may not exist yet on the first poll.
   const itemsJson = Array.isArray(checkout.itemsJson) ? (checkout.itemsJson as any[]) : [];
   const purchase = {
-    transaction_id: checkout.shopifyOrderName || checkout.id,
+    transaction_id: ga4TransactionId(checkout),
     event_id: checkout.id,
+    // Meta display label only (not a dedup key). Prefer the friendly Shopify
+    // order name so the browser event matches the server CAPI payload.
+    order_id: checkout.shopifyOrderName || checkout.id,
     value: Number(checkout.amountAudCents || 0) / 100,
     currency: checkout.currency || "AUD",
     items: itemsJson.map((item: any) => ({
