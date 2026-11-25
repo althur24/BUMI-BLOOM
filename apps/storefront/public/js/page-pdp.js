@@ -229,7 +229,7 @@
           sizeOptionHTML +
           '<div class="pdp-actions">' +
             '<button class="btn btn--primary btn--full" id="add-to-bag" type="button"' + (sizeAvailable(selectedColor, selectedSize) ? '' : ' disabled') + '>' + (sizeAvailable(selectedColor, selectedSize) ? 'Add to Bag' : 'Sold Out') + '</button>' +
-            '<button class="btn btn--secondary btn--full" id="save-wishlist" type="button">' + wishlistIcon(wished) + '<span id="wishlist-label">' + (wished ? 'Saved to Wishlist' : 'Save to Wishlist') + '</span></button>' +
+            '<button class="btn btn--secondary" id="save-wishlist" type="button">' + wishlistIcon(wished) + '<span id="wishlist-label">' + (wished ? 'Saved to Wishlist' : 'Save to Wishlist') + '</span></button>' +
           '</div>' +
           accordionHTML(product) +
         '</div>' +
