@@ -902,6 +902,12 @@
   height: 26px;
 }
 
+.why-choose-item__img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
 /* Pastel chip per card, in theme order (peach → blue → pink → cream). */
 .why-choose-item:nth-child(4n + 1) .why-choose-item__icon { background-color: var(--color-yellow-light); }
 .why-choose-item:nth-child(4n + 2) .why-choose-item__icon { background-color: var(--color-green-light); }

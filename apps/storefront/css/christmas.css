@@ -342,6 +342,11 @@
   height: 32px;
   overflow: visible;
 }
+.gift-card__emoji img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
 .gift-card:nth-child(2) .gift-card__emoji { background: var(--color-blue-light); }
 .gift-card:nth-child(3) .gift-card__emoji { background: var(--color-pink-light); }
 .gift-card__title {
