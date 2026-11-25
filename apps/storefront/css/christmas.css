@@ -34,7 +34,7 @@
   right: -1.5em;
   width: 2.15em;
   height: 2.15em;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Cpath d='M15 43 C 16 24, 27 11, 44 7 C 49 5.8, 54 7.4, 56 11' fill='%23E85234' stroke='%23C53D24' stroke-width='3.2' stroke-linejoin='round'/%3E%3Cpath d='M44 7 C 49 5.8, 54 7.4, 56 11 L 52 14 C 50 11 48 10 44 11 Z' fill='%23C53D24' stroke='none'/%3E%3Ccircle cx='57' cy='13' r='6' fill='%23F2EEE9' stroke='%2300408C' stroke-width='3'/%3E%3Cpath d='M6 45 Q 14 36 26 41 T 48 41 Q 40 51 27 50 T 6 45 Z' fill='%23F2EEE9' stroke='%2300408C' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  background: url("/images/characters/santa-hat.png") no-repeat center / contain;
   /* Cream silhouette halo keeps the dark-blue outline legible on the dark
      announcement bar and on the cream page alike. */
   filter:
