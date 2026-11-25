@@ -41,6 +41,8 @@ const ATTRIBUTION_KEYS = [
   "gaClientId",
   "ga_client_id",
   "eventSourceUrl",
+  "clientIp",
+  "clientUserAgent",
 ] as const;
 
 function sanitizeAttribution(value: unknown): Record<string, string> | null {

@@ -22,6 +22,9 @@ export default function Page() {
             <p className="muted" style={{ margin: "6px 0 0" }}>
               Shopify: {env.shopify ? "✓" : "✗"} · Supabase: {env.supabase ? "✓" : "✗"} · Database: {env.database ? "✓" : "✗"}
             </p>
+            <p className="muted" style={{ margin: "6px 0 0" }}>
+              Meta CAPI: {env.metaCapi ? "✓" : "✗"} · GA4 MP: {env.ga4MeasurementProtocol ? "✓" : "✗"}
+            </p>
           </div>
         </div>
       </div>

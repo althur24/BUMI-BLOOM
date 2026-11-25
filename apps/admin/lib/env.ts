@@ -38,5 +38,15 @@ export function checkEnv() {
     // Stripe mode is active (staging runs test keys on purpose).
     stripeMode: stripeMode(),
     storefront: real(process.env.STOREFRONT_URL),
+    // Server-side purchase tracking: presence only, so an operator can confirm
+    // Meta CAPI / GA4 MP are wired up without exposing the token/secret.
+    metaCapi: real(
+      process.env.META_PIXEL_ID,
+      process.env.META_CAPI_ACCESS_TOKEN,
+    ),
+    ga4MeasurementProtocol: real(
+      process.env.GA4_MEASUREMENT_ID,
+      process.env.GA4_API_SECRET,
+    ),
   };
 }

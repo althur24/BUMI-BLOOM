@@ -190,6 +190,18 @@ export async function POST(request: Request) {
   try {
     const prepared = await prepareCheckout(body);
 
+    // Capture the real client signals on the server instead of trusting values
+    // the browser could spoof. They feed Meta CAPI user_data (client_ip_address
+    // / client_user_agent) later, which improves purchase match quality.
+    const clientUserAgent = (request.headers.get("user-agent") || "")
+      .trim()
+      .slice(0, 512);
+    prepared.attribution = {
+      ...(prepared.attribution || {}),
+      ...(ip && ip !== "unknown" ? { clientIp: ip } : {}),
+      ...(clientUserAgent ? { clientUserAgent } : {}),
+    };
+
     if (prepared.quote.totalAudCents < 50) {
       throw new CheckoutError(
         400,
