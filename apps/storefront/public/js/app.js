@@ -357,15 +357,13 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to subscribe');
 
-        // The code is revealed only after a successful signup.
-        const code = String(data.code || '').trim();
-        if (!code) throw new Error('No code returned');
-        submitBtn.textContent = 'Your code: ' + code + ' ✓';
+        // Plain list signup — the 10% welcome code offer is archived, so no
+        // code is revealed here.
+        submitBtn.textContent = 'Subscribed';
         emailInput.disabled = true;
         emailInput.value = '';
-        hint.textContent = 'Use ' + code + ' at checkout for 10% off your first order.';
+        hint.textContent = 'Thanks — you\'re on the list.';
         hint.style.display = 'block';
-        if (window.BumiWelcomePopup) BumiWelcomePopup.remember(data);
         if (window.BumiTrack) BumiTrack.event('generate_lead', { currency: 'AUD', value: 0 });
       } catch (err) {
         submitBtn.disabled = false;
@@ -430,7 +428,7 @@
     }
 
     BumiCart.addItem({
-      id: p.id, name: p.name, brand: p.brand, price: p.price,
+      id: p.id, name: p.name, brand: p.brand, price: p.price, category: p.category,
       size: (p.sizes && p.sizes[0]) || 'One Size',
       color: (p.colors && p.colors[0] && p.colors[0].name) || '—',
       image: p.image
@@ -524,32 +522,6 @@
       updateCartCount();
     }
   });
-
-  // ─── Collection Tab Filtering ────────────────────────────────────────
-  const collectionTabs = document.querySelectorAll('.collection-tab');
-  const collectionGrid = document.getElementById('collection-grid');
-
-  if (collectionTabs.length > 0 && collectionGrid) {
-    collectionTabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        // Remove active from all tabs
-        collectionTabs.forEach((t) => t.classList.remove('is-active'));
-        tab.classList.add('is-active');
-
-        const filter = tab.dataset.filter;
-        const cards = collectionGrid.querySelectorAll('.product-card');
-
-        cards.forEach((card, index) => {
-          if (filter === 'all' || card.dataset.category === filter) {
-            card.style.display = '';
-            card.style.animation = `fadeInUp 0.4s ease ${index * 0.05}s both`;
-          } else {
-            card.style.display = 'none';
-          }
-        });
-      });
-    });
-  }
 
   // ─── Smooth scroll for anchor links ──────────────────────────────────
   document.querySelectorAll('a[href^="#"]').forEach((anchor) => {

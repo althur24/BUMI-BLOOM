@@ -89,17 +89,9 @@ export async function POST(request: Request) {
       },
     });
 
-    // The welcome code is only revealed after a successful signup — it is not
-    // printed anywhere on the storefront before this point.
-    return NextResponse.json(
-      {
-        ok: true,
-        code: "WELCOME10",
-        label: "Welcome — 10% off",
-        rate: 0.1,
-      },
-      { status: 200, headers },
-    );
+    // The welcome-code offer is archived: this endpoint now only adds the
+    // address to the newsletter list. It deliberately returns no discount code.
+    return NextResponse.json({ ok: true }, { status: 200, headers });
   } catch (err: any) {
     console.error("[subscribe] DB error:", err);
     return NextResponse.json(

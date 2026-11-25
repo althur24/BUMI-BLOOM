@@ -47,9 +47,15 @@ const BumiCart = {
   /* AU shipping (AUD). freeThreshold applies to the post-discount subtotal. */
   SHIPPING: { flat: 15, express: 14.95, freeThreshold: 99 },
 
+  /* Automatic "3 for $69" bundle. Only clothing/accessory units count; busy
+     books are excluded. The three most expensive eligible units are repriced
+     to a flat total; extras stay full price. Mirrors
+     computeBundleDiscountCents() in apps/admin/lib/checkout.ts — keep in sync. */
+  BUNDLE: { qty: 3, flat: 69, label: 'Any 3 for $69', rowLabel: 'Any 3 clothing & accessories' },
+
   /* Promo codes are validated server-side at checkout. The cart only keeps the
-     code, plus an estimate when the server has told us the rate (e.g. after the
-     welcome-offer signup). No discount codes live in this file. */
+     code, plus an estimate when the server has told us the rate. No discount
+     codes live in this file, and the bundle cannot be combined with a code. */
 
   _drawer: {
     root: null,
@@ -236,17 +242,19 @@ const BumiCart = {
   },
 
   /* AU shipping cost for a given method + subtotal. Free shipping is based
-     on the subtotal after discounts, matching Shopify's order-price rule. */
-  shippingCost(method, subtotal) {
+     on the subtotal after the discount that is actually applied (the bundle
+     OR a code — never both), matching the server rule in
+     apps/admin/lib/checkout.ts. */
+  shippingCost(method, subtotal, bundleDiscount) {
     if (method === 'express') return this.SHIPPING.express;
-    const discounted = subtotal - this.getDiscount(subtotal);
+    const discounted = subtotal - this.getAppliedDiscount(subtotal, bundleDiscount || 0);
     return discounted >= this.SHIPPING.freeThreshold ? 0 : this.SHIPPING.flat;
   },
 
   /* ── Promo codes ──
      The checkout API is the source of truth. A code entered manually stays
-     pending until the server validates it; codes returned by the welcome
-     signup arrive with their rate so the cart can show the estimate. */
+     pending until the server validates it; a server-validated code arrives
+     with its rate so the cart can show the estimate. */
   async applyPromo(code, meta) {
     const key = String((meta && meta.code) || code || '').trim().toUpperCase();
     if (!key) {
@@ -283,6 +291,49 @@ const BumiCart = {
     if (!p || p.pending) return 0;
     if (p.fixed != null) return Math.min(p.fixed, subtotal);
     return subtotal * (p.rate || 0);
+  },
+
+  /* The discount actually charged: the automatic bundle and a promo code
+     cannot be combined, so while the bundle applies the code is ignored
+     (matching prepareCheckout() in apps/admin/lib/checkout-service.ts). */
+  getAppliedDiscount(subtotal, bundleDiscount) {
+    const bundle = Math.max(0, bundleDiscount || 0);
+    if (bundle > 0) return Math.min(bundle, subtotal);
+    return Math.min(this.getDiscount(subtotal), subtotal);
+  },
+
+  getBundleDiscount(items) {
+    const units = [];
+    items.forEach((item) => {
+      if (!this.isBundleEligible(item)) return;
+      const price = Math.max(0, Math.round(Number(item.price) || 0));
+      const qty = item.quantity || 1;
+      for (let i = 0; i < qty; i += 1) units.push(price);
+    });
+    if (units.length < this.BUNDLE.qty) return 0;
+    units.sort((a, b) => b - a);
+    const topTotal = units.slice(0, this.BUNDLE.qty).reduce((sum, price) => sum + price, 0);
+    const subtotal = units.reduce((sum, price) => sum + price, 0);
+    return Math.max(0, Math.min(topTotal - this.BUNDLE.flat, subtotal));
+  },
+
+  /* Busy books are toys and are excluded from the bundle: they neither count
+     towards the three items nor get repriced. Mirrors isBundleEligibleProduct()
+     in apps/admin/lib/checkout.ts. */
+  isBundleEligible(item) {
+    let category = String(item && item.category ? item.category : '').toLowerCase();
+    if (!category && window.BumiData && BumiData.getProduct) {
+      const product = BumiData.getProduct(item && item.id);
+      category = String((product && product.category) || '').toLowerCase();
+    }
+    if (category === 'busy-book') return false;
+    return !/busy\s*books?|quiet\s*books?|activity\s*books?|buku\s+(mainan|maianan|edukasi|aktivitas|activity)/i.test(String((item && item.name) || ''));
+  },
+
+  getBundleEligibleQty(items) {
+    return items.reduce((sum, item) => (
+      this.isBundleEligible(item) ? sum + (item.quantity || 1) : sum
+    ), 0);
   },
 
   /* Display formatting — delegates to BumiCurrency (AUD only). */
@@ -559,10 +610,13 @@ const BumiCart = {
   _renderShipping(items) {
     const d = this._drawer;
     const subtotal = items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
-    const eligible = Math.max(0, subtotal - this.getDiscount(subtotal));
+    const qty = this.getBundleEligibleQty(items);
+    const bundleDiscount = this.getBundleDiscount(items);
+    const eligible = Math.max(0, subtotal - this.getAppliedDiscount(subtotal, bundleDiscount));
     const threshold = this.SHIPPING.freeThreshold;
     const remaining = Math.max(0, threshold - eligible);
     const pct = Math.min(100, Math.round((eligible / threshold) * 100));
+    const itemsAway = Math.max(0, this.BUNDLE.qty - qty);
 
     d.ship.hidden = false;
     d.root.classList.toggle('is-ship-free', remaining <= 0);
@@ -574,7 +628,7 @@ const BumiCart = {
     if (!textEl || !bar || !fill) {
       d.ship.innerHTML = `
         <p data-cart-ship-text></p>
-        <div class="bb-cart-drawer__ship-bar" data-cart-ship-bar role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Free shipping progress">
+        <div class="bb-cart-drawer__ship-bar" data-cart-ship-bar role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Bundle and free shipping progress">
           <span class="bb-cart-drawer__ship-fill" data-cart-ship-fill></span>
         </div>
       `;
@@ -583,26 +637,74 @@ const BumiCart = {
       fill = d.ship.querySelector('[data-cart-ship-fill]');
     }
 
-    textEl.innerHTML = remaining > 0
-      ? 'You’re <strong>' + this.formatPrice(remaining) + '</strong> away from free AU shipping'
-      : 'You’ve unlocked <strong>free AU shipping</strong> ✦';
-    bar.setAttribute('aria-valuenow', String(pct));
-    fill.style.width = pct + '%';
+    if (itemsAway > 0) {
+      // Stage 1: the bundle comes first — it is the stronger hook.
+      const unit = itemsAway === 1 ? 'item' : 'items';
+      const bundlePct = Math.min(100, Math.round((qty / this.BUNDLE.qty) * 100));
+      bar.setAttribute('aria-valuenow', String(bundlePct));
+      fill.style.width = bundlePct + '%';
+      textEl.innerHTML =
+        'Add <strong>' + itemsAway + ' more clothing or accessory ' + unit + '</strong> to unlock <strong>' +
+        this.BUNDLE.label + '</strong> — busy books don’t count';
+    } else {
+      bar.setAttribute('aria-valuenow', String(pct));
+      fill.style.width = pct + '%';
+      if (bundleDiscount > 0) {
+        textEl.innerHTML = remaining > 0
+          ? '<strong>' + this.BUNDLE.label + '</strong> unlocked — you’re <strong>' + this.formatPrice(remaining) + '</strong> from free AU shipping'
+          : '<strong>' + this.BUNDLE.label + '</strong> and <strong>free AU shipping</strong> unlocked';
+      } else {
+        // Three eligible items but they already total less than $69 — the
+        // bundle has nothing to discount, so focus on free shipping instead.
+        textEl.innerHTML = remaining > 0
+          ? 'You’re <strong>' + this.formatPrice(remaining) + '</strong> away from free AU shipping'
+          : 'You’ve unlocked <strong>free AU shipping</strong>';
+      }
+    }
   },
 
   _renderTotals(items) {
     const d = this._drawer;
     const subtotal = items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
-    const discount = this.getDiscount(subtotal);
+    const bundleDiscount = this.getBundleDiscount(items);
+    // Only the applied discount counts (bundle OR code, never both).
+    const discount = this.getAppliedDiscount(subtotal, bundleDiscount);
     const promo = this.getPromo();
 
     d.subtotal.textContent = this.formatPrice(subtotal);
-    if (promo && discount > 0) {
+
+    let bundleRow = d.footer.querySelector('[data-cart-bundle]');
+    if (!bundleRow) {
+      bundleRow = document.createElement('div');
+      bundleRow.className = 'bb-cart-drawer__total-row bb-cart-drawer__total-row--discount';
+      bundleRow.setAttribute('data-cart-bundle', '');
+      bundleRow.hidden = true;
+      bundleRow.innerHTML = '<span data-cart-bundle-label>' + this.BUNDLE.rowLabel + '</span><strong data-cart-bundle-value>—</strong>';
+      d.footer.querySelector('[data-cart-discount]').parentNode.insertBefore(bundleRow, d.footer.querySelector('[data-cart-discount]'));
+    }
+    if (bundleDiscount > 0) {
+      bundleRow.hidden = false;
+      bundleRow.querySelector('[data-cart-bundle-label]').textContent = this.BUNDLE.rowLabel + ' (auto)';
+      bundleRow.querySelector('[data-cart-bundle-value]').textContent = '–' + this.formatPrice(bundleDiscount);
+    } else {
+      bundleRow.hidden = true;
+    }
+
+    if (promo && bundleDiscount > 0) {
+      // Codes cannot be combined with the bundle — show an informational row
+      // instead of a misleading zero discount.
       d.discountRow.hidden = false;
+      d.discountRow.classList.add('is-info');
+      d.discountLabel.textContent = promo.code + ' can’t combine with the bundle';
+      d.discountValue.textContent = 'Saved';
+    } else if (promo && discount > 0) {
+      d.discountRow.hidden = false;
+      d.discountRow.classList.remove('is-info');
       d.discountLabel.textContent = 'Discount (' + promo.code + ')';
       d.discountValue.textContent = '–' + this.formatPrice(discount);
     } else {
       d.discountRow.hidden = true;
+      d.discountRow.classList.remove('is-info');
     }
   },
 
@@ -669,6 +771,7 @@ const BumiCart = {
       }
       this.addItem({
         id: product.id, name: product.name, brand: product.brand, price: product.price,
+        category: product.category,
         size: (product.sizes && product.sizes[0]) || 'One Size',
         color: (product.colors && product.colors[0] && product.colors[0].name) || '—',
         image: product.image
@@ -709,7 +812,10 @@ const BumiCart = {
       if (window.BumiData && BumiData.ready) await BumiData.ready();
 
       if (window.BumiTrack) {
-        const items = this.getCart().map((item) => ({
+        const cart = this.getCart();
+        const subtotal = cart.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+        const bundleDiscount = this.getBundleDiscount(cart);
+        const items = cart.map((item) => ({
           id: item.id,
           name: item.name,
           price: item.price,
@@ -717,7 +823,7 @@ const BumiCart = {
         }));
         BumiTrack.event('begin_checkout', {
           currency: 'AUD',
-          value: this.getTotal() - this.getDiscount(this.getTotal()),
+          value: subtotal - this.getAppliedDiscount(subtotal, bundleDiscount),
           items,
         });
       }
@@ -1164,6 +1270,12 @@ notifStyle.textContent = `
     color: var(--color-red);
     font-size: var(--text-sm);
   }
+  /* Informational row (e.g. a saved code the bundle prevents applying). */
+  .bb-cart-drawer__total-row--discount.is-info,
+  .bb-cart-drawer__total-row--discount.is-info strong {
+    color: var(--text-muted);
+    font-weight: var(--fw-semibold);
+  }
   .bb-cart-drawer__note {
     font-size: var(--text-xs);
     color: var(--text-muted);
@@ -1235,6 +1347,16 @@ window.addEventListener('storage', (event) => {
 
 // Promo kini local config (tidak perlu fetch). Trigger initial cart badge.
 window.dispatchEvent(new CustomEvent('cart-updated'));
+
+// Bundle eligibility needs the catalog for legacy cart lines that were stored
+// before `category` was added. Re-render once the catalog is available so a
+// busy book is never counted towards the offer in the preview.
+if (window.BumiData && typeof BumiData.ready === 'function') {
+  BumiData.ready().then(() => {
+    if (BumiCart._drawer.root) BumiCart.renderDrawer();
+    else window.dispatchEvent(new CustomEvent('cart-updated'));
+  }).catch(() => {});
+}
 
 (function persistCheckoutAttribution() {
   try {

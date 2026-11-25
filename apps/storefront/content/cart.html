@@ -1,5 +1,5 @@
 <div class="announcement-bar" id="announcement-bar">
-    <span>🇦🇺 Free AU shipping over $99 · Secure checkout by Stripe ✦ <a href="/products?category=kids">Shop Now</a></span>
+    <span><svg class="inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>Any 3 clothing &amp; accessories for $69 · Free AU shipping over $99<svg class="inline-star" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2-6.3-4.5-6.3 4.5L8 13.8 2 9.2h7.6z"/></svg> <a href="/products?category=kids">Shop Now</a></span>
     <button class="announcement-bar__close" id="close-announcement" aria-label="Close announcement">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
@@ -95,6 +95,12 @@
 
         <div id="cart-items-container">
           <div id="cart-filled">
+            <div class="bundle-banner" id="cart-bundle-banner" hidden>
+              <span class="bundle-banner__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              </span>
+              <p class="bundle-banner__text" data-bundle-text></p>
+            </div>
             <div class="cart-layout">
               <div class="cart-items" role="list" aria-label="Cart items"></div>
               <aside class="cart-summary" aria-label="Order summary">
@@ -104,17 +110,8 @@
                   <button class="btn btn--secondary btn--sm" id="promo-apply" type="button">Apply</button>
                 </div>
                 <p class="promo-field__msg" id="promo-msg" style="display:none;"></p>
-                <div class="welcome-inline">
-                  <p class="welcome-inline__title">First order? Get 10% off</p>
-                  <p class="welcome-inline__text">Drop your email and we'll apply your welcome discount straight away — no spam.</p>
-                  <form class="welcome-inline__form" data-welcome-form="CART" novalidate>
-                    <label class="sr-only" for="cart-welcome-email">Email address</label>
-                    <input class="input" id="cart-welcome-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Your email address" required>
-                    <button class="btn btn--primary btn--sm" type="submit">Apply 10% off</button>
-                  </form>
-                  <p class="welcome-inline__msg" data-welcome-inline-msg role="status" aria-live="polite"></p>
-                </div>
                 <div class="cart-summary__row"><span>Subtotal</span><span id="cart-subtotal">—</span></div>
+                <div class="cart-summary__row" id="cart-bundle-row" style="display:none;"><span>Any 3 clothing &amp; accessories (auto)</span><span id="cart-bundle-value">—</span></div>
                 <div class="cart-summary__row" id="cart-discount-row" style="display:none;"><span id="cart-discount-label">Discount</span><span id="cart-discount">—</span></div>
                 <div class="cart-summary__row"><span>Shipping (est.)</span><span id="cart-shipping">—</span></div>
                 <div class="cart-summary__row cart-summary__row--total"><span>Estimated total</span><span id="cart-total">—</span></div>

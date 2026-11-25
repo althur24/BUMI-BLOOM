@@ -59,6 +59,7 @@ const VARIANTS_QUERY = `query CheckoutVariants($ids: [ID!]!) @inContext(country:
       product {
         title
         handle
+        productType
         featuredImage { url }
       }
     }
@@ -77,6 +78,7 @@ interface StorefrontVariantNode {
   product: {
     title: string;
     handle: string;
+    productType: string;
     featuredImage: { url: string } | null;
   };
 }
@@ -126,6 +128,7 @@ export async function fetchCheckoutVariants(
       handle: node.product?.handle || "",
       imageUrl:
         node.image?.url || node.product?.featuredImage?.url || null,
+      productType: node.product?.productType || "",
       priceAudCents: Math.round(Number(node.price.amount) * 100),
       quantity: 0,
       quantityAvailable:
@@ -557,6 +560,15 @@ function draftOrderInput(
   const items = Array.isArray(checkout.itemsJson) ? checkout.itemsJson : [];
   const discountCents = Number(checkout.discountAudCents || 0);
   const promoCode = checkout.promoCode || null;
+  // The quote records the automatic bundle explicitly, so the Shopify discount
+  // line is labelled from the source of truth instead of guessing from qty.
+  const quoteBundle = checkout.quoteJson && checkout.quoteJson.bundle;
+  const bundleCents = Number(quoteBundle?.discountAudCents || 0);
+  const bundleLabel = String(quoteBundle?.label || "Any 3 for $69");
+  const bundleApplied = bundleCents > 0;
+  const discountTitle = bundleApplied
+    ? bundleLabel + " bundle"
+    : promoCode || "Discount";
   const paymentIntent =
     typeof session?.payment_intent === "string"
       ? session.payment_intent
@@ -609,8 +621,8 @@ function draftOrderInput(
     appliedDiscount:
       discountCents > 0
         ? {
-            title: promoCode || "Discount",
-            description: promoCode || "Discount",
+            title: discountTitle,
+            description: discountTitle,
             valueType: "FIXED_AMOUNT",
             value: discountCents / 100,
             amountWithCurrency: {
@@ -631,6 +643,7 @@ function draftOrderInput(
     note: [
       `Stripe checkout ${checkout.id}`,
       promoCode ? `Promo ${promoCode}` : null,
+      bundleApplied ? "Bundle: any 3 for $69 (clothing & accessories)" : null,
       paymentIntent ? `Payment ${paymentIntent}` : null,
     ]
       .filter(Boolean)
@@ -645,6 +658,9 @@ function draftOrderInput(
         ? [{ key: "stripe_payment_intent", value: paymentIntent }]
         : []),
       ...(promoCode ? [{ key: "promo_code", value: promoCode }] : []),
+      ...(bundleApplied
+        ? [{ key: "bundle_discount", value: "3_for_69" }]
+        : []),
     ],
   };
 }

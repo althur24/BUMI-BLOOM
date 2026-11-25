@@ -993,8 +993,9 @@
 }
 
 .testimonial-card__star {
+  width: 18px;
+  height: 18px;
   color: var(--color-yellow);
-  font-size: 1.2rem;
 }
 
 .testimonial-card__star--empty {
@@ -1144,17 +1145,44 @@
   background-color: var(--color-orange);
   color: var(--color-white);
 }
-
 .announcement-bar--coral {
   background-color: var(--color-coral);
   color: var(--color-white);
 }
+
 
 .announcement-bar a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
   font-weight: var(--fw-bold);
+}
+
+/* Small inline glyphs used inside the announcement bar and pay strip. */
+.inline-icon {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+
+.inline-star {
+  vertical-align: -1px;
+  margin: 0 2px;
+}
+
+/* The promo copy is longer than the old shipping-only line. On phones the bar
+   wraps to a few lines, so tighten it and reserve space for the close button
+   (which is absolutely positioned and would otherwise sit on the text). */
+@media (max-width: 640px) {
+  .announcement-bar {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    padding: 8px 40px;
+  }
+  .announcement-bar__close {
+    right: var(--space-1);
+    padding: 2px;
+  }
 }
 
 .announcement-bar a:hover {
@@ -2004,53 +2032,6 @@
   color: var(--text-secondary);
 }
 
-.welcome-popup__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.welcome-popup__input {
-  width: 100%;
-  padding: var(--space-3) var(--space-5);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-base);
-  background: var(--bg-primary);
-  transition: var(--transition-fast);
-}
-
-.welcome-popup__input:focus {
-  outline: none;
-  border-color: var(--color-coral);
-  box-shadow: 0 0 0 3px rgba(232, 82, 52, 0.2);
-}
-
-.welcome-popup__submit {
-  width: 100%;
-}
-
-.welcome-popup__msg {
-  min-height: 1.2em;
-  margin-top: var(--space-2);
-  font-size: var(--text-sm);
-}
-
-.welcome-popup__msg--err {
-  color: var(--color-red-dark);
-}
-
-.welcome-popup__msg--ok {
-  color: var(--color-green-dark);
-  font-weight: var(--fw-bold);
-}
-
-.welcome-popup__fine {
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
 .welcome-popup__decline {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
@@ -2063,87 +2044,36 @@
   color: var(--color-dark);
 }
 
-.welcome-popup__code {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-4) 0;
-}
-
-.welcome-popup__code-value {
-  padding: var(--space-2) var(--space-4);
-  font-family: var(--font-heading);
-  font-size: var(--text-xl);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.06em;
-  color: var(--text-primary);
-  background: var(--color-cream);
-  border: 2px dashed var(--color-coral);
-  border-radius: var(--radius-md);
-}
-
-.welcome-popup__copy {
-  font-size: var(--text-sm);
-  font-weight: var(--fw-bold);
-  color: var(--color-coral);
-}
-
-.welcome-popup__copy:hover {
-  color: var(--color-coral-dark);
-}
-
 .welcome-popup__cta {
   width: 100%;
   margin-top: var(--space-2);
 }
 
-/* ── Inline variant (checkout / cart) ── */
-
-.welcome-inline {
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  background: var(--color-cream-light);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-md);
+/* Offer checklist inside the promo popup. */
+.welcome-popup__list {
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  text-align: left;
 }
 
-.welcome-inline__title {
-  font-size: var(--text-sm);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  margin-bottom: var(--space-1);
-}
-
-.welcome-inline__text {
+.welcome-popup__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-3);
+  line-height: var(--lh-snug);
 }
 
-.welcome-inline__form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.welcome-inline__form .input {
-  flex: 1 1 180px;
-}
-
-.welcome-inline__msg {
-  margin-top: var(--space-2);
-  font-size: var(--text-sm);
-}
-
-.welcome-inline__msg--err {
+.welcome-popup__list svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
   color: var(--color-red-dark);
-}
-
-.welcome-inline__msg--ok {
-  color: var(--color-green-dark);
-  font-weight: var(--fw-bold);
 }
 
 @media (max-width: 420px) {

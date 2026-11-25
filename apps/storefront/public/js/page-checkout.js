@@ -49,6 +49,9 @@
     summaryDiscountRow: $('checkout-summary-discount-row'),
     summaryDiscountLabel: $('checkout-summary-discount-label'),
     summaryDiscount: $('checkout-summary-discount'),
+    summaryBundleRow: $('checkout-summary-bundle-row'),
+    summaryBundleLabel: $('checkout-summary-bundle-label'),
+    summaryBundle: $('checkout-summary-bundle'),
     summaryShipping: $('checkout-summary-shipping'),
     summaryTax: $('checkout-summary-tax'),
     summaryTotal: $('checkout-summary-total'),
@@ -507,6 +510,7 @@
       if (els.summaryTax) els.summaryTax.textContent = '—';
       if (els.summaryTotal) els.summaryTotal.textContent = '—';
       if (els.summaryDiscountRow) els.summaryDiscountRow.hidden = true;
+      if (els.summaryBundleRow) els.summaryBundleRow.hidden = true;
       return;
     }
     if (els.summarySubtotal) els.summarySubtotal.textContent = money(quote.subtotalAudCents);
@@ -526,16 +530,39 @@
     if (els.summaryTax) els.summaryTax.textContent = money(quote.taxAudCents);
     if (els.summaryTotal) els.summaryTotal.textContent = money(quote.totalAudCents);
 
+    const bundle = quote.bundle;
+    if (els.summaryBundleRow && els.summaryBundle) {
+      if (bundle && bundle.discountAudCents > 0) {
+        els.summaryBundleRow.hidden = false;
+        if (els.summaryBundleLabel) {
+          els.summaryBundleLabel.textContent = bundle.label + ' (auto)';
+        }
+        els.summaryBundle.textContent = '−' + money(bundle.discountAudCents);
+      } else {
+        els.summaryBundleRow.hidden = true;
+      }
+    }
+
     const promo = quote.promo;
     if (els.summaryDiscountRow && els.summaryDiscount) {
-      if (promo && promo.discountAudCents > 0) {
+      if (promo && promo.blockedByBundle) {
         els.summaryDiscountRow.hidden = false;
+        els.summaryDiscountRow.classList.add('checkout-summary__row--muted');
+        if (els.summaryDiscountLabel) {
+          els.summaryDiscountLabel.textContent =
+            promo.code + " can't combine with the 3-for-$69 price";
+        }
+        els.summaryDiscount.textContent = 'Saved';
+      } else if (promo && promo.discountAudCents > 0) {
+        els.summaryDiscountRow.hidden = false;
+        els.summaryDiscountRow.classList.remove('checkout-summary__row--muted');
         if (els.summaryDiscountLabel) {
           els.summaryDiscountLabel.textContent = 'Discount (' + promo.code + ')';
         }
         els.summaryDiscount.textContent = '−' + money(promo.discountAudCents);
       } else {
         els.summaryDiscountRow.hidden = true;
+        els.summaryDiscountRow.classList.remove('checkout-summary__row--muted');
       }
     }
 
@@ -597,10 +624,20 @@
     if (data.cartHash) state.cartHash = data.cartHash;
     renderSummary(state.quote);
     if (state.quote && state.quote.promo) {
-      showPromoMessage(
-        state.quote.promo.label + ' applied — ' + money(state.quote.promo.discountAudCents) + ' off.',
-        true,
-      );
+      const promo = state.quote.promo;
+      if (promo.blockedByBundle) {
+        showPromoMessage(
+          promo.code + ' can\u2019t be combined with the 3-for-$69 price — your bag already has the bundle.',
+          false,
+        );
+      } else if (promo.discountAudCents > 0) {
+        showPromoMessage(
+          promo.label + ' applied — ' + money(promo.discountAudCents) + ' off.',
+          true,
+        );
+      } else {
+        showPromoMessage('', false);
+      }
     } else if (!state.promoCode) {
       showPromoMessage('', false);
     }
@@ -1191,8 +1228,8 @@
     });
   }
 
-  // A promo applied elsewhere (welcome popup / inline email offer) is picked
-  // up here and validated so the summary and payment amount stay in sync.
+  // A promo saved elsewhere (e.g. the cart page) is picked up here and
+  // validated so the summary and payment amount stay in sync.
   window.addEventListener('promo-updated', () => {
     const promo = window.BumiCart ? window.BumiCart.getPromo() : null;
     const code = promo && promo.code ? String(promo.code).toUpperCase() : '';

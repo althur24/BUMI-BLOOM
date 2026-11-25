@@ -43,15 +43,31 @@
     function updateTotals() {
       const items = getCart();
       const subtotal = items.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
-      const discount = BumiCart.getDiscount(subtotal);
-      const shipping = BumiCart.shippingCost('standard', subtotal);
+      const bundleDiscount = BumiCart.getBundleDiscount(items);
+      // Bundle and code are mutually exclusive: only the applied one counts.
+      const discount = BumiCart.getAppliedDiscount(subtotal, bundleDiscount);
+      const shipping = BumiCart.shippingCost('standard', subtotal, bundleDiscount);
       const total = subtotal - discount + shipping;
 
       document.getElementById('cart-subtotal').textContent = BumiCart.formatPrice(subtotal);
 
+      const bundleRow = document.getElementById('cart-bundle-row');
+      if (bundleRow) {
+        if (bundleDiscount > 0) {
+          bundleRow.style.display = '';
+          document.getElementById('cart-bundle-value').textContent = '–' + BumiCart.formatPrice(bundleDiscount);
+        } else {
+          bundleRow.style.display = 'none';
+        }
+      }
+
       const dRow = document.getElementById('cart-discount-row');
       const promo = BumiCart.getPromo();
-      if (promo && discount > 0) {
+      if (promo && bundleDiscount > 0) {
+        dRow.style.display = '';
+        document.getElementById('cart-discount-label').textContent = promo.code + " can't combine with the bundle";
+        document.getElementById('cart-discount').textContent = 'Saved';
+      } else if (promo && discount > 0) {
         dRow.style.display = '';
         document.getElementById('cart-discount-label').textContent = 'Discount (' + promo.code + ')';
         document.getElementById('cart-discount').textContent = '–' + BumiCart.formatPrice(discount);
@@ -61,6 +77,29 @@
 
       document.getElementById('cart-shipping').innerHTML = shipping === 0 ? '<span class="cart-summary__row--free">Free</span>' : BumiCart.formatPrice(shipping);
       document.getElementById('cart-total').textContent = BumiCart.formatPrice(total);
+      updateBundleBanner(items);
+    }
+
+    function updateBundleBanner(items) {
+      const banner = document.getElementById('cart-bundle-banner');
+      if (!banner) return;
+      const qty = BumiCart.getBundleEligibleQty(items);
+      const needed = Math.max(0, BumiCart.BUNDLE.qty - qty);
+      const bundleDiscount = BumiCart.getBundleDiscount(items);
+      const textEl = banner.querySelector('[data-bundle-text]');
+      banner.hidden = false;
+      if (needed > 0) {
+        const unit = needed === 1 ? 'item' : 'items';
+        banner.classList.remove('is-unlocked');
+        textEl.innerHTML = 'Add <strong>' + needed + ' more clothing or accessory ' + unit + '</strong> to get any 3 for a flat <strong>$69</strong> — auto-applied in your bag. Busy books don\u2019t count.';
+      } else if (bundleDiscount > 0) {
+        banner.classList.add('is-unlocked');
+        textEl.innerHTML = '<strong>Any 3 for $69</strong> unlocked — auto-applied below. Free AU shipping still kicks in over $99.';
+      } else {
+        // Enough eligible items, but they already cost less than $69.
+        banner.classList.remove('is-unlocked');
+        textEl.innerHTML = 'Your clothing and accessory picks already total under <strong>$69</strong> — free AU shipping still kicks in over $99.';
+      }
     }
 
     cartItems.addEventListener('click', (e) => {
@@ -89,15 +128,24 @@
     const promoInput = document.getElementById('promo-input');
     const promoApply = document.getElementById('promo-apply');
     const promoMsg = document.getElementById('promo-msg');
+    // The bundle and a code can't be combined, so the code message reflects
+    // whether this bag already qualifies for the automatic $69 price.
+    function bundleActive() {
+      return BumiCart.getBundleDiscount(getCart()) > 0;
+    }
     function syncPromoMsg() {
       if (!promoMsg) return;
       const p = BumiCart.getPromo();
       if (p) {
         promoMsg.style.display = 'block';
         promoMsg.className = 'promo-field__msg promo-field__msg--ok';
-        promoMsg.textContent = p.pending
-          ? 'Nice — your discount will be applied at checkout.'
-          : p.label + ' applied';
+        if (bundleActive()) {
+          promoMsg.textContent = p.code + ' is saved, but can\u2019t be combined with the 3-for-$69 price.';
+        } else {
+          promoMsg.textContent = p.pending
+            ? 'Nice — your discount will be applied at checkout.'
+            : p.label + ' applied';
+        }
         if (promoInput) promoInput.value = p.code;
       } else {
         promoMsg.style.display = 'none';
@@ -116,9 +164,11 @@
         promoMsg.style.display = 'block';
         if (res.valid) {
           promoMsg.className = 'promo-field__msg promo-field__msg--ok';
-          promoMsg.textContent = res.pending
-            ? 'Nice — your discount will be applied at checkout.'
-            : res.label + ' applied';
+          promoMsg.textContent = bundleActive()
+            ? res.code + ' is saved, but can\u2019t be combined with the 3-for-$69 price.'
+            : res.pending
+              ? 'Nice — your discount will be applied at checkout.'
+              : res.label + ' applied';
         } else {
           promoMsg.className = 'promo-field__msg promo-field__msg--err';
           promoMsg.textContent = 'That code isn’t valid — check it and try again.';
@@ -150,5 +200,7 @@
       }).join('');
     }
 
-    BumiData.ready().then(renderRecommendations);
+    // Recommendations and the bundle preview both need the catalog: legacy
+    // cart lines may not carry `category` yet, so re-render once it is ready.
+    BumiData.ready().then(() => { renderCart(); renderRecommendations(); });
   })();

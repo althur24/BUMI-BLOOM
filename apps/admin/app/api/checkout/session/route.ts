@@ -222,7 +222,10 @@ export async function POST(request: Request) {
           amount_off: prepared.quote.discountAudCents,
           currency: "aud",
           duration: "once",
-          name: prepared.promoCode || "Discount",
+          name:
+            prepared.quote.bundle?.label ||
+            prepared.promoCode ||
+            "Discount",
           metadata: {
             checkoutId,
             promoCode: prepared.promoCode || "",
@@ -232,7 +235,6 @@ export async function POST(request: Request) {
       );
       couponId = coupon.id;
     }
-
     const lineItems = prepared.items.map((item) => ({
       quantity: item.quantity,
       price_data: {

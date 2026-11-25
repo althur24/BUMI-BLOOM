@@ -3,6 +3,16 @@ import { createHash } from "crypto";
 export const CHECKOUT_CURRENCY = "AUD";
 export const SHIPPING_FLAT_CENTS = 1500;
 export const FREE_SHIPPING_THRESHOLD_CENTS = 9900;
+// "3 for $69" bundle: the three highest-priced eligible units in the bag are
+// repriced to a flat total. Quantity counts every eligible unit (sum of line
+// quantities), so a single eligible product with quantity 3 qualifies.
+export const BUNDLE_MIN_QUANTITY = 3;
+export const BUNDLE_FLAT_CENTS = 6900;
+// The bundle applies to clothing and accessories only. Busy books (toys) are
+// excluded: they neither count towards the three items nor get repriced.
+export const BUNDLE_INELIGIBLE_TYPES = ["busy-book"];
+export const BUNDLE_INELIGIBLE_TITLE =
+  /busy\s*books?|quiet\s*books?|activity\s*books?|buku\s+(mainan|maianan|edukasi|aktivitas|activity)/i;
 export const GST_PERCENT = 10;
 export const MAX_ITEM_QUANTITY = 10;
 export const MAX_CART_LINES = 50;
@@ -19,6 +29,7 @@ export interface ResolvedCheckoutItem {
   variantTitle: string;
   handle: string;
   imageUrl: string | null;
+  productType: string;
   priceAudCents: number;
   quantity: number;
   quantityAvailable: number | null;
@@ -48,6 +59,16 @@ export interface CheckoutQuote {
   // Stripe form, so these are informational before payment.
   shippingOptions?: CheckoutShippingOption[];
   promo?: {
+    code: string;
+    label: string;
+    discountAudCents: number;
+    // True when the code was validated but not applied because the automatic
+    // "3 for $69" bundle is active — the two cannot be combined.
+    blockedByBundle?: boolean;
+  };
+  // Automatic "3 for $69" bundle discount. Shown as its own line so it reads
+  // separately from any code the customer typed.
+  bundle?: {
     code: string;
     label: string;
     discountAudCents: number;
@@ -132,6 +153,66 @@ export function computeShippingCents(discountedSubtotalCents: number): number {
   return discountedSubtotalCents >= FREE_SHIPPING_THRESHOLD_CENTS
     ? 0
     : SHIPPING_FLAT_CENTS;
+}
+
+/**
+ * The "3 for $69" bundle covers clothing and accessories only. Busy books are
+ * toys and are excluded, so they neither count towards the three items nor get
+ * repriced. Unknown/empty types stay eligible so a mis-typed Shopify product
+ * type never silently removes the offer.
+ *
+ * Mirrors `isBundleEligible` in apps/storefront/public/js/cart.js.
+ */
+export function isBundleEligibleProduct(item: {
+  productType?: string | null;
+  productTitle?: string | null;
+}): boolean {
+  const type = String(item.productType || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
+  if (BUNDLE_INELIGIBLE_TYPES.includes(type)) return false;
+  if (BUNDLE_INELIGIBLE_TITLE.test(String(item.productTitle || ""))) return false;
+  return true;
+}
+
+/**
+ * "3 for $69" bundle discount.
+ *
+ * Only eligible (clothing/accessory) units are pooled. The three most expensive
+ * of them are repriced to a flat $69; any additional eligible units keep their
+ * normal price, and busy books are charged in full. Returns the discount in AUD
+ * cents (never more than the subtotal, never negative).
+ *
+ * The same rule runs client-side for the cart preview, so keep both copies in
+ * sync: apps/storefront/public/js/cart.js (BUNDLE / getBundleDiscount).
+ */
+export function computeBundleDiscountCents(
+  items: Array<{
+    priceAudCents: number;
+    quantity: number;
+    productType?: string | null;
+    productTitle?: string | null;
+  }>,
+): number {
+  const units: number[] = [];
+  for (const item of items) {
+    if (!isBundleEligibleProduct(item)) continue;
+    const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    const price = Math.max(0, Math.round(Number(item.priceAudCents) || 0));
+    for (let i = 0; i < qty; i += 1) units.push(price);
+  }
+  if (units.length < BUNDLE_MIN_QUANTITY) return 0;
+
+  units.sort((a, b) => b - a);
+  const topTotal = units
+    .slice(0, BUNDLE_MIN_QUANTITY)
+    .reduce((sum, price) => sum + price, 0);
+  const eligibleSubtotal = units.reduce((sum, price) => sum + price, 0);
+  return Math.max(
+    0,
+    Math.min(topTotal - BUNDLE_FLAT_CENTS, eligibleSubtotal),
+  );
 }
 
 export function totalsWithShipping(

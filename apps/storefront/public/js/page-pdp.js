@@ -448,6 +448,7 @@
       }
       BumiCart.addItem({
         id: product.id, name: product.name, brand: product.brand, price: selectedPriceInfo().price,
+        category: product.category,
         size: selectedSize || '', color: selectedColor || '', image: product.image
       });
     }

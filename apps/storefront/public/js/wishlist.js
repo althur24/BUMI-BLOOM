@@ -83,6 +83,7 @@ const BumiWishlist = {
         name: product.name,
         brand: product.brand,
         price: product.price,
+        category: product.category,
         size: (product.sizes && product.sizes[0]) || 'One Size',
         color: (product.colors && product.colors[0] && product.colors[0].name) || '—',
         image: product.image

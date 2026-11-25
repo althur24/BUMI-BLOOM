@@ -203,6 +203,38 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Bundle offer chip — a small taped label that reads like a price tag, in
+   the same paper-craft language as the note itself. */
+.xmas-note__bundle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-5);
+  background: var(--color-blue-light);
+  border: 2px dashed var(--color-blue-dark);
+  border-radius: var(--radius-md);
+  color: var(--color-dark);
+  font-size: var(--text-sm);
+  line-height: var(--lh-snug);
+  max-width: 48ch;
+}
+.xmas-note__bundle strong {
+  font-weight: var(--fw-bold);
+  color: var(--color-red-dark);
+  font-variant-numeric: tabular-nums;
+}
+.xmas-note__bundle-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--color-dark);
+  margin-top: 1px;
+}
+.xmas-note__bundle-icon svg {
+  width: 18px;
+  height: 18px;
+}
 @media (max-width: 700px) {
   .xmas-note {
     flex-direction: column;
@@ -211,7 +243,45 @@
   }
   .xmas-note__content { text-align: center; }
   .xmas-note__text { margin-inline: auto; }
+  .xmas-note__bundle { text-align: left; }
 }
+/* ---- Bundle banner (cart page) ----
+   Same paper-tag language as the Christmas note: dashed edge, soft fill,
+   ink icon. Turns to the accent red once the 3-item threshold is met. */
+.bundle-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+  background: var(--color-blue-light);
+  border: 2px dashed var(--color-blue-dark);
+  border-radius: var(--radius-md);
+  color: var(--color-dark);
+  font-size: var(--text-sm);
+  line-height: var(--lh-snug);
+}
+.bundle-banner[hidden] { display: none; }
+.bundle-banner__icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--color-dark);
+  margin-top: 1px;
+}
+.bundle-banner__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.bundle-banner__text { margin: 0; }
+.bundle-banner__text strong { font-weight: var(--fw-bold); }
+.bundle-banner.is-unlocked {
+  background: var(--color-red-light);
+  border-color: var(--color-red-dark);
+}
+.bundle-banner.is-unlocked .bundle-banner__text strong {
+  color: var(--color-red-dark);
+}
+
 /* ---- Gift guide cards ---- */
 .gift-grid {
   display: grid;

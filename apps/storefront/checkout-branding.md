@@ -82,6 +82,6 @@ Deploy mengikuti `checkout-app/README.md`.
 - Logo tampil tajam di desktop dan mobile.
 - Warna tombol dan background sesuai.
 - Banner muncul di checkout dan tidak menutupi field.
-- Voucher `WELCOME10` bisa dipakai.
+- Kode 10% welcome sudah diarsipkan. Promo aktif: bundle otomatis "3 for $69" untuk pakaian & aksesoris (busy book dikecualikan), yang tidak bisa digabung dengan kode diskon.
 - Checkout berhasil dengan Stripe test/live.
 - Order masuk Shopify dan stok berkurang.

@@ -1,8 +1,11 @@
 import { prisma } from "@bumi/db";
 import { StripeCheckoutStatus } from "@prisma/client";
 import {
+  BUNDLE_FLAT_CENTS,
+  BUNDLE_MIN_QUANTITY,
   CheckoutError,
   checkoutCartHash,
+  computeBundleDiscountCents,
   computeShippingCents,
   isMissingTableError,
   normalizePromoCode,
@@ -96,9 +99,15 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
   );
   const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  let discountAudCents = 0;
+  let promoDiscountAudCents = 0;
   let shopifyDiscountId: string | null = null;
   let promoLabel: string | null = null;
+
+  // Automatic "3 for $69" bundle. Clothing and accessories only — busy books
+  // are excluded (see isBundleEligibleProduct). It cannot be combined with a
+  // discount code: when the bundle applies, the code is validated but not
+  // charged, so the customer can save it for a later order.
+  const bundleDiscountAudCents = computeBundleDiscountCents(items);
 
   if (promoCode) {
     const discount = await fetchShopifyDiscount(promoCode);
@@ -120,7 +129,7 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
       quantity,
       webRedemptions,
     );
-    discountAudCents = computeDiscountCents(
+    promoDiscountAudCents = computeDiscountCents(
       discount,
       subtotalAudCents,
       quantity,
@@ -128,6 +137,13 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
     shopifyDiscountId = discount.id;
     promoLabel = discount.title;
   }
+
+  const bundleApplied = bundleDiscountAudCents > 0;
+  const appliedPromoDiscount = bundleApplied ? 0 : promoDiscountAudCents;
+  const totalDiscountAudCents = Math.min(
+    subtotalAudCents,
+    bundleDiscountAudCents + appliedPromoDiscount,
+  );
 
   // Shopify is the single source of truth for shipping methods. Pulling the
   // rates here means editing them in Shopify Admin automatically updates the
@@ -142,7 +158,7 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
       })),
       subtotalAudCents,
       undefined,
-      discountAudCents,
+      totalDiscountAudCents,
     );
     if (rates.length) {
       shippingOptions = rates.map((rate) => ({
@@ -159,13 +175,10 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
 
   const baseTotals = totalsWithShipping(
     subtotalAudCents,
-    discountAudCents,
+    totalDiscountAudCents,
     shippingOptions
       ? Math.min(...shippingOptions.map((option) => option.amountCents))
-      : computeShippingCents(
-          subtotalAudCents -
-            Math.max(0, Math.min(discountAudCents, subtotalAudCents)),
-        ),
+      : computeShippingCents(subtotalAudCents - totalDiscountAudCents),
   );
   const quote: CheckoutQuote = {
     ...baseTotals,
@@ -174,17 +187,30 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
       ? {
           code: promoCode,
           label: promoLabel || promoCode,
-          discountAudCents,
+          discountAudCents: appliedPromoDiscount,
+          ...(bundleApplied && promoDiscountAudCents > 0
+            ? { blockedByBundle: true }
+            : {}),
         }
       : undefined,
+    bundle:
+      bundleDiscountAudCents > 0
+        ? {
+            code: "BUNDLE3",
+            label: `Any ${BUNDLE_MIN_QUANTITY} for $${BUNDLE_FLAT_CENTS / 100} — clothing & accessories`,
+            discountAudCents: bundleDiscountAudCents,
+          }
+        : undefined,
   };
 
   return {
     items,
     quote,
     cartHash: checkoutCartHash(itemInputs, promoCode),
-    promoCode,
-    shopifyDiscountId,
+    // A code suppressed by the bundle must not be recorded as redeemed on this
+    // order, so downstream Stripe/Shopify writes treat it as absent.
+    promoCode: bundleApplied ? null : promoCode,
+    shopifyDiscountId: bundleApplied ? null : shopifyDiscountId,
     consentMarketing: Boolean(body?.consentMarketing),
     attribution: sanitizeAttribution(body?.attribution),
   };
