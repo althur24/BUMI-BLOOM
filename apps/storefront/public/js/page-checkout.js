@@ -187,6 +187,9 @@
           currency: 'AUD',
           value: state.quote ? Number(state.quote.totalAudCents || 0) / 100 : 0,
           items,
+          // Stable per checkout so reloading the checkout page and paying again
+          // doesn't inflate AddPaymentInfo in Meta (browser re-fires otherwise).
+          event_id: state.checkoutId ? 'api-' + state.checkoutId : undefined,
         });
       }
 

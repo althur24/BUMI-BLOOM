@@ -6,6 +6,17 @@
    - Renders the homepage "Collections" grid
    ============================================ */
 
+// Same-list renders (currency-updated → re-render, tab re-clicks) must not fire
+// a second view_item_list for an unchanged list, or the count inflates.
+const __lastListView = {};
+function trackViewItemList(listName, items) {
+  if (!window.BumiTrack) return;
+  const ids = items.map((i) => i.id).join(',');
+  if (__lastListView[listName] === ids) return;
+  __lastListView[listName] = ids;
+  BumiTrack.event('view_item_list', { item_list_name: listName, items });
+}
+
 function __bbProductsInit() {
   if (!window.BumiData) return;
   BumiData.ready().then(() => {
@@ -159,12 +170,8 @@ function renderHomeCollection() {
     ? list.map((p, i) => productCardHTML(p, i)).join('')
     : emptyHTML('No pieces in this category just yet — try another tab.');
 
-  if (window.BumiTrack) {
-    BumiTrack.event('view_item_list', {
-      item_list_name: 'Homepage collection: ' + homeCollectionFilter,
-      items: list.map((p) => ({ id: p.id, name: p.name, price: p.price })),
-    });
-  }
+  trackViewItemList('Homepage collection: ' + homeCollectionFilter,
+    list.map((p) => ({ id: p.id, name: p.name, price: p.price })));
 }
 
 function initHomeCollection() {
@@ -256,10 +263,8 @@ function initBusyBookGrid() {
   if (section) section.style.display = '';
 
   grid.innerHTML = list.map((p, i) => productCardHTML(p, i)).join('');
-  if (window.BumiTrack) {
-    BumiTrack.event('view_item_list', { item_list_name: 'Busy Book collection',
-      items: list.map(p => ({ id: p.id, name: p.name, price: p.price })) });
-  }
+  trackViewItemList('Busy Book collection',
+    list.map(p => ({ id: p.id, name: p.name, price: p.price })));
 }
 
 /* ---------- PLP ---------- */
@@ -649,8 +654,6 @@ function initPLP() {
   window.addEventListener('currency-updated', () => { render(); renderPriceLabels(); });
 
   // Analytics: initial list view
-  if (window.BumiTrack) {
-    const items = getFiltered().slice(0, state.visible).map(p => ({ id: p.id, name: p.name, price: p.price }));
-    BumiTrack.event('view_item_list', { item_list_name: state.category || 'all', items });
-  }
+  const initialItems = getFiltered().slice(0, state.visible).map(p => ({ id: p.id, name: p.name, price: p.price }));
+  trackViewItemList(state.category || 'all', initialItems);
 }
