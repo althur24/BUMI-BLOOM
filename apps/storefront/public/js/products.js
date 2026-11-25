@@ -264,7 +264,9 @@ function initBusyBookGrid() {
 
 /* ---------- PLP ---------- */
 
-const PAGE_SIZE = 9;
+// Page size is a multiple of the grid's column counts (4 desktop / 3 tablet /
+// 2 mobile, see shop.css) so a "load more" step never leaves a ragged last row.
+const PAGE_SIZE = 12;
 const PRICE_BANDS = {
   under15: { min: 0, max: 15 },
   '15-30': { min: 15, max: 30 },
@@ -506,8 +508,20 @@ function initPLP() {
       // Brand priority: products from admin-prioritised brands come first (in
       // that order), each group then newest-first. Brands with no priority
       // fall to the end and stay newest-first among themselves.
+      // Unranked brands report Infinity; `Infinity - Infinity` is NaN, which
+      // would make the comparator a no-op. Handle Infinity explicitly so
+      // prioritised brands always sort ahead and unranked ones tie by recency.
       case 'brand-priority':
-        list.sort((a, b) => (BumiData.brandRank(a.brand) - BumiData.brandRank(b.brand)) || (b.addedAt - a.addedAt));
+        list.sort((a, b) => {
+          const ra = BumiData.brandRank(a.brand);
+          const rb = BumiData.brandRank(b.brand);
+          if (ra !== rb) {
+            if (ra === Infinity) return 1;
+            if (rb === Infinity) return -1;
+            return ra - rb;
+          }
+          return (b.addedAt || 0) - (a.addedAt || 0);
+        });
         break;
       default: list.sort((a, b) => b.addedAt - a.addedAt);
     }
