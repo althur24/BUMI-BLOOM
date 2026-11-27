@@ -8,12 +8,27 @@ import { resolveCategoryMeta } from '@/lib/category-meta';
 // Brand names live in Shopify and are only resolved in the browser, so the
 // server can only turn the slug into a readable label ("sabine-heem" →
 // "Sabine Heem"). The client replaces this with the real brand name once loaded.
+// The slug comes straight from the query string, so strip anything that is not
+// a letter/digit/dash before it is interpolated into server-rendered HTML.
 function brandLabelFromSlug(slug?: string): string {
   const words = String(slug || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '')
     .replace(/-+/g, ' ')
-    .replace(/\b\w/g, (ch) => ch.toUpperCase())
-    .trim();
+    .trim()
+    .slice(0, 64)
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
   return words || 'Shop by Brand';
+}
+
+// Defence in depth for the values spliced into the static HTML below.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function generateMetadata({ searchParams }: { searchParams: { category?: string; search?: string; brand?: string } }) {
@@ -41,9 +56,18 @@ export default function Page({ searchParams }: { searchParams: { category?: stri
       }
     : resolveCategoryMeta(searchParams?.category, searchParams?.search);
   let html = body;
-  html = html.replace(`id="plp-title">Kids' Collection<`, `id="plp-title">${meta.title}<`);
-  html = html.replace(`id="plp-subtitle" style="max-width: 52ch;">Playful, comfortable, and made to last.<`, `id="plp-subtitle" style="max-width: 52ch;">${meta.subtitle}<`);
-  html = html.replace(`id="breadcrumb-current">Shop<`, `id="breadcrumb-current">${meta.breadcrumb}<`);
+  html = html.replace(
+    `id="plp-title">Kids' Collection<`,
+    () => `id="plp-title">${escapeHtml(meta.title)}<`,
+  );
+  html = html.replace(
+    `id="plp-subtitle" style="max-width: 52ch;">Playful, comfortable, and made to last.<`,
+    () => `id="plp-subtitle" style="max-width: 52ch;">${escapeHtml(meta.subtitle)}<`,
+  );
+  html = html.replace(
+    `id="breadcrumb-current">Shop<`,
+    () => `id="breadcrumb-current">${escapeHtml(meta.breadcrumb)}<`,
+  );
 
   const cat = (searchParams?.category || '').toLowerCase();
   const NAV_CATS = ['new', 'all', 'sale', 'girls', 'boys'];

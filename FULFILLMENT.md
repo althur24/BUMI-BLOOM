@@ -86,27 +86,27 @@ Customer bisa melacak lewat dua cara:
 
 1. **Dari email Shopify** — email "shipped" berisi nomor resi dan link.
 2. **Dari halaman sukses kita** — tombol **Track your order** mengarah ke
-   Shopify order status page.
-
-Halaman status Shopify bisa dibuka tanpa login karena memakai token.
+   `/order/<token>` di `www.bumibloom.com`.
 
 ### Yang tampil di halaman status
 
-Halaman status **otomatis ter-update** saat Anda fulfillment. Link-nya sama,
-isinya yang berubah:
-
 | Tahap | Yang tampil |
 |---|---|
-| Baru bayar | Order confirmed, Payment: Paid, belum ada resi |
-| Setelah fulfillment | Fulfilled, resi, tombol Track shipment |
+| Baru bayar | Paid, belum ada resi |
+| Setelah fulfillment + resi | Shipped, resi, tombol Track shipment |
+| Setelah barang diterima | Delivered |
 
-Anda **tidak perlu** mengedit halaman itu. Cukup isi resi di Shopify Admin.
+### Menandai "Delivered" (kurir lokal tanpa API)
 
-### Catatan domain
+Kurir lokal tidak punya API, dan Shopify tidak punya status **Delivered**
+(bawaan hanya *Unfulfilled* / *Fulfilled*). Jadi penandaan dilakukan manual:
 
-Saat ini link status masih memakai domain `p9gcf7-wj.myshopify.com`.
-Rencananya akan diganti ke halaman tracking sendiri (`/order/[token]`) di
-`www.bumibloom.com` pada fase berikutnya.
+1. Setelah kurir mengonfirmasi barang diterima, buka order di Shopify Admin.
+2. Pada bagian **Tags**, tambahkan tag `bumi-delivered` (persis, huruf kecil).
+3. Halaman `/order/<token>` akan langsung menampilkan stepper **Delivered**.
+   Tag ini juga bisa dipakai untuk filter order yang sudah selesai.
+
+Tidak perlu mengubah status fulfillment di Shopify — cukup tag di atas.
 
 ---
 
@@ -150,10 +150,10 @@ Ini keputusan disengaja supaya stok tidak naik padahal barang tidak kembali.
 ## 6. Checklist harian
 
 - [ ] Cek **Shopify Admin → Orders** untuk order `stripe-checkout` baru.
-- [ ] Pastikan email konfirmasi terkirim (lihat kolom `emailSentAt` di database
-      atau cek inbox customer untuk testing).
 - [ ] Siapkan dan kirim barang.
 - [ ] Isi resi di Shopify Admin + centang notifikasi.
+- [ ] Setelah kurir konfirmasi barang diterima, tambahkan tag
+      `bumi-delivered` di order Shopify.
 - [ ] Pantau order yang belum di-fulfill lebih dari 2 hari.
 
 ---
@@ -177,10 +177,9 @@ Cek:
    Settings → Store details.
 2. **Sender email terverifikasi**? Settings → Notifications → Sender email.
    Statusnya harus "Verified".
-3. **Database**: kolom `emailSentAt` di tabel `StripeCheckout`. Kalau `null`,
-   email belum terkirim.
-4. **Log admin**: cari `[checkout] confirmation email` di log server.
-5. Kalau order ada tetapi email gagal, kirim manual:
+3. **Order ada di Shopify?** Kalau tidak ada, cek `errorMessage` di tabel
+   `StripeCheckout` — order sync mungkin gagal dan perlu di-retry.
+4. Kalau order ada tetapi email gagal, kirim manual:
    Shopify Admin → Orders → pilih order → **Send invoice**.
 
 ---

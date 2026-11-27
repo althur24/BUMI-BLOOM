@@ -275,8 +275,11 @@ const SHOPIFY_API_VERSION = '2026-10';
 const SHOPIFY_ENDPOINT = `https://${SHOPIFY_SHOP}.myshopify.com/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
 // Query produk (semua field yang dipakai mapShopifyProduct).
-const PRODUCTS_QUERY = `query @inContext(country: AU) {
-  products(first: 100) {
+// Paginated: the old `first: 100` silently hid every product after #100 from
+// the PLP, PDP and cart reconciliation.
+const PRODUCTS_QUERY = `query Catalog($after: String) @inContext(country: AU) {
+  products(first: 100, after: $after) {
+    pageInfo { hasNextPage endCursor }
     edges {
       node {
         handle
@@ -496,11 +499,14 @@ function mapShopifyProduct(node) {
     // normalise to the storefront slug taxonomy (busy-book) so manually
     // edited products still match the category filters.
     category: normalizeProductType(node.productType, node.title),
-    price: Math.round(priceRaw),
+    // Keep the exact Shopify amount. Rounding to whole dollars here made the
+    // cart disagree with the server by up to $0.99 per line (and with the
+    // bundle math).
+    price: priceRaw,
     // Unrounded values: the storefront derives the -N% badge from these so a
     // rounded card price never produces a wrong percentage.
     priceRaw,
-    compareAt: compareAtRaw != null ? Math.round(compareAtRaw) : undefined,
+    compareAt: compareAtRaw,
     compareAtRaw,
     priceFrom,
     fibre: meta.fibre || '',
@@ -701,24 +707,49 @@ function mapShopifyBrand(node) {
 }
 
 // Satu helper untuk POST Storefront GraphQL.
-async function storefrontPost(query) {
-  const res = await fetch(SHOPIFY_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
-    },
-    body: JSON.stringify({ query }),
-  });
+async function storefrontPost(query, variables) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  let res;
+  try {
+    res = await fetch(SHOPIFY_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
+      },
+      body: JSON.stringify(variables ? { query, variables } : { query }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      throw new Error('Storefront API timed out');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error(`Storefront API HTTP ${res.status}`);
   const json = await res.json();
   if (json.errors && json.errors.length) throw new Error('Storefront GraphQL: ' + JSON.stringify(json.errors));
   return json.data;
 }
 
+const MAX_CATALOG_PAGES = 10; // 1,000 products; guards against a runaway cursor.
+
 async function fetchShopifyProducts() {
-  const data = await storefrontPost(PRODUCTS_QUERY);
-  return (data.products.edges || []).map((e) => mapShopifyProduct(e.node));
+  const out = [];
+  let after = null;
+  for (let page = 0; page < MAX_CATALOG_PAGES; page += 1) {
+    const data = await storefrontPost(PRODUCTS_QUERY, { after });
+    const connection = data && data.products;
+    if (!connection) break;
+    out.push(...(connection.edges || []).map((e) => mapShopifyProduct(e.node)));
+    if (!connection.pageInfo || !connection.pageInfo.hasNextPage) break;
+    after = connection.pageInfo.endCursor;
+    if (!after) break;
+  }
+  return out;
 }
 
 async function fetchBrands() {

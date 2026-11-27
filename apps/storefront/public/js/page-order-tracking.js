@@ -83,17 +83,36 @@
     const value = String(financialStatus || '').toUpperCase();
     if (value === 'REFUNDED' || value === 'PARTIALLY_REFUNDED') return 'Refunded';
     if (value === 'VOIDED') return 'Cancelled';
-    return 'Paid';
+    if (value === 'PAID') return 'Paid';
+    if (value === 'PARTIALLY_PAID') return 'Partially paid';
+    if (value === 'AUTHORIZED') return 'Payment authorized';
+    if (value === 'PENDING') return 'Payment pending';
+    if (value === 'EXPIRED') return 'Payment expired';
+    return 'Order received';
   }
 
-  function renderSteps(financialStatus, fulfillmentStatus) {
+  function isDelivered(tags, fulfillments) {
+    if (Array.isArray(tags) && tags.some((tag) => String(tag).toLowerCase() === 'bumi-delivered')) {
+      return true;
+    }
+    return (fulfillments || []).some(
+      (f) => String(f.displayStatus || '').toUpperCase() === 'DELIVERED',
+    );
+  }
+
+  function renderSteps(financialStatus, fulfillmentStatus, fulfillments, tags, cancelledAt) {
     const financial = String(financialStatus || '').toUpperCase();
     const fulfilment = String(fulfillmentStatus || '').toUpperCase();
+    const hasTracking = (fulfillments || []).some(
+      (f) => f.trackingNumber || f.trackingUrl,
+    );
 
-    // Shopify's displayFulfillmentStatus has no DELIVERED value — delivery is
-    // inferred from carrier tracking events, so the stepper tops out at Shipped.
+    // Shopify's displayFulfillmentStatus has no DELIVERED value, and local
+    // couriers have no API. Staff mark delivery manually with the
+    // `bumi-delivered` order tag, which lights the final step.
     let reached = 0; // 0 = paid only
-    if (fulfilment === 'FULFILLED') reached = 2;
+    if (isDelivered(tags, fulfillments)) reached = 3;
+    else if (fulfilment === 'FULFILLED' || hasTracking) reached = 2;
     else if (fulfilment === 'PARTIALLY_FULFILLED' || fulfilment === 'IN_PROGRESS') reached = 1;
 
     const steps = document.querySelectorAll('.track-step');
@@ -103,7 +122,7 @@
       if (index === reached) step.classList.add('is-current');
     });
 
-    if (financial === 'REFUNDED' || financial === 'VOIDED') {
+    if (financial === 'REFUNDED' || financial === 'VOIDED' || cancelledAt) {
       steps.forEach((step) => step.classList.remove('is-done', 'is-current'));
     }
   }
@@ -173,12 +192,23 @@
     if (els.placed) els.placed.textContent = 'Placed ' + formatDate(data.createdAt);
 
     const label = paymentLabel(data.financialStatus);
+    const cancelled = String(data.financialStatus || '').toUpperCase() === 'VOIDED';
     if (els.badge) {
-      els.badge.textContent = label;
-      els.badge.className = 'track-badge' + (label === 'Refunded' || label === 'Cancelled' ? ' track-badge--refunded' : '');
+      els.badge.textContent = data.cancelledAt && !cancelled ? 'Cancelled' : label;
+      els.badge.className =
+        'track-badge' +
+        (label === 'Refunded' || label === 'Cancelled' || cancelled
+          ? ' track-badge--refunded'
+          : '');
     }
 
-    renderSteps(data.financialStatus, data.fulfillmentStatus);
+    renderSteps(
+      data.financialStatus,
+      data.fulfillmentStatus,
+      data.fulfillments,
+      data.tags,
+      data.cancelledAt,
+    );
     renderAddress(data.shipping);
     renderItems(data.items);
     renderTotals(data);

@@ -43,6 +43,31 @@ function findCartVariant(product, color, size) {
 const BumiCart = {
   STORAGE_KEY: 'bb-cart',
   PROMO_KEY: 'bb-promo',
+  CART_ID_KEY: 'bb-cart-id',
+
+  /* Stable per-browser id used by the checkout API to scope session reuse to
+     one shopper. Never cleared when the cart is emptied, so a returning
+     customer keeps resuming their own session — not someone else's. */
+  getCartId() {
+    try {
+      const existing = localStorage.getItem(this.CART_ID_KEY);
+      if (existing && /^[A-Za-z0-9_-]{8,64}$/.test(existing)) return existing;
+      let id = '';
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        id = window.crypto.randomUUID();
+      } else if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        id = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      } else {
+        id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+      }
+      localStorage.setItem(this.CART_ID_KEY, id);
+      return id;
+    } catch {
+      return null;
+    }
+  },
 
   /* AU shipping (AUD). freeThreshold applies to the post-discount subtotal. */
   SHIPPING: { flat: 15, express: 14.95, freeThreshold: 99 },
@@ -215,25 +240,14 @@ const BumiCart = {
     return this.removeItem(index);
   },
 
-  /* Drop every line whose product/variant no longer exists in the catalog.
-     Used on checkout load so a stale bag cannot wedge the flow. */
+  /* Deprecated no-op kept for compatibility. Deleting lines because a product is
+     missing from the in-browser snapshot loses real cart data (an outage or a
+     paginated catalogue looked identical to a sold-out product). The checkout
+     page lists unavailable lines and lets the customer remove them. */
   purgeStaleCart() {
     const cart = this.getCart();
-    if (!cart.length) return { removed: 0 };
-
-    const keep = [];
-    let removed = 0;
-    for (const item of cart) {
-      const product = window.BumiData ? BumiData.getProduct(item.id) : null;
-      if (!product || !findCartVariant(product, item.color, item.size)) {
-        removed += 1;
-        continue;
-      }
-      keep.push(item);
-    }
-
-    if (removed > 0) this.saveCart(keep);
-    return { removed };
+    const unavailable = cart.filter((item) => !this.resolveCheckoutItem(item).variant).length;
+    return { removed: 0, unavailable };
   },
 
   getItemCount() {
@@ -303,18 +317,24 @@ const BumiCart = {
   },
 
   getBundleDiscount(items) {
+    // Work in cents, exactly like computeBundleDiscountCents() on the server.
+    // Dollar rounding here used to overstate the preview by up to $1.50.
     const units = [];
     items.forEach((item) => {
       if (!this.isBundleEligible(item)) return;
-      const price = Math.max(0, Math.round(Number(item.price) || 0));
+      const cents = Math.max(0, Math.round((Number(item.price) || 0) * 100));
       const qty = item.quantity || 1;
-      for (let i = 0; i < qty; i += 1) units.push(price);
+      for (let i = 0; i < qty; i += 1) units.push(cents);
     });
     if (units.length < this.BUNDLE.qty) return 0;
     units.sort((a, b) => b - a);
     const topTotal = units.slice(0, this.BUNDLE.qty).reduce((sum, price) => sum + price, 0);
-    const subtotal = units.reduce((sum, price) => sum + price, 0);
-    return Math.max(0, Math.min(topTotal - this.BUNDLE.flat, subtotal));
+    const subtotalCents = units.reduce((sum, price) => sum + price, 0);
+    const discountCents = Math.max(
+      0,
+      Math.min(topTotal - Math.round(this.BUNDLE.flat * 100), subtotalCents),
+    );
+    return discountCents / 100;
   },
 
   /* Busy books are toys and are excluded from the bundle: they neither count

@@ -3,7 +3,7 @@ import '@/css/checkout.css';
 import '@/css/order-tracking.css';
 import body from '@/content/order-tracking.html';
 import { Scripts } from '@/components/Scripts';
-import { STOREFRONT_CHAIN } from '@/lib/scripts';
+import { STOREFRONT_CHAIN_NO_ANALYTICS } from '@/lib/scripts';
 
 export const metadata = {
   title: 'Order tracking',
@@ -15,7 +15,7 @@ export default function Page() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: body }} />
-      <Scripts srcs={[...STOREFRONT_CHAIN, '/js/page-order-tracking.js']} />
+      <Scripts srcs={[...STOREFRONT_CHAIN_NO_ANALYTICS, '/js/page-order-tracking.js']} />
     </>
   );
 }

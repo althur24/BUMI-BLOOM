@@ -8,6 +8,7 @@
     quote: null,
     cartHash: null,
     checkoutId: null,
+    checkoutSecret: null,
     sessionId: null,
     embedded: null,
     pollTimer: null,
@@ -105,6 +106,7 @@
         SESSION_KEY,
         JSON.stringify({
           checkoutId: data.checkoutId,
+          checkoutSecret: data.checkoutSecret || state.checkoutSecret || null,
           sessionId: data.sessionId || null,
           cartHash: data.cartHash || null,
           paid: Boolean(data.alreadyPaid),
@@ -739,6 +741,7 @@
     // Hand off to the dedicated confirmation page so the order reference is
     // bookmarkable and survives a reload. The cart is cleared first.
     const checkoutId = data.checkoutId || state.checkoutId;
+    const checkoutSecret = state.checkoutSecret || data.checkoutSecret || null;
     if (window.BumiCart) {
       window.BumiCart.clearCart();
       window.BumiCart.clearPromo();
@@ -749,6 +752,13 @@
     // back to the cart (which is still populated) instead of a broken
     // success page. The email confirmation remains the backstop if the
     // payment actually succeeded.
+    // The secret is handed to the success page through sessionStorage, not the
+    // URL, so analytics payloads and server logs never see it.
+    if (checkoutSecret) {
+      try {
+        sessionStorage.setItem('bb-checkout-key', checkoutSecret);
+      } catch {}
+    }
     const target = checkoutId
       ? '/checkout/success?checkoutId=' + encodeURIComponent(checkoutId)
       : '/cart';
@@ -789,7 +799,10 @@
       return;
     }
     try {
-      const data = await fetchCheckoutStatus(state.checkoutId);
+      const data = await fetchCheckoutStatus(
+        state.checkoutId,
+        state.checkoutSecret,
+      );
       if (data) {
         // Update progress steps based on real status from the server.
         if (paymentStarted) {
@@ -971,7 +984,10 @@
 
   async function startPayment() {
     if (state.busy) return;
+    // Lock before the first await so a double click cannot mint two sessions.
+    setBusy(true);
     if (!state.lines.length) {
+      setBusy(false);
       showError('Remove the unavailable items above to continue.');
       return;
     }
@@ -982,29 +998,33 @@
     try {
       quote = await refreshQuote();
     } catch (err) {
+      setBusy(false);
       showError(err.message);
       return;
     }
 
     if (!quote || !state.lines.length) {
+      setBusy(false);
       return;
     }
 
     if (!env.stripePublishableKey) {
+      setBusy(false);
       showError('Stripe is not configured yet.');
       return;
     }
 
-    setBusy(true);
     try {
       const data = await postJson('/api/checkout/session', {
         items: state.lines,
         promoCode: state.promoCode || undefined,
+        cartId: window.BumiCart ? window.BumiCart.getCartId() : undefined,
         consentMarketing: Boolean(els.consent && els.consent.checked),
         attribution: attribution(),
       });
 
       state.checkoutId = data.checkoutId;
+      state.checkoutSecret = data.checkoutSecret || state.checkoutSecret || null;
       state.sessionId = data.sessionId;
       storeSession(data);
       if (data.paymentMethods) renderPaymentBadges(data.paymentMethods);
@@ -1044,11 +1064,14 @@
   // payment is in flight. Only auto-open a payment that is genuinely paid or
   // processing; an open (unpaid) session stays dormant until the customer
   // presses "Continue to payment" again.
-  async function fetchCheckoutStatus(checkoutId) {
+  async function fetchCheckoutStatus(checkoutId, checkoutSecret) {
     if (!API_BASE || !checkoutId) return null;
+    const headers = checkoutSecret
+      ? { 'x-checkout-key': checkoutSecret }
+      : undefined;
     const res = await fetch(
       API_BASE + '/api/checkout/session/' + encodeURIComponent(checkoutId) + '/status',
-      { cache: 'no-store' },
+      { cache: 'no-store', headers },
     );
     if (!res.ok) return null;
     return res.json().catch(() => null);
@@ -1060,11 +1083,15 @@
 
   async function checkStoredSession(stored) {
     state.checkoutId = stored.checkoutId;
+    state.checkoutSecret = stored.checkoutSecret || null;
     state.sessionId = stored.sessionId || null;
 
     let data = null;
     try {
-      data = await fetchCheckoutStatus(stored.checkoutId);
+      data = await fetchCheckoutStatus(
+        stored.checkoutId,
+        state.checkoutSecret,
+      );
     } catch (err) {
       console.error('[checkout] status check failed', err);
     }
@@ -1133,25 +1160,9 @@
       } catch {}
     }
 
-    // Only purge when the catalog actually loaded. If the product fetch failed,
-    // every line would look unknown and we would wipe the customer's bag.
-    const catalogReady =
-      window.BumiData &&
-      !window.BumiData.loadError &&
-      Array.isArray(window.BumiData.PRODUCTS) &&
-      window.BumiData.PRODUCTS.length > 0;
-    if (
-      catalogReady &&
-      window.BumiCart &&
-      typeof window.BumiCart.purgeStaleCart === 'function'
-    ) {
-      try {
-        const purged = window.BumiCart.purgeStaleCart();
-        if (purged && purged.removed) {
-          console.info('[checkout] removed ' + purged.removed + ' unavailable item(s)');
-        }
-      } catch {}
-    }
+    // Never delete cart lines here. A missing product may just mean the
+    // catalogue snapshot is incomplete (paging/permissions/outage); the
+    // unavailable-items UI lets the customer decide, line by line.
 
     if (!(window.BumiCart ? window.BumiCart.getCart() : []).length) {
       renderSummary(null);

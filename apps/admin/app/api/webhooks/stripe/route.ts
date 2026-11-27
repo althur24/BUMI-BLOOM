@@ -6,6 +6,10 @@ import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Order creation talks to Shopify (calculate + create + complete) before the
+// ack. Give the function room so Stripe does not time out and replay the event
+// while the first attempt is still running.
+export const maxDuration = 60;
 
 function paymentIntentId(value: any): string | null {
   if (typeof value === "string") return value;

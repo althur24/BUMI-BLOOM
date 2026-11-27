@@ -38,6 +38,10 @@ export function checkEnv() {
     // Stripe mode is active (staging runs test keys on purpose).
     stripeMode: stripeMode(),
     storefront: real(process.env.STOREFRONT_URL),
+    // Order tracking links are HMAC-signed with this secret. Missing means
+    // orders still get created (email falls back to the Shopify status page)
+    // but /order/<token> links cannot be minted.
+    trackingTokenSecret: real(process.env.TRACKING_TOKEN_SECRET),
     // Server-side purchase tracking: presence only, so an operator can confirm
     // Meta CAPI / GA4 MP are wired up without exposing the token/secret.
     metaCapi: real(

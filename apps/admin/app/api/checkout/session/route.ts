@@ -5,6 +5,7 @@ import {
   CheckoutError,
   SESSION_TTL_MINUTES,
   corsHeaders,
+  createCheckoutSecret,
   getClientIp,
   isMissingTableError,
   isRateLimited,
@@ -25,12 +26,13 @@ export async function OPTIONS(request: Request) {
 }
 
 function paidResponse(checkout: any) {
+  // No PII here: this branch can be reached by whoever holds the same cart id
+  // and bag. The success page fetches order details with the checkout secret.
   return {
     alreadyPaid: true,
     checkoutId: checkout.id,
+    checkoutSecret: checkout.checkoutSecret || null,
     status: checkout.status,
-    orderName: checkout.shopifyOrderName,
-    email: checkout.customerEmail,
     cartHash: checkout.cartHash,
   };
 }
@@ -39,6 +41,7 @@ function processingResponse(checkout: any) {
   return {
     processing: true,
     checkoutId: checkout.id,
+    checkoutSecret: checkout.checkoutSecret || null,
     status: checkout.status,
     cartHash: checkout.cartHash,
   };
@@ -62,12 +65,20 @@ function quoteSignature(quote: any): string {
   ]);
 }
 
-async function reusableSession(cartHash: string, quote: any) {
+async function reusableSession(
+  cartHash: string,
+  quote: any,
+  anonymousCartId: string | null,
+) {
+  // Without a per-browser cart id we cannot safely match a session to the same
+  // shopper, so never reuse. A fresh session is cheaper than a mixed-up order.
+  if (!anonymousCartId) return null;
   let existing;
   try {
     existing = await prisma.stripeCheckout.findFirst({
       where: {
         cartHash,
+        anonymousCartId,
         createdAt: { gt: new Date(Date.now() - 30 * 60_000) },
         status: {
           in: [StripeCheckoutStatus.PENDING, StripeCheckoutStatus.PAID],
@@ -129,6 +140,7 @@ async function reusableSession(cartHash: string, quote: any) {
 
     return {
       checkoutId: existing.id,
+      checkoutSecret: existing.checkoutSecret || null,
       sessionId: existing.stripeSessionId,
       clientSecret: session.client_secret,
       quote: existing.quoteJson,
@@ -209,7 +221,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const reusable = await reusableSession(prepared.cartHash, prepared.quote);
+    const reusable = await reusableSession(
+      prepared.cartHash,
+      prepared.quote,
+      prepared.anonymousCartId,
+    );
     if (reusable) {
       return respond(
         {
@@ -225,6 +241,7 @@ export async function POST(request: Request) {
     const stripe = getStripe();
     const paymentMethodOverride = getPaymentMethodOverride();
     const checkoutId = randomUUID();
+    const checkoutSecret = createCheckoutSecret();
     const stripeSessionKey = `checkout_${checkoutId}`;
 
     let couponId: string | null = null;
@@ -359,6 +376,8 @@ export async function POST(request: Request) {
               : session.payment_intent?.id || null,
           status: StripeCheckoutStatus.PENDING,
           cartHash: prepared.cartHash,
+          anonymousCartId: prepared.anonymousCartId,
+          checkoutSecret,
           subtotalAudCents: prepared.quote.subtotalAudCents,
           shippingAudCents: prepared.quote.shippingAudCents,
           discountAudCents: prepared.quote.discountAudCents,
@@ -393,6 +412,7 @@ export async function POST(request: Request) {
       {
         ok: true,
         checkoutId,
+        checkoutSecret,
         sessionId: session.id,
         clientSecret: session.client_secret,
         cartHash: prepared.cartHash,

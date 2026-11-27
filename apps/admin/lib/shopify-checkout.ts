@@ -102,15 +102,10 @@ export async function fetchCheckoutVariants(
         `${node.product?.title || "An item"} is no longer available.`,
       );
     }
-    if (
-      typeof node.quantityAvailable === "number" &&
-      node.quantityAvailable < 1
-    ) {
-      throw new CheckoutError(
-        409,
-        `${node.product?.title || "An item"} is out of stock.`,
-      );
-    }
+    // Do NOT reject on quantityAvailable === 0: Shopify reports
+    // availableForSale=true for CONTINUE-policy (oversell) variants, and the
+    // storefront offers those as buyable. Rejecting here made a product that
+    // can be added to the bag fail at checkout.
     if (node.price.currencyCode !== "AUD") {
       throw new CheckoutError(409, "This item is not available in AUD.");
     }
@@ -639,7 +634,7 @@ function draftOrderInput(
         currencyCode: "AUD",
       },
     })),
-    tags: ["stripe-checkout"],
+    tags: ["stripe-checkout", `bb-checkout-${checkout.id}`],
     note: [
       `Stripe checkout ${checkout.id}`,
       promoCode ? `Promo ${promoCode}` : null,
@@ -778,6 +773,45 @@ export async function createShopifyOrderFromCheckout(
     financialStatus: order.displayFinancialStatus || null,
     totalAudCents: order.totalPriceSet?.shopMoney?.amount
       ? Math.round(Number(order.totalPriceSet.shopMoney.amount) * 100)
+      : null,
+  };
+}
+
+// Look up an order that a previous (crashed) sync attempt may have created.
+// Every order from this checkout carries `bb-checkout-<checkoutId>`; searching
+// that tag before creating prevents a second order + confirmation email.
+export async function findOrderByCheckoutTag(
+  checkoutId: string,
+): Promise<{
+  orderId: string;
+  orderName: string | null;
+  financialStatus: string | null;
+  totalAudCents: number | null;
+} | null> {
+  if (!checkoutId) return null;
+  const data = await adminGraphQL<any>(
+    `query CheckoutOrderByTag($query: String!) {
+      orders(first: 1, query: $query, sortKey: CREATED_AT, reverse: true) {
+        nodes {
+          id
+          name
+          displayFinancialStatus
+          totalPriceSet { shopMoney { amount } }
+        }
+      }
+    }`,
+    { query: `tag:"bb-checkout-${checkoutId}"` },
+  );
+
+  const node = data?.orders?.nodes?.[0];
+  if (!node?.id) return null;
+
+  return {
+    orderId: node.id,
+    orderName: node.name || null,
+    financialStatus: node.displayFinancialStatus || null,
+    totalAudCents: node.totalPriceSet?.shopMoney?.amount
+      ? Math.round(Number(node.totalPriceSet.shopMoney.amount) * 100)
       : null,
   };
 }
@@ -941,6 +975,8 @@ export async function getOrderStatusUrl(
 export interface TrackedOrder {
   orderName: string | null;
   createdAt: string | null;
+  cancelledAt: string | null;
+  tags: string[];
   financialStatus: string | null;
   fulfillmentStatus: string | null;
   subtotalAudCents: number | null;
@@ -961,6 +997,7 @@ export interface TrackedOrder {
   } | null;
   fulfillments: {
     status: string | null;
+    displayStatus: string | null;
     createdAt: string | null;
     trackingNumber: string | null;
     trackingUrl: string | null;
@@ -984,6 +1021,8 @@ export async function getOrderForTracking(
       order(id: $id) {
         name
         createdAt
+        cancelledAt
+        tags
         displayFinancialStatus
         displayFulfillmentStatus
         subtotalPriceSet { shopMoney { amount } }
@@ -1003,6 +1042,7 @@ export async function getOrderForTracking(
         }
         fulfillments(first: 20) {
           status
+          displayStatus
           createdAt
           trackingInfo { number url company }
         }
@@ -1019,6 +1059,7 @@ export async function getOrderForTracking(
     const info = fulfillment?.trackingInfo?.[0] || null;
     return {
       status: fulfillment?.status || null,
+      displayStatus: fulfillment?.displayStatus || null,
       createdAt: fulfillment?.createdAt || null,
       trackingNumber: info?.number || null,
       trackingUrl: info?.url || null,
@@ -1031,6 +1072,10 @@ export async function getOrderForTracking(
   return {
     orderName: order.name || null,
     createdAt: order.createdAt || null,
+    cancelledAt: order.cancelledAt || null,
+    tags: Array.isArray(order.tags)
+      ? order.tags.map((tag: any) => String(tag))
+      : [],
     financialStatus: order.displayFinancialStatus || null,
     fulfillmentStatus: order.displayFulfillmentStatus || null,
     subtotalAudCents: centsFromMoney(order.subtotalPriceSet?.shopMoney),

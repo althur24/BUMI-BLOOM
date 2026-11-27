@@ -8,6 +8,7 @@ import {
   computeBundleDiscountCents,
   computeShippingCents,
   isMissingTableError,
+  normalizeCartId,
   normalizePromoCode,
   parseCheckoutItems,
   totalsWithShipping,
@@ -23,6 +24,7 @@ import {
   fetchCheckoutVariants,
   fetchShopifyDiscount,
   fetchShopifyShippingRates,
+  findOrderByCheckoutTag,
 } from "./shopify-checkout";
 import { sendPurchaseAnalytics } from "./checkout-analytics";
 import { getStripe } from "./stripe";
@@ -62,6 +64,7 @@ export interface PreparedCheckout {
   items: ResolvedCheckoutItem[];
   quote: CheckoutQuote;
   cartHash: string;
+  anonymousCartId: string | null;
   promoCode: string | null;
   shopifyDiscountId: string | null;
   consentMarketing: boolean;
@@ -85,6 +88,7 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
     }
     if (
       typeof variant.quantityAvailable === "number" &&
+      variant.quantityAvailable > 0 &&
       variant.quantityAvailable < item.quantity
     ) {
       throw new CheckoutError(
@@ -209,6 +213,7 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
     items,
     quote,
     cartHash: checkoutCartHash(itemInputs, promoCode),
+    anonymousCartId: normalizeCartId(body?.cartId),
     // A code suppressed by the bundle must not be recorded as redeemed on this
     // order, so downstream Stripe/Shopify writes treat it as absent.
     promoCode: bundleApplied ? null : promoCode,
@@ -217,8 +222,6 @@ export async function prepareCheckout(body: any): Promise<PreparedCheckout> {
     attribution: sanitizeAttribution(body?.attribution),
   };
 }
-
-const inFlightOrders = new Set<string>();
 
 function paymentIntentId(session: any): string | null {
   const intent = session?.payment_intent;
@@ -229,6 +232,89 @@ function paymentIntentId(session: any): string | null {
 // Order confirmation is sent by Shopify itself: draftOrderComplete triggers
 // the store's notification automatically. We must NOT send a second email via
 // orderInvoiceSend, so no explicit confirmation step exists here.
+
+// A crash between `stripe.checkout.sessions.create` and the DB insert leaves a
+// payable session with no row. The session carries checkoutId in metadata, so
+// the webhook can rebuild the minimum row needed to create the order.
+async function recoverCheckoutFromSession(session: any): Promise<any | null> {
+  const checkoutId = session?.metadata?.checkoutId || session?.client_reference_id;
+  if (!checkoutId || typeof checkoutId !== "string") return null;
+
+  const existing = await prisma.stripeCheckout.findUnique({
+    where: { id: checkoutId },
+  });
+  if (existing) return existing;
+
+  const full = await getStripe().checkout.sessions.retrieve(session.id, {
+    expand: ["line_items.data.price.product"],
+  } as any);
+  const lineItems = (full as any).line_items?.data || [];
+  const items = lineItems.map((line: any) => {
+    const product = line?.price?.product;
+    return {
+      variantId: product?.metadata?.variantId || "",
+      handle: product?.metadata?.handle || "",
+      productTitle: product?.name || line?.description || "Item",
+      variantTitle: line?.description || "",
+      imageUrl: null,
+      productType: "",
+      priceAudCents: Number(line?.amount_subtotal ?? 0) /
+        Math.max(1, Number(line?.quantity || 1)),
+      quantity: Number(line?.quantity || 1),
+    };
+  }).filter((item: any) => item.variantId);
+
+  const data = {
+    id: checkoutId,
+    stripeSessionId: full.id,
+    stripePaymentIntentId: paymentIntentId(full),
+    status: StripeCheckoutStatus.PENDING,
+    cartHash: String(full.metadata?.cartHash || ""),
+    subtotalAudCents: Number(full.amount_subtotal || 0),
+    shippingAudCents: Number(full.total_details?.amount_shipping || 0),
+    discountAudCents: Number(full.total_details?.amount_discount || 0),
+    taxAudCents: Number(full.total_details?.amount_tax || 0),
+    amountAudCents: Number(full.amount_total || 0),
+    currency: "AUD",
+    customerEmail: full.customer_details?.email || null,
+    promoCode: full.metadata?.promoCode || null,
+    consentMarketing: full.metadata?.consentMarketing === "true",
+    itemsJson: items as any,
+  };
+
+  try {
+    return await prisma.stripeCheckout.create({ data });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return prisma.stripeCheckout.findUnique({ where: { id: checkoutId } });
+    }
+    throw err;
+  }
+}
+
+// Short enough that a crashed attempt is retried well within the customer's
+// success-page polling window, long enough to cover the Shopify round-trips.
+const ORDER_SYNC_CLAIM_MS = 90_000;
+
+// Atomically claim the right to create the Shopify order for a checkout. The
+// old guard was a process-local Set, which two instances do not share; this
+// claim is enforced by the database.
+async function claimOrderSync(checkoutId: string): Promise<boolean> {
+  const staleBefore = new Date(Date.now() - ORDER_SYNC_CLAIM_MS);
+  const claimed = await prisma.stripeCheckout.updateMany({
+    where: {
+      id: checkoutId,
+      shopifyOrderId: null,
+      OR: [
+        { orderSyncStartedAt: null },
+        { orderSyncStartedAt: { lt: staleBefore } },
+      ],
+    },
+    data: { orderSyncStartedAt: new Date() },
+  });
+  return claimed.count > 0;
+}
+
 export async function ensureShopifyOrder(session: any): Promise<any | null> {
   if (!session?.id) return null;
   if (session.payment_status !== "paid") return null;
@@ -238,6 +324,10 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
     checkout = await prisma.stripeCheckout.findUnique({
       where: { stripeSessionId: session.id },
     });
+    if (!checkout) {
+      // The session exists in Stripe but its row never reached the database.
+      checkout = await recoverCheckoutFromSession(session);
+    }
   } catch (err: any) {
     if (!isMissingTableError(err)) throw err;
     warnMissingTable("order sync");
@@ -252,23 +342,52 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
     return checkout;
   }
 
-  if (inFlightOrders.has(checkout.id)) {
-    // Another concurrent delivery is creating this order. Skip — the in-flight
-    // call, or a subsequent webhook/status poll, will handle it.
-    return checkout;
+  if (!(await claimOrderSync(checkout.id))) {
+    // Another delivery (webhook, status poll, second instance) holds the claim.
+    // If it already finished, return the order; otherwise make the caller retry
+    // instead of acking a paid event with no order.
+    const latest = await prisma.stripeCheckout.findUnique({
+      where: { id: checkout.id },
+    });
+    if (latest?.shopifyOrderId) return latest;
+    throw new Error("Shopify order sync is already in progress. Retrying.");
   }
-  inFlightOrders.add(checkout.id);
 
   try {
-    // Deterministic from the checkout id, so it exists before the draft order
-    // is created and can be embedded in its custom attributes. The same value
-    // is persisted on the row below.
-    const trackingToken = checkout.trackingToken || createTrackingToken(checkout.id);
-    const order = await createShopifyOrderFromCheckout(
-      checkout,
-      session,
-      trackingToken,
-    );
+    // Tracking tokens are deterministic, so they can be embedded in the draft
+    // order before completion. A missing/misconfigured secret must never stop
+    // an order Shopify has already been paid for: fall back to the Shopify
+    // status page link when the token cannot be produced.
+    let trackingToken: string | null = checkout.trackingToken;
+    if (!trackingToken) {
+      try {
+        trackingToken = createTrackingToken(checkout.id);
+      } catch (err: any) {
+        console.error(
+          "[checkout] tracking token unavailable; order will fall back to the Shopify status page",
+          checkout.id,
+          err?.message,
+        );
+      }
+    }
+
+    // Crash recovery: if a previous attempt created the order but the DB write
+    // failed, the order carries a `bb-checkout-<id>` tag. Reuse it instead of
+    // creating a duplicate order (and a duplicate confirmation email).
+    let order = await findOrderByCheckoutTag(checkout.id);
+    if (!order) {
+      order = await createShopifyOrderFromCheckout(
+        checkout,
+        session,
+        trackingToken,
+      );
+    } else {
+      console.warn(
+        "[checkout] recovered existing Shopify order for checkout",
+        checkout.id,
+        order.orderId,
+      );
+    }
     // The chosen shipping method can differ from the pre-payment estimate, so
     // reconcile against what Stripe actually charged.
     const actualShippingCents = Math.max(
@@ -314,6 +433,7 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
         shippingAudCents: actualShippingCents,
         amountAudCents: actualTotalCents,
         trackingToken,
+        orderSyncStartedAt: null,
         errorMessage,
       },
     });
@@ -341,7 +461,15 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
       }
     }
 
-    await sendPurchaseAnalytics(updated, session);
+    // Analytics must not delay the webhook ack: Stripe times the endpoint out
+    // after a few seconds and then retries, which used to race order creation.
+    void sendPurchaseAnalytics(updated, session).catch((err) => {
+      console.error(
+        "[checkout] purchase analytics failed",
+        checkout.id,
+        err?.message,
+      );
+    });
 
     return updated;
   } catch (err: any) {
@@ -350,12 +478,10 @@ export async function ensureShopifyOrder(session: any): Promise<any | null> {
     try {
       await prisma.stripeCheckout.update({
         where: { id: checkout.id },
-        data: { errorMessage: message },
+        data: { errorMessage: message, orderSyncStartedAt: null },
       });
     } catch {}
     throw err;
-  } finally {
-    inFlightOrders.delete(checkout.id);
   }
 }
 
@@ -375,9 +501,11 @@ export async function reconcileCheckout(checkoutId: string): Promise<any | null>
     // Order already exists; Shopify sent its own confirmation on completion.
     return checkout;
   }
-  if (checkout.status === StripeCheckoutStatus.EXPIRED) return checkout;
-  if (checkout.status === StripeCheckoutStatus.FAILED) return checkout;
+  if (checkout.status === StripeCheckoutStatus.REFUNDED) return checkout;
 
+  // A failed first payment attempt or an expired session can still end up paid
+  // (customer retried inside the mounted form, or the webhook was missed).
+  // Always ask Stripe before concluding the checkout is dead.
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.retrieve(
     checkout.stripeSessionId,

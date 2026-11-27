@@ -1,5 +1,7 @@
 import { prisma } from "@bumi/db";
 import {
+  checkoutSecretFromRequest,
+  checkoutSecretMatches,
   corsHeaders,
   getClientIp,
   isRateLimited,
@@ -58,9 +60,24 @@ export async function GET(
     return respond({ error: "Checkout not found." }, 404);
   }
 
+  // The checkout id alone is not a credential: it appears in the success-page
+  // URL. Rows created by the cart-id-aware client carry both a secret and an
+  // anonymous cart id and must present the secret. Rows from a legacy client
+  // (no cart id) have no way to store a secret, so they stay readable by UUID —
+  // otherwise deploying the admin before the storefront would 404 the success
+  // page for customers who had just paid.
+  if (checkout.checkoutSecret && checkout.anonymousCartId) {
+    const key = checkoutSecretFromRequest(request);
+    if (!checkoutSecretMatches(checkout.checkoutSecret, key)) {
+      return respond({ error: "Checkout not found." }, 404);
+    }
+  }
+
   if (
     !checkout.shopifyOrderId &&
-    (checkout.status === "PENDING" || checkout.status === "PAID")
+    (checkout.status === "PENDING" ||
+      checkout.status === "PAID" ||
+      checkout.status === "FAILED")
   ) {
     try {
       const reconciled = await reconcileCheckout(id);
@@ -109,10 +126,20 @@ export async function GET(
 
   // Customer-facing tracking link on our own domain. The token is deterministic
   // from the checkout id, so it can be produced as soon as the order exists even
-  // if the row has not been written yet.
-  const trackingToken = checkout.shopifyOrderId
-    ? checkout.trackingToken || createTrackingToken(checkout.id)
-    : null;
+  // if the row has not been written yet. A missing secret must not 500 the
+  // success page — fall back to the Shopify status page instead.
+  let trackingToken: string | null = null;
+  if (checkout.shopifyOrderId) {
+    try {
+      trackingToken = checkout.trackingToken || createTrackingToken(checkout.id);
+    } catch (err: any) {
+      console.error(
+        "[checkout] tracking token unavailable for status",
+        checkout.id,
+        err?.message,
+      );
+    }
+  }
 
   // Purchase event payload for the success page. Browser tracking fires with
   // `event_id: checkout.id`, matching the server-side Meta CAPI event in

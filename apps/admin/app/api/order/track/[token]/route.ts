@@ -66,8 +66,15 @@ export async function GET(
   }
 
   // Defensive: confirm the stored token matches the deterministic HMAC. Guards
-  // against a manually edited or corrupted row.
-  if (!verifyTrackingToken(checkout.id, token)) {
+  // against a manually edited or corrupted row. If the secret is missing (or was
+  // rotated), the unique DB match above is still safe to serve.
+  let verified = true;
+  try {
+    verified = verifyTrackingToken(checkout.id, token);
+  } catch (err: any) {
+    console.error("[tracking] token verification unavailable", err?.message);
+  }
+  if (!verified) {
     return respond({ ok: false, error: "Order not found." }, 404);
   }
 
@@ -104,6 +111,8 @@ export async function GET(
       state: "READY",
       orderName: order.orderName || checkout.shopifyOrderName,
       createdAt: order.createdAt,
+      cancelledAt: order.cancelledAt,
+      tags: order.tags,
       financialStatus: order.financialStatus,
       fulfillmentStatus: order.fulfillmentStatus,
       totals: {

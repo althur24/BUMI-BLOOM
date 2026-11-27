@@ -90,7 +90,18 @@ terhadap database tujuan sebelum deploy pertama:
 node --env-file=apps/admin/.env.local scripts/apply-stripe-migration.mjs
 node --env-file=apps/admin/.env.local scripts/apply-tracking-migration.mjs
 node --env-file=apps/admin/.env.local scripts/apply-dispute-migration.mjs
+node --env-file=apps/admin/.env.local scripts/apply-checkout-hardening.mjs
 ```
+
+> **Urutan penting:** jalankan `apply-checkout-hardening.mjs` **sebelum**
+> men-deploy kode baru. Kode baru membaca kolom `anonymousCartId`,
+> `checkoutSecret`, dan `orderSyncStartedAt`; tanpa migrasi, setiap request
+> checkout akan gagal.
+>
+> **Urutan deploy rilis ini:** migrasi → **admin (Railway) → storefront
+> (Vercel)**. Kalau storefront naik duluan, client baru mengirim `cartId` tetapi
+> admin lama mengabaikannya, jadi isolasi sesi belum aktif. Kalau admin naik
+> duluan tanpa migrasi, checkout berhenti total.
 
 Semua skrip idempoten (aman dijalankan berulang) dan menolak statement
 destruktif.

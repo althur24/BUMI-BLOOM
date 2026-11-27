@@ -6,6 +6,15 @@
 
   const params = new URLSearchParams(window.location.search);
   const checkoutId = params.get('checkoutId');
+  // The secret is handed over in sessionStorage (same tab) on the redirect.
+  // Keeping it out of the URL stops it leaking into GA4/Meta page_location,
+  // server logs and Referer headers. A link opened in a different tab has no
+  // secret and falls back to the "order not found" state — the confirmation
+  // email with its tracking link is the cross-device path.
+  let checkoutSecret = '';
+  try {
+    checkoutSecret = sessionStorage.getItem('bb-checkout-key') || '';
+  } catch {}
 
   const els = {
     loading: document.getElementById('order-loading'),
@@ -101,7 +110,12 @@
           '/api/checkout/session/' +
           encodeURIComponent(checkoutId) +
           '/status',
-        { cache: 'no-store' },
+        {
+          cache: 'no-store',
+          headers: checkoutSecret
+            ? { 'x-checkout-key': checkoutSecret }
+            : undefined,
+        },
       );
 
       if (res.status === 404) {

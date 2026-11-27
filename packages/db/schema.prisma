@@ -381,6 +381,14 @@ model StripeCheckout {
   stripePaymentIntentId  String?
   status                 StripeCheckoutStatus @default(PENDING)
   cartHash               String
+  // Random per-browser cart id. Session reuse is scoped to it so two customers
+  // with an identical bag never share a Stripe session.
+  anonymousCartId        String?
+  // Bearer secret for reading this checkout's status (success page polling).
+  checkoutSecret         String?
+  // Atomic claim used while creating the Shopify order, so concurrent webhook
+  // and status-poll deliveries cannot create two orders.
+  orderSyncStartedAt     DateTime?
   subtotalAudCents       Int                  @default(0)
   shippingAudCents       Int                  @default(0)
   discountAudCents       Int                  @default(0)
@@ -411,6 +419,7 @@ model StripeCheckout {
   @@index([shopifyOrderId])
   @@index([stripePaymentIntentId])
   @@index([cartHash, status])
+  @@index([cartHash, anonymousCartId, status])
 }
 
 model StripeWebhookEvent {
