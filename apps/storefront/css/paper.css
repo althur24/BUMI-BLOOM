@@ -309,7 +309,10 @@ body {
 
 /* ---- Testimonials: sticky notes ---- */
 .testimonial-card {
+  display: flex;
+  flex-direction: column;
   border-left: none;
+  padding-top: var(--space-10);
   rotate: 0deg;
   box-shadow: var(--shadow-md);
 }
@@ -334,6 +337,7 @@ body {
   transform: translateY(-4px);
 }
 .testimonial-card__stars { letter-spacing: 3px; }
+.testimonial-card__meta { margin-top: auto; }
 
 /* ---- Newsletter: big taped note + turtle ---- */
 .newsletter {

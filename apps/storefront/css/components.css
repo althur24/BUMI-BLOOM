@@ -1012,6 +1012,7 @@
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: var(--lh-relaxed);
+  margin-top: var(--space-2);
   margin-bottom: var(--space-6);
   font-style: italic;
 }
@@ -1068,6 +1069,37 @@
 .testimonial-card__author-role {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+.testimonial-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px dashed rgba(0, 64, 140, 0.18);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.testimonial-card__product {
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.testimonial-card__verified {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.testimonial-card__verified svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--color-blue-dark);
 }
 
 
