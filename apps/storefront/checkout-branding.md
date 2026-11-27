@@ -66,10 +66,10 @@ Deploy mengikuti `checkout-app/README.md`.
 - Market: Australia harus aktif di Shopify Markets agar alamat Australia bisa
   dipilih di checkout. Tanpa market Australia, checkout hanya menampilkan
   Indonesia.
-- Shipping: **Standard `$15.00` (5–8 business days)** — sudah aktif dan
+- Shipping: **Standard `$15.00` (7–10 business days)** — sudah aktif dan
   terverifikasi. **Free shipping over `$99`** juga sudah aktif dan terverifikasi.
   Express belum ada.
-- Delivery time: website dan checkout sama-sama 5–8 business days.
+- Delivery time: website dan checkout sama-sama 7–10 business days.
 - Locale/negara: checkout memakai `buyerIdentity: { countryCode: 'AU' }` di
   `createShopifyCart`, jadi format mengikuti `en-AU` (`$27.99`). Tidak perlu
   menambah locale English (Australia) di Shopify.

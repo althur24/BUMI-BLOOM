@@ -545,7 +545,7 @@
       // when present; otherwise fall back to the store's standard policy.
       const shippingCopy = product.shippingReturns
         ? richText(product.shippingReturns)
-        : '<p>Free AU shipping on orders over $99. Standard delivery 5–8 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>';
+        : '<p>Free AU shipping on orders over $99. Standard delivery 7–10 business days across Australia. Easy 30-day returns. Faulty or damaged on arrival? Tell us within 14 days for a refund or replacement.</p>';
       return '<div class="accordion" style="margin-top:var(--space-6);">' +
         item('Description', richText(product.description), true) +
         item('Material &amp; Care', richText(product.material)) +

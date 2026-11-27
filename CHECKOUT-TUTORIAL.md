@@ -21,7 +21,7 @@ Untuk sementara checkout memakai domain Shopify yang sekarang
 | Currency | AUD |
 | Metode terdeteksi | Credit card, Apple Pay, PayPal |
 | Australia market | **Aktif** — semua produk tersedia di `@inContext(AU)` |
-| Shipping Australia | **$15.00 terverifikasi** — Standard 5–8 hari, hanya satu metode |
+| Shipping Australia | **$15.00 terverifikasi** — Standard 7–10 hari, hanya satu metode |
 | Free shipping over `$99` | **Aktif** — subtotal `$111.96` gratis |
 | Format harga | **Sudah benar** — `en-AU`, `$27.99` |
 | Tampilan sold-out | **Sudah jalan** — muncul untuk produk yang benar-benar habis |
@@ -124,7 +124,7 @@ Hasil checkout Australia:
 | `$83.97` | `$15.00` | `$98.97` |
 | `$111.96` | **FREE** | `$111.96` |
 
-Metode: **Standard 5–8 business days**, hanya satu metode.
+Metode: **Standard 7–10 business days**, hanya satu metode.
 
 ### Free shipping over `$99`
 
@@ -133,7 +133,7 @@ Sudah aktif dan terverifikasi. Threshold di website juga sudah diubah ke `$99`
 
 ### Delivery time
 
-Website dan checkout sama-sama memakai **5–8 business days**.
+Website dan checkout sama-sama memakai **7–10 business days**.
 
 > Catatan: kalau checkout kembali ke `/password`, matikan password protection di
 > **Online Store → Preferences**.
@@ -168,7 +168,7 @@ rekening Indonesia dikonversi ke IDR, cek fee konversinya di dashboard Stripe.
 
 Status saat ini:
 
-- **Standard `$15.00`**, 5–8 business days — sudah aktif dan terverifikasi.
+- **Standard `$15.00`**, 7–10 business days — sudah aktif dan terverifikasi.
 - **Free shipping over `$99`** — sudah aktif dan terverifikasi.
 - Hanya ada satu metode.
 - Express belum ada di checkout.
@@ -459,7 +459,7 @@ npm run dev
 - [ ] Produk tersedia di market Australia (tidak semua Sold Out).
 - [ ] Standard `$15.00` muncul di checkout — sudah terverifikasi.
 - [ ] Free over `$99` muncul di checkout — sudah terverifikasi.
-- [ ] Delivery time website dan checkout sama (5–8 hari) — sudah terverifikasi.
+- [ ] Delivery time website dan checkout sama (7–10 hari) — sudah terverifikasi.
 - [ ] Format harga `$27.99` (en-AU) — sudah terverifikasi.
 - [ ] Tampilan Sold Out muncul untuk produk yang benar-benar habis.
 - [ ] Semua checkout diarahkan ke Australia (buyerIdentity AU).

@@ -305,11 +305,11 @@ export async function POST(request: Request) {
               },
               display_name:
                 prepared.quote.shippingAudCents === 0
-                  ? "Free standard shipping (5-8 business days)"
-                  : "Standard shipping (5-8 business days)",
+                  ? "Free standard shipping (7-10 business days)"
+                  : "Standard shipping (7-10 business days)",
               delivery_estimate: {
-                minimum: { unit: "business_day" as const, value: 5 },
-                maximum: { unit: "business_day" as const, value: 8 },
+                minimum: { unit: "business_day" as const, value: 7 },
+                maximum: { unit: "business_day" as const, value: 10 },
               },
             },
           },
