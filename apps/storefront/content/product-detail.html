@@ -81,17 +81,23 @@
   </div>
 
   <main>
-    <section class="section" id="pdp-section" style="padding-bottom: 0;">
-      <div class="container">
-        <nav class="breadcrumb" aria-label="Breadcrumb" id="pdp-breadcrumb">
-          <a href="/">Home</a>
+    <!-- Back + breadcrumb. Sticky under the header on phones; the parent must
+         stay tall (main), so this lives outside the short PDP intro section. -->
+    <div class="pdp-backbar" id="pdp-backbar">
+      <div class="container pdp-backbar__inner">
+        <a class="pdp-back" id="pdp-back" href="/products?category=all">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>Back</span>
+        </a>
+        <nav class="breadcrumb pdp-backbar__crumbs" aria-label="Breadcrumb" id="pdp-breadcrumb">
+          <a href="/" class="breadcrumb__link">Home</a>
           <span class="breadcrumb__separator" aria-hidden="true">›</span>
-          <a href="/products">Shop</a>
+          <a href="/products" class="breadcrumb__link" id="breadcrumb-shop">Shop</a>
           <span class="breadcrumb__separator" aria-hidden="true">›</span>
           <span class="breadcrumb__current" id="breadcrumb-current">Product</span>
         </nav>
       </div>
-    </section>
+    </div>
 
     <!-- Rendered by inline script -->
     <section class="section" id="pdp-root" style="padding-top: var(--space-6);"></section>

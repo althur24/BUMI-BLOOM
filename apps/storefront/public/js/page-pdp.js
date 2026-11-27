@@ -1,5 +1,68 @@
   (async function () {
     'use strict';
+
+    // ── Back navigation ────────────────────────────────────────────────
+    // Same-origin referrer: use the browser's own back entry so the previous
+    // listing keeps its filters and scroll. Direct visits (ads, email, Google)
+    // fall back to the shop listing. The href is always a usable URL, so
+    // middle-click / open-in-new-tab still works.
+    (function setupBackNavigation() {
+      const back = document.getElementById('pdp-back');
+      const shopCrumb = document.getElementById('breadcrumb-shop');
+      if (!back) return;
+
+      let returnUrl = null;
+      try {
+        if (document.referrer) {
+          const ref = new URL(document.referrer);
+          if (ref.origin === window.location.origin) {
+            returnUrl = ref.pathname + ref.search;
+          }
+        }
+      } catch (err) { /* malformed referrer: use the fallback */ }
+
+      const fallbackUrl = '/products?category=all';
+      back.setAttribute('href', returnUrl || fallbackUrl);
+      if (shopCrumb) {
+        // Only a listing URL should feed the "Shop" crumb; a related-product
+        // referrer is a PDP, where the plain listing is the right target.
+        const isListing = returnUrl && /^\/products\/?(\?|$)/.test(returnUrl);
+        shopCrumb.setAttribute('href', isListing ? returnUrl : '/products');
+      }
+
+      back.addEventListener('click', (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return; // let the browser open a new tab / window
+        }
+        if (returnUrl && window.history.length > 1) {
+          event.preventDefault();
+          window.history.back();
+        }
+      });
+
+      // The sticky bar sits directly under the header. Measure the real header
+      // (phones render it shorter than the desktop --header-height token).
+      const header = document.getElementById('header');
+      const syncHeaderHeight = () => {
+        if (header) {
+          document.documentElement.style.setProperty(
+            '--bb-header-h',
+            header.offsetHeight + 'px',
+          );
+        }
+      };
+      syncHeaderHeight();
+      window.addEventListener('resize', syncHeaderHeight, { passive: true });
+      window.addEventListener('orientationchange', syncHeaderHeight, { passive: true });
+      // Webfont swap or any header reflow updates the sticky offset too.
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(syncHeaderHeight).catch(() => {});
+      }
+      if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(syncHeaderHeight).observe(header);
+      }
+    })();
+
     await BumiData.ready();
     const BG = ['yellow', 'green', 'pink', 'blue', 'orange', 'purple'];
 

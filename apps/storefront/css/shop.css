@@ -237,6 +237,102 @@ textarea.input {
 /* ============================================
    PRODUCT DETAIL (PDP)
    ============================================ */
+/* Back affordance. Desktop: a quiet pill next to the breadcrumb. Phones:
+   a full-bleed sticky bar under the header so the way out is always visible
+   during the long gallery/variant/accordion scroll. */
+.pdp-backbar {
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-1);
+}
+.pdp-backbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.pdp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--color-dark);
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-smooth),
+              border-color var(--duration-fast) var(--ease-smooth),
+              background-color var(--duration-fast) var(--ease-smooth);
+}
+.pdp-back svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.pdp-back:hover {
+  color: var(--color-coral);
+  border-color: var(--color-coral);
+}
+.pdp-back:focus-visible {
+  outline: 2px solid var(--color-coral);
+  outline-offset: 2px;
+}
+.pdp-backbar__crumbs {
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .pdp-backbar {
+    position: sticky;
+    /* --bb-header-h is measured from the real header (it is shorter on
+       phones); the fallback covers the first paint. */
+    top: var(--bb-header-h, var(--header-height));
+    z-index: 150; /* under the sticky header (200) */
+    /* No vertical padding: the 44px link itself is the whole bar height. */
+    padding: 0;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 10px -8px rgba(45, 45, 45, 0.35);
+  }
+  .pdp-backbar__inner {
+    justify-content: flex-start;
+  }
+  /* Ghost treatment on phones: keeps the 44px tap target without a heavy
+     white pill dominating the top of the product page. */
+  .pdp-back {
+    min-height: 44px;
+    padding: 0 8px;
+    margin-left: -8px; /* icon aligns with the container edge */
+    border: 0;
+    background: transparent;
+    font-size: 0.875rem;
+  }
+  .pdp-back:hover {
+    color: var(--color-dark);
+    background: rgba(0, 64, 140, 0.06);
+  }
+  .pdp-back:active {
+    background: rgba(0, 64, 140, 0.1);
+  }
+  .pdp-backbar__crumbs {
+    display: none;
+  }
+}
+
+/* Short landscape phones: a sticky header + back bar + bottom Add-to-Bag bar
+   would eat most of the viewport. Let the back bar scroll with the page. */
+@media (max-width: 768px) and (max-height: 500px) {
+  .pdp-backbar {
+    position: static;
+    box-shadow: none;
+  }
+}
+
 .pdp-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
