@@ -216,6 +216,25 @@
   flex-shrink: 0;
 }
 
+/* Static AUD marker so the $ prices read as Australian dollars, not USD. */
+.header__actions::before {
+  content: 'AUD';
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  margin-right: var(--space-2);
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.14em;
+  color: var(--color-dark);
+  flex-shrink: 0;
+  user-select: none;
+}
+
 .header__action-btn {
   position: relative;
   width: 44px;
@@ -409,6 +428,17 @@
   color: var(--color-dark);
   text-decoration: none;
   font-weight: var(--fw-semibold);
+}
+
+/* The header AUD pill is hidden on phones; the drawer carries the note instead. */
+.mobile-nav__footer::after {
+  content: 'All prices in AUD';
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 /* ---- Footer ---- */
@@ -620,6 +650,10 @@
 
   .header__actions {
     gap: 0;
+  }
+
+  .header__actions::before {
+    display: none;
   }
 
   .header__action-btn {

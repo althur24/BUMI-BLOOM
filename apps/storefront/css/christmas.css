@@ -502,7 +502,6 @@
   text-align: center;
 }
 .gift-banner__text { font-weight: var(--fw-semibold); font-size: var(--text-sm); }
-.gift-banner .btn { flex: none; }
 
 /* ---- Snow settles lightly on section tops (subtle) ---- */
 .testimonial-card:nth-child(1)::before,
