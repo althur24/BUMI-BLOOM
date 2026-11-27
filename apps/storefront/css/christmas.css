@@ -2,7 +2,7 @@
    BUMI / BLOOM — "Crayon Christmas" theme layer
    Loaded after paper.css on the homepage. Keeps
    the cream / dark-blue / red crayon identity and
-   adds festive doodles: snowfall, santa-hat logo,
+   adds festive doodles: snowfall, cat peeking on the logo,
    baubles, candy-cane dividers, gift badges.
    ============================================ */
 
@@ -20,7 +20,7 @@
   .snow-canvas { display: block; }
 }
 
-/* ---- Santa hat doodle perched on the logo ---- */
+/* ---- Santa-cat peek perched on the logo ---- */
 .header__logo,
 .footer__logo {
   position: relative;
@@ -30,11 +30,14 @@
 .footer__logo::after {
   content: '';
   position: absolute;
-  top: -1.08em;
+  top: -1.58em;
   right: -1.5em;
   width: 2.15em;
   height: 2.15em;
-  background: url("/images/characters/santa-hat.png") no-repeat center / contain;
+  background: url("/images/characters/cat-peek.webp") no-repeat center / contain;
+  /* Reset the yellow dot from layout.css so only the peek illustration shows. */
+  border-radius: 0;
+  margin: 0;
   /* Cream silhouette halo keeps the dark-blue outline legible on the dark
      announcement bar and on the cream page alike. */
   filter:
@@ -42,7 +45,6 @@
     drop-shadow(0 0 2px #F2EEE9)
     drop-shadow(0 2px 4px rgba(0, 64, 140, 0.35));
   pointer-events: none;
-  rotate: 16deg;
   z-index: 5;
   animation: hatBounce 3.4s ease-in-out infinite;
 }
@@ -52,7 +54,7 @@
 }
 @media (max-width: 640px) {
   .header__logo::after {
-    top: -1em;
+    top: -1.45em;
     right: -1.3em;
     width: 1.9em;
     height: 1.9em;
