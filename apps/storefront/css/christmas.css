@@ -130,122 +130,212 @@
 .squiggle-divider--red path { stroke-dasharray: 44 22; opacity: 0.75; }
 .squiggle-divider--blue path { stroke-dasharray: 44 22; opacity: 0.5; }
 
-/* ---- Christmas delivery note (taped paper scrap) ---- */
-.xmas-note {
+/* ---- Christmas delivery postcard ----
+   Minimal cream-and-ink postcard: a white message side, a soft blue stamp
+   side, one hairline rule and a postage stamp. */
+.xmas-postcard {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  background: var(--color-white);
-  border: 3px dashed rgba(168, 51, 30, 0.35);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-6);
-  box-shadow: var(--shadow-md);
-  rotate: -0.6deg;
-  max-width: 760px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 32%);
+  max-width: 980px;
   margin-inline: auto;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 1px solid rgba(0, 64, 140, 0.16);
+  border-radius: 24px;
+  box-shadow:
+    0 1px 2px rgba(0, 64, 140, 0.05),
+    0 30px 60px -50px rgba(0, 64, 140, 0.45);
 }
-.xmas-note__tape {
-  position: absolute;
-  width: 92px;
-  height: 26px;
-  background: rgba(242, 215, 211, 0.7);
-  box-shadow: 0 1px 3px rgba(0, 64, 140, 0.1);
-  z-index: 2;
-  pointer-events: none;
+.xmas-postcard__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: clamp(1.75rem, 4.5vw, 3.5rem);
 }
-.xmas-note__tape--left  { top: -13px; left: 9%;  transform: rotate(-6deg); }
-.xmas-note__tape--right { top: -13px; right: 9%; transform: rotate(5deg); background: rgba(150, 173, 214, 0.45); }
-.xmas-note__doodle {
-  flex: none;
+.xmas-postcard__eyebrow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--color-peach-light);
-  color: var(--color-red-dark);
-  rotate: -4deg;
-}
-.xmas-note__doodle svg {
-  width: 58%;
-  height: 58%;
-  overflow: visible;
-}
-.xmas-note__content { text-align: left; }
-.xmas-note__eyebrow {
-  font-family: var(--font-accent);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--color-script-accent);
-  line-height: 1;
-  margin-bottom: var(--space-1);
-}
-.xmas-note__title {
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
   font-family: var(--font-heading);
-  font-weight: var(--fw-extrabold);
-  font-size: var(--text-2xl);
-  line-height: var(--lh-snug);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dark-muted);
+}
+.xmas-postcard__eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 64, 140, 0.16);
+}
+.xmas-postcard__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.7rem, 3.2vw, 2.65rem);
+  font-weight: var(--fw-semibold);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
   color: var(--color-dark);
-  margin-bottom: var(--space-2);
+  text-wrap: balance;
 }
-.xmas-note__date {
-  color: var(--color-red);
+.xmas-postcard__date {
+  color: var(--color-red-dark);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.15em;
+  text-decoration-color: var(--color-red);
 }
-.xmas-note__text {
+.xmas-postcard__text {
+  margin: 0;
+  max-width: 52ch;
   font-size: var(--text-sm);
+  line-height: 1.65;
   color: var(--text-secondary);
-  max-width: 48ch;
-  margin-bottom: var(--space-5);
 }
-.xmas-note__text strong {
+.xmas-postcard__text strong {
   font-weight: var(--fw-bold);
   color: var(--color-dark);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-
-/* Bundle offer chip — a small taped label that reads like a price tag, in
-   the same paper-craft language as the note itself. */
-.xmas-note__bundle {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-5);
-  background: var(--color-blue-light);
-  border: 2px dashed var(--color-blue-dark);
-  border-radius: var(--radius-md);
-  color: var(--color-dark);
+.xmas-postcard__bundle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 56ch;
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(0, 64, 140, 0.14);
   font-size: var(--text-sm);
-  line-height: var(--lh-snug);
-  max-width: 48ch;
+  line-height: 1.55;
+  color: var(--text-secondary);
 }
-.xmas-note__bundle strong {
-  font-weight: var(--fw-bold);
-  color: var(--color-red-dark);
-  font-variant-numeric: tabular-nums;
-}
-.xmas-note__bundle-icon {
+.xmas-postcard__bundle-label {
   flex: none;
-  display: inline-flex;
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--color-dark);
-  margin-top: 1px;
 }
-.xmas-note__bundle-icon svg {
-  width: 18px;
-  height: 18px;
+.xmas-postcard__bundle strong {
+  color: var(--color-dark);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-@media (max-width: 700px) {
-  .xmas-note {
-    flex-direction: column;
-    text-align: center;
-    padding: var(--space-8) var(--space-5) var(--space-6);
+.xmas-postcard__cta {
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding-inline: var(--space-6);
+  border-radius: 2px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+}
+.xmas-postcard__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: clamp(1.25rem, 2.6vw, 2rem);
+  background: var(--color-blue-light);
+  border-left: 1px solid rgba(0, 64, 140, 0.3);
+  color: var(--color-dark);
+}
+.xmas-postcard__postage {
+  position: relative;
+  align-self: flex-end;
+  width: 152px;
+  height: 120px;
+}
+.xmas-postcard__stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 94px;
+  background: var(--color-white);
+  border: 1px solid rgba(0, 64, 140, 0.45);
+  color: var(--color-dark);
+}
+.xmas-postcard__stamp::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed rgba(0, 64, 140, 0.22);
+  pointer-events: none;
+}
+.xmas-postcard__stamp svg {
+  width: 34px;
+  height: 40px;
+  overflow: visible;
+}
+.xmas-postcard__stamp-date {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-family: var(--font-heading);
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+}
+.xmas-postcard__postmark {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 104px;
+  height: 104px;
+  color: rgba(0, 64, 140, 0.42);
+  rotate: -9deg;
+}
+.xmas-postcard__address {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: var(--space-4);
+}
+.xmas-postcard__address-caption {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dark-muted);
+}
+.xmas-postcard__address-line {
+  display: block;
+  height: 1px;
+  background: rgba(0, 64, 140, 0.2);
+}
+.xmas-postcard__address-line--short { width: 62%; }
+@media (max-width: 760px) {
+  .xmas-postcard { grid-template-columns: 1fr; }
+  .xmas-postcard__side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    border-left: 0;
+    border-top: 1px solid rgba(0, 64, 140, 0.3);
   }
-  .xmas-note__content { text-align: center; }
-  .xmas-note__text { margin-inline: auto; }
-  .xmas-note__bundle { text-align: left; }
+  .xmas-postcard__postage {
+    align-self: auto;
+    width: 128px;
+    height: 100px;
+  }
+  .xmas-postcard__stamp { width: 64px; height: 78px; }
+  .xmas-postcard__stamp svg { width: 28px; height: 34px; }
+  .xmas-postcard__postmark { width: 88px; height: 88px; }
+  .xmas-postcard__address { display: none; }
+  .xmas-postcard__cta { width: 100%; }
 }
 /* ---- Bundle banner (cart page) ----
    Same paper-tag language as the Christmas note: dashed edge, soft fill,
