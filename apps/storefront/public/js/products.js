@@ -129,20 +129,38 @@ function emptyHTML(message) {
 
 /* ---------- Homepage "Collections" grid ---------- */
 
-// "All" is a curated teaser (newest first); each category tab draws from the
-// whole catalogue instead, so a tab is never limited to the handful of cards
-// that happen to be featured. The limits match the 3-column grid (1 and 2 rows
-// respectively) and are easy to tweak here.
+// "All" shows the same "Our picks" order as Shop All (admin brand priority,
+// then newest). Each category tab draws from the whole catalogue so a tab is
+// never limited to the handful of cards that happen to be featured. The limits
+// match the 3-column grid (1 and 2 rows respectively) and are easy to tweak.
 const HOME_FEATURED_LIMIT = 3;
 const HOME_TAB_LIMIT = 6;
 let homeCollectionFilter = 'all';
 
+// Brand priority: products from admin-prioritised brands come first (in that
+// order), each group then newest-first. Brands with no priority fall to the
+// end and stay newest-first among themselves. Unranked brands report
+// Infinity; `Infinity - Infinity` is NaN, which would make the comparator a
+// no-op. Handle Infinity explicitly so prioritised brands always sort ahead
+// and unranked ones tie by recency.
+function bbBrandPriorityCompare(a, b) {
+  const ra = BumiData.brandRank(a.brand);
+  const rb = BumiData.brandRank(b.brand);
+  if (ra !== rb) {
+    if (ra === Infinity) return 1;
+    if (rb === Infinity) return -1;
+    return ra - rb;
+  }
+  return (b.addedAt || 0) - (a.addedAt || 0);
+}
+
 function homeCollectionProducts(filter) {
-  if (!filter || filter === 'all') return BumiData.getFeatured(HOME_FEATURED_LIMIT);
-  return (BumiData.PRODUCTS || [])
-    .filter((p) => p.category === filter)
-    .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
-    .slice(0, HOME_TAB_LIMIT);
+  const isAll = !filter || filter === 'all';
+  const list = (BumiData.PRODUCTS || [])
+    .filter((p) => isAll || p.category === filter)
+    .slice()
+    .sort(bbBrandPriorityCompare);
+  return list.slice(0, isAll ? HOME_FEATURED_LIMIT : HOME_TAB_LIMIT);
 }
 
 function renderHomeCollection() {
@@ -510,23 +528,9 @@ function initPLP() {
       case 'price-asc': list.sort((a, b) => a.price - b.price); break;
       case 'price-desc': list.sort((a, b) => b.price - a.price); break;
       case 'bestselling': list.sort((a, b) => (b.isBestseller - a.isBestseller) || (b.rating - a.rating)); break;
-      // Brand priority: products from admin-prioritised brands come first (in
-      // that order), each group then newest-first. Brands with no priority
-      // fall to the end and stay newest-first among themselves.
-      // Unranked brands report Infinity; `Infinity - Infinity` is NaN, which
-      // would make the comparator a no-op. Handle Infinity explicitly so
-      // prioritised brands always sort ahead and unranked ones tie by recency.
+      // Brand priority: same "Our picks" order as the homepage collection.
       case 'brand-priority':
-        list.sort((a, b) => {
-          const ra = BumiData.brandRank(a.brand);
-          const rb = BumiData.brandRank(b.brand);
-          if (ra !== rb) {
-            if (ra === Infinity) return 1;
-            if (rb === Infinity) return -1;
-            return ra - rb;
-          }
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
+        list.sort(bbBrandPriorityCompare);
         break;
       default: list.sort((a, b) => b.addedAt - a.addedAt);
     }
