@@ -112,6 +112,10 @@
     // next frame so the CSS transition runs
     requestAnimationFrame(() => root.classList.add('is-open'));
     isOpen = true;
+    // Record the impression, not just an explicit dismissal. The CTA navigates
+    // away without calling close(), so marking only on close made the popup
+    // reappear after every "Shop the offer" tap (especially on mobile).
+    storageSet(SEEN_KEY, String(Date.now()));
     const first = dialog.querySelector('a[href], button');
     if (first) setTimeout(() => first.focus(), 200);
   }
